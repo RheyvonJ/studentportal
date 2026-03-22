@@ -1,0 +1,18 @@
+@{
+    var current = (ViewBag.CurrentPage?.ToString() ?? "home").ToLowerInvariant();
+    string Active(string key) => current == key ? "active" : "";
+}
+<nav class="slsp-bottom-nav" aria-label="Mobile navigation" role="navigation">
+    <a class="slsp-bottom-nav-item @Active("home")" href="@Url.Content("~/studentdb/StudentDb")">
+        <i class="fa-solid fa-house"></i>
+        <span>Dashboard</span>
+    </a>
+    <a class="slsp-bottom-nav-item @Active("library")" href="@Url.Action("Search","Library")">
+        <i class="fa-solid fa-book"></i>
+        <span>Library</span>
+    </a>
+    <a class="slsp-bottom-nav-item @Active("todo")" href="@Url.Content("~/StudentTodo")">
+        <i class="fa-solid fa-list-check"></i>
+        <span>To-Do</span>
+    </a>
+</nav>

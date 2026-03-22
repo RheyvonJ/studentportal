@@ -1,0 +1,136 @@
+@model List<StudentPortal.Models.Library.Book>
+@{
+    ViewData["Title"] = "Library Search";
+    var searchTerm = ViewBag.SearchTerm as string ?? "";
+    var userEmail = ViewBag.UserEmail as string ?? "";
+    Layout = "_StudentLayout";
+    ViewBag.CurrentPage = "library";
+    ViewBag.EnableSidebarSlide = true;
+    ViewBag.HideSidebar = true;
+    ViewBag.HeaderTitle = "Library";
+    ViewBag.HeaderSubtext = "Search and reserve books";
+    ViewBag.HeaderShowProfile = false;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/Library/LibrarySearch.css" asp-append-version="true" />
+}
+
+<main class="library-search">
+    <nav class="class-breadcrumb" aria-label="Breadcrumb">
+        <a href="@Url.Content("~/studentdb/StudentDb")">Dashboard</a>
+        <span class="sep">/</span>
+        <span>Library</span>
+    </nav>
+    <div class="library-search-header">
+        <h1><i class="fas fa-book"></i> Library Search</h1>
+        <form method="post" asp-action="Search" class="library-search-form">
+            <input type="text" name="searchTerm" class="library-search-input"
+                   placeholder="Search by title, author, ISBN, subject..."
+                   value="@searchTerm" />
+            <button type="submit" class="library-search-btn">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </form>
+    </div>
+
+        @if (Model != null && Model.Any())
+        {
+            <div class="library-books-grid">
+                @foreach (var book in Model)
+                {
+                    <div class="library-book-card">
+                        <div class="library-book-image">
+                            @if (!string.IsNullOrEmpty(book.Image) && book.Image != "/images/default-book.png")
+                            {
+                                <img src="@book.Image" alt="@book.Title" />
+                            }
+                            else
+                            {
+                                <i class="fas fa-book" style="font-size: 60px;"></i>
+                            }
+                        </div>
+                        <div class="library-book-info">
+                            <div class="library-book-title">@book.Title</div>
+                            <div class="library-book-author">by @book.Author</div>
+                            <div class="library-book-details">
+                                @if (!string.IsNullOrEmpty(book.ISBN))
+                                {
+                                    <div>ISBN: @book.ISBN</div>
+                                }
+                                @if (!string.IsNullOrEmpty(book.Subject))
+                                {
+                                    <div>Subject: @book.Subject</div>
+                                }
+                                <div>Copies: @book.AvailableCopies / @book.TotalCopies</div>
+                            </div>
+                            <div class="library-book-status">
+                                <div class="library-availability @(book.IsAvailable ? "available" : book.IsReferenceOnly ? "reference-only" : "unavailable")">
+                                    @if (book.IsReferenceOnly)
+                                    {
+                                        <span>Reference Only</span>
+                                    }
+                                    else if (book.IsAvailable)
+                                    {
+                                        <span>Available</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Unavailable</span>
+                                    }
+                                </div>
+                                <button class="library-reserve-btn"
+                                        data-book-id="@book._id.ToString()" 
+                                        data-book-title="@book.Title"
+                                        @(book.IsAvailable ? "" : "disabled")>
+                                    <i class="fas fa-external-link-alt"></i> Borrow in Library
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="library-no-books">
+                <i class="fas fa-book-open" style="font-size: 60px; color: #ccc; margin-bottom: 20px;"></i>
+                <h3>No books found</h3>
+                <p>@(string.IsNullOrEmpty(searchTerm) ? "Try searching for a book." : $"No books found matching '{searchTerm}'. Try a different search term.")</p>
+            </div>
+        }
+</main>
+
+<div id="toast" class="toast"></div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const reserveButtons = document.querySelectorAll('.library-reserve-btn');
+            const libraryBaseUrl = '@(ViewBag.LibraryPortalBaseUrl ?? "http://localhost:5204")';
+            
+            reserveButtons.forEach(button => {
+                button.addEventListener('click', async function() {
+                    const bookId = this.getAttribute('data-book-id');
+                    const bookTitle = this.getAttribute('data-book-title');
+                    
+                    if (!bookId) return;
+
+                    const url = `${libraryBaseUrl}/Student/BrowseBooks?bookId=${encodeURIComponent(bookId)}&q=${encodeURIComponent(bookTitle || '')}`;
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                    showToast('Redirecting to Library Portal…', 'success');
+                });
+            });
+        });
+        
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+}
+

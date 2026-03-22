@@ -1,0 +1,118 @@
+@model StudentPortal.Models.StudentDb.StudentAnnouncementViewModel
+@{
+    Layout = "_StudentLayout";
+    ViewData["Title"] = $"{Model.SubjectName} - Announcement";
+    ViewBag.CurrentPage = "subjects";
+    ViewBag.EnableSidebarSlide = true;
+    ViewBag.HideSidebar = true;
+    ViewBag.HeaderTitle = Model.SubjectName;
+    ViewBag.HeaderSubtext = $"{Model.SubjectCode} • {Model.ClassCode}";
+    ViewBag.HeaderShowProfile = false;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/StudentDb/StudentMaterial.css" asp-append-version="true" />
+}
+<main class="student-class-shell">
+    <section class="class-container">
+        <section class="class-info">
+            <div class="class-info-top">
+                <div class="class-banner">
+                    <div class="profile-initials" aria-hidden="true">@Model.InstructorInitials</div>
+                    <div class="teacher-details">
+                        <div class="teacher-name">@Model.InstructorName</div>
+                        <div class="teacher-meta">
+                            @Model.InstructorRole
+                            @if (!string.IsNullOrWhiteSpace(Model.TeacherDepartment))
+                            {
+                                <text> | @Model.TeacherDepartment</text>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.RoomName) || !string.IsNullOrWhiteSpace(Model.FloorDisplay))
+                        {
+                            <div class="room-location">
+                                @Model.RoomName
+                                @if (!string.IsNullOrWhiteSpace(Model.FloorDisplay))
+                                {
+                                    <text> • @Model.FloorDisplay</text>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="class-info-middle-top">
+                <h2 class="subject-name">@Model.SubjectName</h2>
+                <p class="subject-code">Subject Code: <span class="code-value">@Model.SubjectCode</span></p>
+                <p class="class-code">Class Code: <span class="code-value">@Model.ClassCode</span></p>
+            </div>
+
+            <div class="class-info-middle recent-material">
+                <h3>Recent Announcements</h3>
+                <ul>
+                    @foreach (var item in Model.RecentAnnouncements)
+                    {
+                        <li><i class="fa-solid fa-bullhorn"></i> @item</li>
+                    }
+                </ul>
+            </div>
+        </section>
+
+        <div class="right-column-task">
+            <nav class="class-breadcrumb" aria-label="Breadcrumb">
+                <a href="@Url.Content("~/studentdb/StudentDb")">Dashboard</a>
+                <span class="sep">/</span>
+                <span>@Model.SubjectName</span>
+            </nav>
+
+            <section class="material-container" id="announcementContainer" data-content-id="@Model.ContentId">
+                <div class="material-scrollable">
+                    <h2 class="material-name">@Model.Title</h2>
+                    @if (!string.IsNullOrWhiteSpace(Model.Description))
+                    {
+                        <p class="material-description">@Model.Description</p>
+                    }
+
+                    <div class="attachments-section">
+                        <h3>Attached Files</h3>
+                        <div class="attachments" id="attachmentList">
+                            @if (Model.Files != null && Model.Files.Count > 0)
+                            {
+                                foreach (var f in Model.Files)
+                                {
+                                    <div class="attachment-box">
+                                        @if (!string.IsNullOrWhiteSpace(f.FileUrl))
+                                        {
+                                            <a href="@f.FileUrl" target="_blank" rel="noopener" class="attachment-link">@f.FileName</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="attachment-name">@f.FileName</span>
+                                        }
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <p class="no-files">No files attached to this announcement.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="material-bottom" id="announcementBottom">
+                    <p class="posted-date" id="dateInfo">
+                        Posted: @Model.CreatedAt.ToString("MMM d, yyyy")
+                        @if (!string.IsNullOrWhiteSpace(Model.EditedDate))
+                        {
+                            <text> | Edited: @Model.EditedDate</text>
+                        }
+                    </p>
+                </div>
+            </section>
+        </div>
+    </section>
+</main>
+<div id="toast" class="toast"></div>
+@section Scripts {
+    <script src="~/js/StudentDb/StudentClass.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,154 @@
+@model StudentPortal.Models.AdminDb.AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    var toastMessage = TempData["ToastMessage"] as string;
+    Layout = null;
+}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/AdminDb/AdminDb.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Shared/BottomBar.css" asp-append-version="true" />
+    <style>
+        /* ensure modal covers bottom-bar (if bottom bar lives outside page wrapper) */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 12000;
+        }
+
+        .class-code {
+            color: white;
+        }
+
+        .modal-backdrop.show {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <main class="classes-container" id="classContainer">
+            @foreach (var cls in Model.Classes)
+            {
+                var headerStyle = !string.IsNullOrEmpty(cls.BackgroundImageUrl)
+                    ? ("background-image:url('" + cls.BackgroundImageUrl + "'); background-size: cover; background-position: center;")
+                    : "";
+                <article class="class-card" onclick="location.href='@Url.Action("Index", "AdminClass", new { id = cls.ClassCode })'" role="button" tabindex="0">
+                    <div class="class-card-header" style="@headerStyle"></div>
+                    <div class="class-card-actions" aria-label="Class actions">
+                        <button type="button" class="delete-class-btn" data-class-id="@cls.Id" data-class-code="@cls.ClassCode" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <div class="class-card-body">
+                        <h3 class="class-card-title">@cls.SubjectName</h3>
+                        <div class="class-card-meta">
+                            <span><i class="fa-solid fa-users"></i> @(string.IsNullOrWhiteSpace(cls.SectionLabel) ? cls.Section : cls.SectionLabel) @if (!string.IsNullOrWhiteSpace(cls.RoomDisplay)) {<text> • </text>@cls.RoomDisplay}</span>
+                            @if (!string.IsNullOrWhiteSpace(cls.ScheduleTimeDisplay))
+                            {
+                                <span><i class="fa-solid fa-calendar-days"></i> @cls.ScheduleTimeDisplay</span>
+                            }
+                            else
+                            {
+                                <span><i class="fa-solid fa-clock"></i> Class code: @cls.ClassCode</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="class-card-footer">
+                        <div class="class-card-professor">
+                            <div class="class-card-avatar">@(string.IsNullOrWhiteSpace(cls.CreatorInitials) ? "?" : cls.CreatorInitials)</div>
+                            <span class="class-card-professor-name">@(string.IsNullOrWhiteSpace(cls.CreatorName) ? "—" : cls.CreatorName)</span>
+                        </div>
+                        <span class="class-card-status @(cls.IsArchived ? "status-archived" : "status-active")">@(cls.IsArchived ? "Archived" : "Active")</span>
+                    </div>
+                </article>
+            }
+
+
+            <!-- Create class button -->
+            <button class="create-class-button" id="createBtn" type="button" title="Create class" aria-haspopup="dialog" aria-controls="createModal">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+        </main>
+
+        <!-- Modal for creating class -->
+        <div class="modal-backdrop" id="modalBackdrop" role="presentation" aria-hidden="true">
+            <div class="modal" id="createModal" role="dialog" aria-modal="true" aria-labelledby="createTitle">
+                <h3 id="createTitle">Create a Class</h3>
+
+                <form id="createForm" method="post" asp-controller="AdminDb" asp-action="CreateClass">
+                    @Html.AntiForgeryToken()
+                    <div class="custom-select" id="profSubjectSelect" data-value="">
+                        <div class="selected">Select Professor Subject</div>
+                        <div class="options"></div>
+                    </div>
+                    <input type="hidden" id="profSubjectValue" />
+                    <input type="hidden" id="scheduleId" name="scheduleId" />
+
+                    <div class="custom-select" id="courseSelect" data-value="">
+                        <div class="selected">Select Course</div>
+                        <div class="options">
+                            <div data-value="BSIT">BSIT</div>
+                            <div data-value="BSENT">BSENT</div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="course" id="courseValue" />
+
+                    <div class="custom-select" id="yearSelect" data-value="">
+                        <div class="selected">Select Year</div>
+                        <div class="options">
+                            <div data-value="1st">1st</div>
+                            <div data-value="2nd">2nd</div>
+                            <div data-value="3rd">3rd</div>
+                            <div data-value="4th">4th</div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="year" id="yearValue" />
+
+                    <div class="custom-select" id="semesterSelect" data-value="">
+                        <div class="selected">Select Semester</div>
+                        <div class="options">
+                            <div data-value="1st">1st</div>
+                            <div data-value="2nd">2nd</div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="semester" id="semesterValue" />
+
+                    <input type="text" id="section" name="section" placeholder="Enter section (e.g., BSIT-2025-2025-0017)" />
+                    <input type="email" id="profEmail" name="profEmail" placeholder="Professor email (optional)" />
+                    <input type="text" id="professorId" name="professorId" placeholder="Professor ID (ESys)" />
+                    <input type="text" id="subjectName" name="subjectName" placeholder="Enter subject name" />
+                    <input type="text" id="subjectCode" name="subjectCode" placeholder="Enter subject code" />
+
+                    <button id="createClass" type="submit">CREATE CLASS</button>
+                </form>
+            </div>
+        </div>
+        <div class="modal-backdrop" id="deleteClassBackdrop" role="presentation" aria-hidden="true">
+            <div class="modal" id="deleteClassModal" role="dialog" aria-modal="true" aria-labelledby="deleteClassTitle">
+                <h3 id="deleteClassTitle">Delete Class</h3>
+                <p id="deleteClassText"></p>
+                <div class="modal-actions">
+                    <button id="cancelDeleteClass" type="button">Cancel</button>
+                    <button id="confirmDeleteClass" type="button">Delete</button>
+                </div>
+            </div>
+        </div>
+        <!-- Toast Notification -->
+        <div id="toast" class="toast">@toastMessage</div>
+
+        <script src="~/js/AdminDb/AdminDb.js" asp-append-version="true"></script>
+        @{
+            ViewBag.CurrentPage = "home";
+        }
+        @await Html.PartialAsync("_AdminBottomBar")
+
+    </div>
+</body>
+</html>

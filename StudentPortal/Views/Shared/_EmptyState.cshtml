@@ -1,0 +1,39 @@
+@model dynamic
+<div class="empty-state">
+    <div class="empty-illustration">
+        @{
+            var variant = (string)(Model?.Variant ?? "default");
+            if (variant == "overdue")
+            {
+                @:<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                @:<g class="float">
+                @:<circle cx="26" cy="30" r="10" stroke="#a5b4fc" stroke-width="2" fill="#eef2ff"/>
+                @:<rect x="34" y="38" width="14" height="6" rx="3" fill="#c7d2fe"/>
+                @:<circle cx="48" cy="44" r="6" stroke="#93c5fd" stroke-width="2"/>
+                @:</g>
+                @:<text x="46" y="16" font-size="10" fill="#a5b4fc" class="zzz">z</text>
+                @:</svg>
+            }
+            else if (variant == "due")
+            {
+                @:<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                @:<g class="float">
+                @:<rect x="18" y="18" width="28" height="20" rx="4" stroke="#93c5fd" stroke-width="2" fill="#e5f0ff"/>
+                @:<circle cx="42" cy="42" r="8" stroke="#93c5fd" stroke-width="2"/>
+                @:<line x1="47" y1="47" x2="54" y2="54" stroke="#93c5fd" stroke-width="2"/>
+                @:</g>
+                @:</svg>
+            }
+            else
+            {
+                @:<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                @:<g class="float">
+                @:<rect x="12" y="18" width="40" height="26" rx="6" stroke="#a5b4fc" stroke-width="2" fill="#eef2ff"/>
+                @:<rect x="18" y="24" width="28" height="4" rx="2" fill="#c7d2fe"/>
+                @:</g>
+                @:</svg>
+            }
+        }
+    </div>
+    <div class="empty-text">@((string)(Model?.Text ?? "No items"))</div>
+</div>

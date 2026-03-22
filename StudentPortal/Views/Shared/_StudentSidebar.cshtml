@@ -1,0 +1,230 @@
+@using System.Reflection
+@{
+    // Reuse the same name/initials resolution logic as the old bottom bar
+    string studentName = "";
+    string studentInitials = "";
+
+    if (ViewBag.AdminName != null) studentName = ViewBag.AdminName.ToString();
+    if (ViewBag.AdminInitials != null) studentInitials = ViewBag.AdminInitials.ToString();
+
+    if (string.IsNullOrWhiteSpace(studentName))
+    {
+        var modelType = Model?.GetType();
+        var nameProp = modelType?.GetProperty("UserName") ?? modelType?.GetProperty("StudentName");
+        if (nameProp != null) studentName = nameProp.GetValue(Model)?.ToString() ?? "";
+    }
+
+    if (string.IsNullOrWhiteSpace(studentInitials))
+    {
+        var modelType = Model?.GetType();
+        var avatarProp = modelType?.GetProperty("Avatar") ?? modelType?.GetProperty("StudentInitials");
+        if (avatarProp != null) studentInitials = avatarProp.GetValue(Model)?.ToString() ?? "";
+    }
+
+    if (string.IsNullOrWhiteSpace(studentName) && Context?.Session != null)
+        studentName = Context.Session.GetString("UserName") ?? "";
+
+    if (string.IsNullOrWhiteSpace(studentInitials) && !string.IsNullOrWhiteSpace(studentName))
+    {
+        var parts = studentName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length > 1) studentInitials = (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpper();
+        else if (parts.Length == 1) studentInitials = parts[0][0].ToString().ToUpper();
+    }
+
+    if (string.IsNullOrWhiteSpace(studentName)) studentName = "Student";
+    if (string.IsNullOrWhiteSpace(studentInitials)) studentInitials = "ST";
+
+    var current = (ViewBag.CurrentPage?.ToString() ?? "home").ToLowerInvariant();
+    string Active(string key) => current == key ? "active" : "";
+}
+
+<aside class="slsp-sidebar" aria-label="Primary navigation">
+    <div class="slsp-sidebar-brand">
+        <div class="slsp-brand-mark" aria-hidden="true">
+            <img src="~/images/SLSHS.png" alt="Sta. Lucia Senior High School Logo" class="slsp-school-logo" />
+        </div>
+        <div class="slsp-brand-text">
+            <div class="slsp-brand-title">Student Portal</div>
+            <div class="slsp-brand-subtitle">Sta. Lucia Senior High School</div>
+        </div>
+        <button class="slsp-sidebar-toggle" type="button" aria-label="Toggle navigation" aria-controls="slspNav">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+
+    <nav id="slspNav" class="slsp-nav">
+        <a class="slsp-nav-item @Active("home")" href="@Url.Content("~/studentdb/StudentDb")">
+            <i class="fa-solid fa-house"></i>
+            <span>Dashboard</span>
+        </a>
+        <a class="slsp-nav-item @Active("library")" href="@Url.Action("Search","Library")">
+            <i class="fa-solid fa-book"></i>
+            <span>Library</span>
+        </a>
+        <a class="slsp-nav-item @Active("todo")" href="@Url.Content("~/StudentTodo")">
+            <i class="fa-solid fa-list-check"></i>
+            <span>To-Do / Tasks</span>
+        </a>
+    </nav>
+
+    <div class="slsp-sidebar-footer">
+        <div class="slsp-profile" id="slspProfile">
+            <div class="slsp-avatar">@studentInitials</div>
+            <div class="slsp-profile-text">
+                <div class="slsp-profile-name">@studentName</div>
+                <div class="slsp-profile-role">Student</div>
+            </div>
+        </div>
+        <button class="slsp-signout" id="slspSignOutBtn" type="button">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Sign out</span>
+        </button>
+    </div>
+</aside>
+
+<div class="slsp-sidebar-backdrop" hidden></div>
+
+<!-- Sign out confirmation modal (theme-aligned) -->
+<div id="signOutConfirmBackdrop" class="slsp-confirm-backdrop" hidden aria-hidden="true"></div>
+<div id="signOutConfirmModal" class="slsp-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="signOutConfirmTitle" aria-describedby="signOutConfirmDesc" hidden>
+    <div class="slsp-confirm-card">
+        <div class="slsp-confirm-header">
+            <div class="slsp-confirm-icon" aria-hidden="true"><i class="fa-solid fa-right-from-bracket"></i></div>
+            <h2 id="signOutConfirmTitle" class="slsp-confirm-title">Sign out</h2>
+            <p id="signOutConfirmDesc" class="slsp-confirm-desc">Are you sure you want to sign out of the Student Portal?</p>
+        </div>
+        <div class="slsp-confirm-actions">
+            <button type="button" id="signOutConfirmCancel" class="slsp-confirm-btn slsp-confirm-cancel">Cancel</button>
+            <button type="button" id="signOutConfirmOk" class="slsp-confirm-btn slsp-confirm-primary">Sign out</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const shell = document.querySelector('.slsp-shell');
+        const sidebar = document.querySelector('.slsp-sidebar');
+        const toggle = document.querySelector('.slsp-sidebar-toggle');
+        const backdrop = document.querySelector('.slsp-sidebar-backdrop');
+        const signOut = document.getElementById('slspSignOutBtn');
+        const confirmBackdrop = document.getElementById('signOutConfirmBackdrop');
+        const confirmModal = document.getElementById('signOutConfirmModal');
+        const confirmCancel = document.getElementById('signOutConfirmCancel');
+        const confirmOk = document.getElementById('signOutConfirmOk');
+        const slideEnabled = shell?.classList.contains('sidebar-slide-enabled') === true;
+        const isMobile = () => window.matchMedia('(max-width: 900px)').matches;
+        const isSidebarOpen = () => {
+            if (!slideEnabled) return true;
+            if (isMobile()) return sidebar?.classList.contains('is-open') === true;
+            return shell?.classList.contains('sidebar-collapsed') !== true;
+        };
+
+        function syncSlideButtonState(isOpen) {
+            const headerToggle = document.getElementById('slspGlobalSidebarToggle');
+            if (!headerToggle) return;
+            headerToggle.classList.toggle('is-open', !!isOpen);
+            headerToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            const icon = headerToggle.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fa-bars', !isOpen);
+                icon.classList.toggle('fa-xmark', !!isOpen);
+            }
+        }
+
+        function open() {
+            if (!slideEnabled) return;
+            if (isMobile()) {
+                sidebar?.classList.add('is-open');
+                backdrop?.removeAttribute('hidden');
+            } else {
+                shell?.classList.remove('sidebar-collapsed');
+            }
+            syncSlideButtonState(true);
+        }
+        function close() {
+            if (!slideEnabled) return;
+            if (isMobile()) {
+                sidebar?.classList.remove('is-open');
+                backdrop?.setAttribute('hidden', '');
+            } else {
+                shell?.classList.add('sidebar-collapsed');
+            }
+            syncSlideButtonState(false);
+        }
+        function toggleSidebar() {
+            if (!slideEnabled) return;
+            if (isSidebarOpen()) close(); else open();
+        }
+
+        function applyDefaultLayoutState() {
+            if (!slideEnabled) {
+                sidebar?.classList.remove('is-open');
+                backdrop?.setAttribute('hidden', '');
+                syncSlideButtonState(false);
+                return;
+            }
+            if (isMobile()) {
+                sidebar?.classList.remove('is-open');
+                backdrop?.setAttribute('hidden', '');
+            }
+            syncSlideButtonState(isSidebarOpen());
+        }
+
+        toggle?.addEventListener('click', () => { if (sidebar && slideEnabled) toggleSidebar(); });
+        function bindGlobalHeaderToggle() {
+            if (!slideEnabled) return;
+            const headerToggle = document.getElementById('slspGlobalSidebarToggle');
+            headerToggle?.addEventListener('click', () => { if (sidebar) toggleSidebar(); });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bindGlobalHeaderToggle);
+        } else {
+            bindGlobalHeaderToggle();
+        }
+        applyDefaultLayoutState();
+        window.addEventListener('resize', applyDefaultLayoutState);
+        backdrop?.addEventListener('click', close);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+
+        function openSignOutConfirm() {
+            if (confirmBackdrop) { confirmBackdrop.removeAttribute('hidden'); confirmBackdrop.setAttribute('aria-hidden', 'false'); }
+            if (confirmModal) { confirmModal.removeAttribute('hidden'); confirmModal.setAttribute('aria-hidden', 'false'); }
+            document.body.style.overflow = 'hidden';
+            confirmCancel?.focus();
+        }
+        function closeSignOutConfirm() {
+            if (confirmBackdrop) { confirmBackdrop.setAttribute('hidden', ''); confirmBackdrop.setAttribute('aria-hidden', 'true'); }
+            if (confirmModal) { confirmModal.setAttribute('hidden', ''); confirmModal.setAttribute('aria-hidden', 'true'); }
+            document.body.style.overflow = '';
+        }
+        function doSignOut() {
+            closeSignOutConfirm();
+            const legacy = document.getElementById('signOutBtn');
+            if (legacy) legacy.click();
+            else window.location.href = '/Account/Logout';
+        }
+
+        signOut?.addEventListener('click', (e) => {
+            e.preventDefault();
+            openSignOutConfirm();
+        });
+        function bindHeaderSignOut() {
+            document.getElementById('slspHeaderSignOutBtn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                openSignOutConfirm();
+            });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bindHeaderSignOut);
+        } else {
+            bindHeaderSignOut();
+        }
+        confirmCancel?.addEventListener('click', closeSignOutConfirm);
+        confirmOk?.addEventListener('click', doSignOut);
+        confirmBackdrop?.addEventListener('click', closeSignOutConfirm);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && confirmModal && !confirmModal.hasAttribute('hidden')) closeSignOutConfirm();
+        });
+    })();
+</script>
+

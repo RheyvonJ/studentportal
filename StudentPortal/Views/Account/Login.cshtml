@@ -1,0 +1,63 @@
+@model StudentPortal.Models.LoginViewModel
+@{
+    Layout = null;
+    ViewBag.Title = "Login - Sta. Lucia Senior High School";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewBag.Title</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/Login.css" />
+</head>
+<body>
+    <div class="login-bg" aria-hidden="true"></div>
+    <div class="login-overlay" aria-hidden="true"></div>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="login-brand">
+                <img src="~/images/SLSHS.png" alt="Sta. Lucia Senior High School Logo" class="brand-image" />
+                <h1 class="brand-title">Sta. Lucia Senior High School</h1>
+                <p class="brand-subtitle">Student Learning Portal</p>
+            </div>
+
+            <div class="login-form-section">
+                <h2>Welcome back</h2>
+                <p class="form-hint">Sign in with your credentials</p>
+
+                @using (Html.BeginForm("Login", "Account", FormMethod.Post, new { @class = "login-form", id = "loginForm" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="input-group">
+                        @Html.TextBoxFor(m => m.Email, new { placeholder = "Email address", @class = "form-input", type = "email", autocomplete = "email" })
+                        @Html.ValidationMessageFor(m => m.Email, null, new { @class = "validation-msg" })
+                    </div>
+                    <div class="input-group">
+                        @Html.PasswordFor(m => m.Password, new { placeholder = "Password", @class = "form-input", autocomplete = "current-password" })
+                        @Html.ValidationMessageFor(m => m.Password, null, new { @class = "validation-msg" })
+                    </div>
+                    <button type="submit" class="btn-login">Sign in</button>
+
+                    if (ViewBag.Error != null)
+                    {
+                        <p class="error-msg">@ViewBag.Error</p>
+                    }
+                }
+            </div>
+
+            <div class="login-footer">
+                <div class="form-links">
+                    <a href="@Url.Action("Register", "Account")">Create account</a>
+                    <span class="separator">·</span>
+                    <a href="@Url.Action("ForgotPassword", "Account")">Forgot password?</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="~/js/Login.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+@{
+    Layout = null;
+    var domain = (string)(ViewBag.Domain ?? "meet.jit.si");
+    var room = (string)(ViewBag.Room ?? "test-room");
+    var jwt = (string?)ViewBag.Jwt;
+    var displayName = (string)(ViewBag.DisplayName ?? "User");
+    var email = (string)(ViewBag.Email ?? "");
+    var isPublicJitsi = string.Equals(domain, "meet.jit.si", StringComparison.OrdinalIgnoreCase);
+    var hashParts = new List<string> { "config.enableLobby=false" };
+    if (!string.IsNullOrWhiteSpace(displayName))
+    {
+        hashParts.Add("userInfo.displayName=" + Uri.EscapeDataString(displayName));
+    }
+    var meetIframeHash = string.Join("&", hashParts);
+    var meetIframeSrc = $"https://{domain}/{room}#{meetIframeHash}";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Conference</title>
+    <style>
+        html, body { height: 100%; margin: 0; }
+        #meet { height: 100vh; width: 100vw; border: none; display: block; }
+        #fallback { display:none; padding:16px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    </style>
+    @if (!isPublicJitsi)
+    {
+        <script src="https://@(domain)/external_api.js"></script>
+    }
+</head>
+<body>
+    @if (isPublicJitsi)
+    {
+        @* meet.jit.si ignores configOverwrite and JWT; load via iframe with config in URL hash so lobby is disabled and you can join after pre-join *@
+        <iframe id="meet" src="@meetIframeSrc" allow="camera; microphone; fullscreen; display-capture" allowfullscreen></iframe>
+    }
+    else
+    {
+        <div id="meet"></div>
+        <div id="fallback">
+            <div>Unable to load meeting. <a id="plain-link" href="@meetIframeSrc" target="_blank" rel="noopener">Open in new tab</a></div>
+        </div>
+        <script>
+            (function() {
+                const domain = '@domain';
+                const roomName = '@room';
+                const jwt = @Html.Raw(string.IsNullOrWhiteSpace(jwt) ? "null" : System.Text.Json.JsonSerializer.Serialize(jwt));
+                const userInfo = { displayName: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(displayName)), email: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(email)) };
+                const options = {
+                    roomName,
+                    parentNode: document.getElementById('meet'),
+                    userInfo,
+                    configOverwrite: { enableLobby: false }
+                };
+                if (jwt) options.jwt = jwt;
+                try {
+                    const api = new JitsiMeetExternalAPI(domain, options);
+                    api.addEventListeners({ readyToClose: function() {} });
+                } catch (e) {
+                    document.getElementById('fallback').style.display = 'block';
+                }
+            })();
+        </script>
+    }
+</body>
+</html>

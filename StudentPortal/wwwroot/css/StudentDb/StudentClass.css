@@ -1,0 +1,297 @@
+/* Modern StudentClass page (visual refresh only; same markup + behavior) */
+
+.student-class-shell {
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 0 18px;
+    --class-navy-900: #0a2342;
+    --class-navy-800: #143a66;
+    --class-navy-700: #1f4f84;
+    --class-ink: #0f223b;
+    --class-muted: #5e738e;
+    --class-border: rgba(16, 45, 82, 0.12);
+    --class-panel: #f6f9ff;
+    --class-surface: #ffffff;
+}
+
+/* High-contrast page layer */
+.slsp-shell.sidebar-collapsed,
+.slsp-shell.sidebar-collapsed .slsp-main,
+.slsp-shell.sidebar-collapsed .slsp-content {
+    background: #f8fafc;
+}
+
+body {
+    overflow: hidden
+}
+
+.class-container {
+    display: grid;
+    grid-template-columns: minmax(290px, 370px) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+/* Left rail card */
+.class-info {
+    position: sticky;
+    background: #ffffff;
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.class-info-top { width: 100%; }
+.class-info-middle-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 2px 4px;
+    flex-wrap: wrap;
+}
+.class-info-middle-top .subject-code,
+.class-info-middle-top .class-code {
+    flex: 0 0 100%;
+}
+.class-info-middle {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 2px;
+}
+.class-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 72px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: none;
+    padding: 8px 2px 8px 0;
+    box-sizing: border-box;
+}
+
+.profile-initials {
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    background: linear-gradient(145deg, var(--class-navy-900), var(--class-navy-700));
+    color: #fff;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(20, 58, 102, 0.18);
+    flex-shrink: 0;
+}
+
+.teacher-details .teacher-name {
+    font-weight: 700;
+    color: #1e3a5f;
+    font-size: 0.98rem;
+    line-height: 1.2;
+}
+.subject-name {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #1e3a5f;
+    margin: 0;
+    max-width: 100%;
+    letter-spacing: -0.02em;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.subject-code,
+.class-code {
+    font-size: 0.82rem;
+    color: #5f6f82;
+    margin: 0;
+}
+.class-info .subject-code,
+.class-info .class-code {
+    display: block;
+    width: 100%;
+}
+.code-value {
+    font-weight: 700;
+    color: #1e3a5f;
+}
+
+.recent-uploads h3 {
+    font-size: 0.9rem;
+    color: #1e3a5f;
+    margin: 0 0 6px;
+}
+.recent-uploads ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 6px;
+}
+.recent-uploads li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #1e3a5f;
+    font-size: 0.84rem;
+}
+.recent-uploads li i {
+    width: 18px;
+    text-align: center;
+    color: var(--class-navy-700);
+    flex-shrink: 0;
+}
+.recent-uploads .recent-title {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Right content rail */
+.class-content {
+    width: 100%;
+    display: grid;
+    gap: 12px;
+    padding-top: 2px;
+}
+.class-breadcrumb{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--class-muted);
+    margin: 0 2px 2px;
+}
+.class-breadcrumb a{
+    color: var(--class-navy-700);
+    text-decoration: none;
+    font-weight: 600;
+}
+.class-breadcrumb a:hover{ text-decoration: underline; }
+.class-breadcrumb .sep{ opacity: .65; }
+
+.content-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    background: #ffffff;
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 12px 14px;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.content-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+}
+
+.content-left {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+.content-left i {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    color: #1f4f84;
+    background: transparent;
+    box-shadow: none;
+    flex-shrink: 0;
+}
+
+.content-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.content-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1e3a5f;
+    margin: 0 0 2px;
+    line-height: 1.25;
+}
+.content-meta {
+    font-size: 0.78rem;
+    color: #66788f;
+    margin: 0;
+}
+
+/* Urgency indicator */
+.urgency {
+    width: 12px;
+    border-radius: 10px;
+    opacity: 0.95;
+}
+.urgency.green { background: #22c55e; }
+.urgency.yellow { background: #eab308; }
+.urgency.red { background: #ef4444; }
+
+/* Announcement card variant */
+.announcement {
+    background: #ffffff;
+}
+.announcement .content-left i {
+    background: transparent;
+    color: #2d6aaa;
+    box-shadow: none;
+}
+.announcement .content-meta {
+    color: #5f6f82;
+    font-weight: 500;
+}
+
+@media (max-width: 1024px) {
+    .class-container {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+    .class-info {
+        position: static;
+        min-height: 0;
+    }
+}
+
+@media (max-width: 560px) {
+    .student-class-shell { padding-bottom: 12px; }
+    .class-info { padding: 14px; border-radius: 18px; }
+    .content-card { padding: 13px; }
+    .content-left { gap: 10px; }
+    .content-left i { width: 20px; height: 20px; }
+}
+
+/* Entry transition after selecting class from dashboard */
+.student-class-shell.class-transition-enter .class-info {
+    animation: classInfoSlideIn 320ms cubic-bezier(.2,.9,.3,1) both;
+}
+.student-class-shell.class-transition-enter .class-content {
+    animation: classContentSlideIn 360ms cubic-bezier(.2,.9,.3,1) both;
+}
+@keyframes classInfoSlideIn {
+    from { opacity: 0; transform: translateX(-18px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+@keyframes classContentSlideIn {
+    from { opacity: 0; transform: translateX(22px); }
+    to { opacity: 1; transform: translateX(0); }
+}

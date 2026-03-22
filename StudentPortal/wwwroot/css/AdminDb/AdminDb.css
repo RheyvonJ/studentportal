@@ -1,0 +1,555 @@
+@import url('/css/StudentDb/StudentDb.css');
+@import url('/css/Shared/BottomBar.css');
+@import url('admindb.css');
+
+.classes-container .class-left.has-bg {
+    background: url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1400&auto=format&fit=crop') center/cover no-repeat !important;
+}
+
+.create-class-button {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
+    border: 1px solid rgba(10, 20, 40, 0.06);
+    cursor: pointer;
+    z-index: 80;
+    transition: all 0.2s ease;
+}
+
+.create-class-button.selected {
+	box-shadow: 0 10px 28px rgba(36, 58, 115, 0.18);
+	border: 1px solid rgba(36, 58, 115, 0.12);
+	transform: scale(1.06);
+}
+
+	.create-class-button.selected i {
+		color: var(--accent);
+	}
+
+
+/* ==========================================================
+   ADMIN MODAL STYLE
+   ========================================================== */
+
+.modal {
+    width: 260px;
+    padding: 16px;
+    background: #f3f6fb;
+    color: #0b213a;
+    box-shadow: 0 10px 26px rgba(24, 43, 92, 0.18);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    bottom: 90px;
+    right: 100px;
+}
+
+	.modal h3 {
+		margin: 0;
+		font-size: 15px;
+		color: var(--accent);
+		font-weight: 700;
+	}
+
+	.modal input[type="text"] {
+		width: 210px;
+		height: 34px;
+		padding: 6px 10px;
+		border-radius: 8px;
+		border: 1px solid rgba(16, 24, 40, 0.08);
+		background: #fff;
+		color: #0b213a;
+		font-size: 13px;
+		transition: all 0.2s ease;
+		margin-bottom: 5px;
+	}
+
+		.modal input[type="text"]:focus {
+			border-color: var(--accent);
+			box-shadow: 0 0 0 2px rgba(24, 43, 92, 0.12);
+			outline: none;
+		}
+
+/* ==========================================================
+     CUSTOM SELECT DROPDOWN
+     ========================================================== */
+
+.custom-select {
+	position: relative;
+	width: 230px;
+	font-size: 13px;
+	color: #0b213a;
+	user-select: none;
+	margin-bottom: 5px;
+}
+
+	.custom-select .selected {
+		background: #fff;
+		border: 1px solid rgba(16, 24, 40, 0.08);
+		border-radius: 8px;
+		padding: 6px 10px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		position: relative;
+	}
+
+		.custom-select .selected::after {
+			content: '';
+			position: absolute;
+			right: 12px;
+			top: 50%;
+			transform: translateY(-50%) rotate(45deg);
+			width: 6px;
+			height: 6px;
+			border-right: 2px solid var(--accent);
+			border-bottom: 2px solid var(--accent);
+			transition: transform 0.2s ease;
+		}
+
+	.custom-select.open .selected::after {
+		transform: translateY(-50%) rotate(-135deg);
+	}
+
+	.custom-select .options {
+		position: absolute;
+		top: 110%;
+		left: 0;
+		width: 100%;
+		background: #fff;
+		border: 1px solid rgba(16, 24, 40, 0.08);
+		border-radius: 8px;
+		box-shadow: 0 6px 20px rgba(24, 43, 92, 0.15);
+		overflow: hidden;
+		opacity: 0;
+		visibility: hidden;
+		transform: translateY(-5px);
+		transition: all 0.2s ease;
+		z-index: 10000;
+	}
+
+	.custom-select.open .options {
+		opacity: 1;
+		visibility: visible;
+		transform: translateY(0);
+		z-index: 10001;
+	}
+
+	.custom-select .options div {
+		padding: 8px 10px;
+		cursor: pointer;
+		transition: background 0.2s ease;
+		z-index: 10002;
+	}
+
+		.custom-select .options div:hover {
+			background: #f3f6fb;
+			color: var(--accent);
+		}
+
+.modal button {
+	width: 210px;
+	height: 36px;
+	border-radius: 8px;
+	background-color: var(--accent);
+	color: #fff;
+	border: none;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.modal button:hover {
+    background: #12283e;
+    transform: translateY(-2px);
+}
+
+/* ==========================================================
+   GOOGLE CLASSROOM–STYLE RESPONSIVE DASHBOARD
+   ========================================================== */
+
+.page,
+.dashboard,
+.courses-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+.dashboard .dashboard-top {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.classes-container {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    padding: 24px 20px 80px; /* Increased bottom padding to clear bottom-bar */
+    max-width: 1600px;
+    margin: 0 auto;
+    align-content: start;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Card: vertical layout, gradient header, compact details */
+.classes-container .class-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 260px;
+    height: auto;
+    margin-bottom: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    background: #fff;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    position: relative;
+    min-width: 0;
+}
+
+.classes-container .class-card:hover {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+}
+
+/* Reset any staggered row transforms from base styles */
+.classes-container .class-card:nth-child(n+3),
+.classes-container .class-card:nth-child(n+5),
+.classes-container .class-card:nth-child(n+7),
+.classes-container .class-card:nth-child(n+9),
+.classes-container .class-card:nth-child(n+11) {
+    transform: translateY(0);
+}
+
+.classes-container .class-card:nth-child(n+3):hover,
+.classes-container .class-card:nth-child(n+5):hover,
+.classes-container .class-card:nth-child(n+7):hover,
+.classes-container .class-card:nth-child(n+9):hover,
+.classes-container .class-card:nth-child(n+11):hover {
+    transform: translateY(-4px);
+}
+
+/* Header: default School.jpg image. Per-class BackgroundImageUrl overrides via inline style. */
+.classes-container .class-card .class-card-header {
+    min-height: 100px;
+    background: url('/images/School.jpg') center/cover no-repeat;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.classes-container .class-card .class-card-body {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.classes-container .class-card .class-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #202124;
+    line-height: 1.3;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.classes-container .class-card .class-card-meta {
+    font-size: 0.8125rem;
+    color: #5f6368;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.classes-container .class-card .class-card-meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.classes-container .class-card .class-card-meta i {
+    width: 16px;
+    color: #5f6368;
+    flex-shrink: 0;
+}
+
+/* Footer: professor + status */
+.classes-container .class-card .class-card-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #f1f3f4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #fafafa;
+}
+
+.classes-container .class-card .class-card-professor {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.classes-container .class-card .class-card-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a73e8, #34a853);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.classes-container .class-card .class-card-professor-name {
+    font-size: 0.8125rem;
+    color: #5f6368;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Status badge */
+.classes-container .class-card .class-card-status {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.classes-container .class-card .class-card-status.status-active {
+    background: #e6f4ea;
+    color: #1e8e3e;
+}
+
+.classes-container .class-card .class-card-status.status-archived {
+    background: #f1f3f4;
+    color: #5f6368;
+}
+
+/* Delete on hover (edit button removed) */
+.classes-container .class-card .class-card-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 2;
+}
+
+.classes-container .class-card:hover .class-card-actions {
+    opacity: 1;
+}
+
+.classes-container .class-card .class-card-actions button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.95);
+    color: #5f6368;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.classes-container .class-card .class-card-actions button:hover {
+    background: #fff;
+    color: #1a73e8;
+}
+
+.classes-container .class-card .class-card-actions .delete-class-btn:hover {
+    color: #d93025;
+}
+
+/* Hide old layout when using new card structure */
+.classes-container .class-card .class-left,
+.classes-container .class-card .class-right {
+    display: none;
+}
+
+.classes-container .class-card.class-card-legacy .class-left,
+.classes-container .class-card.class-card-legacy .class-right {
+    display: flex;
+}
+
+.classes-container .class-card.class-card-legacy .class-card-header,
+.classes-container .class-card.class-card-legacy .class-card-body,
+.classes-container .class-card.class-card-legacy .class-card-footer,
+.classes-container .class-card.class-card-legacy .class-card-actions {
+    display: none !important;
+}
+
+/* Desktop: 3 columns (default, less crowded) */
+
+/* Medium desktop / small laptop: still 3 columns, slightly tighter */
+@media (max-width: 1280px) {
+    .classes-container {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+        padding: 20px 16px 100px; /* Increased bottom padding */
+    }
+}
+
+/* Tablet: 2 columns */
+@media (max-width: 1024px) {
+    .classes-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        padding: 18px 14px 100px; /* Increased bottom padding */
+    }
+
+    .classes-container .class-card .class-card-header {
+        min-height: 90px;
+    }
+
+    .classes-container .class-card .class-card-title {
+        font-size: 0.9375rem;
+    }
+}
+
+/* Mobile: 1 column, full-width layout */
+@media (max-width: 640px) {
+    .classes-container {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 16px 12px 100px; /* Increased bottom padding */
+    }
+
+    .classes-container .class-card {
+        min-height: 240px;
+    }
+
+    .classes-container .class-card:hover {
+        transform: none;
+    }
+
+    .classes-container .class-card .class-card-header {
+        min-height: 88px;
+    }
+
+    .classes-container .class-card .class-card-actions {
+        opacity: 1;
+        top: 10px;
+        right: 10px;
+    }
+
+    .classes-container .class-card .class-card-actions button {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    .classes-container .class-card .class-card-body {
+        padding: 14px 12px;
+    }
+
+    .classes-container .class-card .class-card-title {
+        font-size: 0.9375rem;
+    }
+
+    .classes-container .class-card .class-card-footer {
+        padding: 10px 12px;
+    }
+
+    .classes-container .class-card .class-card-professor-name {
+        font-size: 0.75rem;
+    }
+
+    .classes-container .class-card .class-card-meta {
+        font-size: 0.75rem;
+    }
+
+    .create-class-button {
+        bottom: 80px;
+        right: 16px;
+        width: 56px;
+        height: 56px;
+    }
+}
+
+/* Modal responsive (shared) */
+@media (max-width: 640px) {
+    .modal {
+        width: calc(100% - 24px);
+        max-width: 340px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        box-sizing: border-box;
+    }
+
+    .modal button,
+    .modal input[type="text"],
+    .custom-select {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+/* Floating Create Class button */
+.create-class-button {
+    position: fixed;
+    bottom: 80px;
+    right: 24px;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    border: none;
+    cursor: pointer;
+    z-index: 80;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    color: #1a73e8;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.create-class-button:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(26, 115, 232, 0.25);
+}
+
+.create-class-button.selected {
+    box-shadow: 0 10px 28px rgba(26, 115, 232, 0.3);
+    transform: scale(1.06);
+    color: #1a73e8;
+}

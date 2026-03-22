@@ -1,0 +1,133 @@
+@model StudentPortal.Models.StudentDb.StudentClassViewModel
+@{
+    Layout = "_StudentLayout";
+    ViewData["Title"] = $"{Model.SubjectName} - Class";
+    ViewBag.CurrentPage = "subjects";
+    ViewBag.EnableSidebarSlide = true;
+    ViewBag.HideSidebar = true;
+    ViewBag.HeaderTitle = Model.SubjectName;
+    ViewBag.HeaderSubtext = $"{Model.SubjectCode} • {Model.ClassCode}";
+    ViewBag.HeaderShowProfile = false;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/StudentDb/StudentClass.css" asp-append-version="true" />
+}
+
+<main class="student-class-shell">
+        <section class="class-container">
+            <!-- LEFT SECTION -->
+            <section class="class-info">
+                <div class="class-info-top">
+                    <div class="class-banner">
+                        <div class="profile-initials" aria-hidden="true">@Model.InstructorInitials</div>
+                        <div class="teacher-details">
+                            <div class="teacher-name">@Model.InstructorName</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="class-info-middle-top">
+                    <h2 class="subject-name">@Model.SubjectName</h2>
+                    <p class="subject-code">Subject Code: <span class="code-value">@Model.SubjectCode</span></p>
+                    <p class="class-code">Class Code: <span class="code-value">@Model.ClassCode</span></p>
+                </div>
+
+                <div class="class-info-middle">
+                    <div class="recent-uploads">
+                        <h3>Recent Uploads</h3>
+                        <ul>
+                            @foreach (var content in Model.Contents.Take(3))
+                            {
+                                <li>
+                                    @if (content.Type == "material")
+                                    {
+                                        <i class="fa-solid fa-book-open-reader"></i>
+                                    }
+                                    else if (content.Type == "task")
+                                    {
+                                        <i class="fa-solid fa-file-pen"></i>
+                                    }
+                                    else if (content.Type == "assessment")
+                                    {
+                                        <i class="fa-solid fa-circle-question"></i>
+                                    }
+                                    else if (content.Type == "announcement")
+                                    {
+                                        <i class="fa-solid fa-bullhorn"></i>
+                                    }
+                                    else if (content.Type == "meeting")
+                                    {
+                                        <i class="fa-solid fa-video"></i>
+                                    }
+                                    <span class="recent-title">@content.Title</span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- RIGHT SECTION -->
+            <section class="class-content" id="classContent">
+                <nav class="class-breadcrumb" aria-label="Breadcrumb">
+                    <a href="@Url.Content("~/studentdb/StudentDb")">Dashboard</a>
+                    <span class="sep">/</span>
+                    <span>@Model.SubjectName</span>
+                </nav>
+                @foreach (var content in Model.Contents)
+                {
+                    if (content.Type == "announcement")
+                    {
+                        <article class="content-card announcement" data-target="@content.TargetAction">
+                            <div class="content-left">
+                                <i class="fa-solid fa-bullhorn"></i>
+                                <div class="content-info">
+                                    <h4 class="content-title">@content.Title</h4>
+                                    <p class="content-meta">@content.Meta</p>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                    else
+                    {
+                        <article class="content-card @content.Type" data-target="@content.TargetAction">
+                            <div class="content-left">
+                                @if (content.Type == "material")
+                                {
+                                    <i class="fa-solid fa-book-open-reader"></i>
+                                }
+                                else if (content.Type == "task")
+                                {
+                                    <i class="fa-solid fa-file-pen"></i>
+                                }
+                                else if (content.Type == "assessment")
+                                {
+                                    <i class="fa-solid fa-circle-question"></i>
+                                }
+                                else if (content.Type == "meeting")
+                                {
+                                    <i class="fa-solid fa-video"></i>
+                                }
+                                <div class="content-info">
+                                    <h4 class="content-title">@content.Title</h4>
+                                    <p class="content-meta">@content.Meta</p>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(content.Urgency))
+                            {
+                                <div class="content-right urgency @content.Urgency"></div>
+                            }
+                        </article>
+                    }
+                }
+            </section>
+        </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+@section Scripts {
+    <script src="~/js/StudentDb/StudentClass.js" asp-append-version="true"></script>
+}

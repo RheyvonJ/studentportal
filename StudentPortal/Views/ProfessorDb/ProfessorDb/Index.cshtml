@@ -1,0 +1,135 @@
+@model StudentPortal.Models.ProfessorDb.ProfessorDashboardViewModel
+@{
+    ViewData["Title"] = "Professor Dashboard";
+    var toastMessage = TempData["ToastMessage"] as string;
+    Layout = null;
+}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/AdminDb/AdminDb.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Shared/BottomBar.css" asp-append-version="true" />
+    <style>
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 12000;
+        }
+
+        .class-code {
+            color: white;
+        }
+
+        .modal-backdrop.show {
+            display: flex;
+        }
+    </style>
+</head>
+<body data-role="Professor">
+    <div class="page">
+        <main class="classes-container" id="classContainer">
+            @foreach (var cls in Model.Classes)
+            {
+                var headerStyle = !string.IsNullOrEmpty(cls.BackgroundImageUrl)
+                    ? ("background-image:url('" + cls.BackgroundImageUrl + "'); background-size: cover; background-position: center;")
+                    : "";
+                <article class="class-card active" onclick="location.href='@Url.Action("Index", "AdminClass", new { id = cls.ClassCode })'" role="button" tabindex="0">
+                    <div class="class-card-header" style="@headerStyle"></div>
+                    <div class="class-card-actions" aria-label="Class actions">
+                        <button type="button" class="delete-class-btn" data-class-id="@cls.Id" data-class-code="@cls.ClassCode" title="Archive / Delete class" aria-label="Archive or delete this class"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <div class="class-card-body">
+                        <h3 class="class-card-title">@cls.SubjectName</h3>
+                        <div class="class-card-meta">
+                            <span><i class="fa-solid fa-users"></i> @(string.IsNullOrWhiteSpace(cls.SectionLabel) ? cls.Section : cls.SectionLabel) @if (!string.IsNullOrWhiteSpace(cls.RoomDisplay)) {<text> • </text>@cls.RoomDisplay}</span>
+                            @if (!string.IsNullOrWhiteSpace(cls.ScheduleTimeDisplay))
+                            {
+                                <span><i class="fa-solid fa-calendar-days"></i> @cls.ScheduleTimeDisplay</span>
+                            }
+                            else
+                            {
+                                <span><i class="fa-solid fa-clock"></i> Class code: @cls.ClassCode</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="class-card-footer">
+                        <div class="class-card-professor">
+                            <div class="class-card-avatar">@(string.IsNullOrWhiteSpace(Model.ProfessorInitials) ? "PR" : Model.ProfessorInitials)</div>
+                            <span class="class-card-professor-name">@Model.ProfessorName</span>
+                        </div>
+                        <span class="class-card-status @(cls.IsArchived ? "status-archived" : "status-active")">@(cls.IsArchived ? "Archived" : "Active")</span>
+                    </div>
+                </article>
+            }
+
+        </main>
+
+        <!-- Create class button (professors can create their own classes) -->
+        <button class="create-class-button" id="createBtn" type="button" title="Create class" aria-haspopup="dialog" aria-controls="createModal">
+            <i class="fa-solid fa-pen-to-square"></i>
+        </button>
+
+        <!-- Modal for creating class (posts to ProfessorDb/CreateClass) -->
+        <div class="modal-backdrop" id="modalBackdrop" role="presentation" aria-hidden="true">
+            <div class="modal" id="createModal" role="dialog" aria-modal="true" aria-labelledby="createTitle">
+                <h3 id="createTitle">Create a Class</h3>
+
+                <form id="createForm" method="post" asp-controller="ProfessorDb" asp-action="CreateClass">
+                    @Html.AntiForgeryToken()
+                    <div class="custom-select" id="sectionSelect" data-value="">
+                        <div class="selected">Select Section</div>
+                        <div class="options"></div>
+                    </div>
+                    <input type="hidden" id="section" name="section" />
+                    <input type="hidden" id="sectionId" name="sectionId" />
+                    <div class="custom-select" id="profSubjectSelect" data-value="">
+                        <div class="selected">Select Professor Subject</div>
+                        <div class="options"></div>
+                    </div>
+                    <input type="hidden" id="profSubjectValue" />
+                    <input type="hidden" id="scheduleId" name="scheduleId" />
+                    <input type="text" id="subjectName" name="subjectName" placeholder="Enter subject name" />
+                    <input type="text" id="subjectCode" name="subjectCode" placeholder="Enter subject code" />
+
+                    <input type="text" id="schoolYear" name="schoolYear" placeholder="School Year" readonly />
+
+                    <button id="createClass" type="submit">CREATE CLASS</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="toast" class="toast">@toastMessage</div>
+
+        <!-- Archive/Delete class confirmation modal -->
+        <div class="modal-backdrop" id="deleteClassBackdrop" role="presentation" aria-hidden="true">
+            <div class="modal" id="deleteClassModal" role="dialog" aria-modal="true" aria-labelledby="deleteClassTitle">
+                <h3 id="deleteClassTitle">Archive / Delete Class</h3>
+                <p id="deleteClassText"></p>
+                <div class="modal-actions">
+                    <button id="cancelDeleteClass" type="button">Cancel</button>
+                    <button id="confirmDeleteClass" type="button">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="~/js/AdminDb/AdminDb.js" asp-append-version="true"></script>
+        @{ 
+            ViewBag.CurrentPage = "home";
+            ViewBag.Role = "Professor";
+            ViewBag.AdminName = Model.ProfessorName;
+            ViewBag.AdminInitials = Model.ProfessorInitials;
+        }
+        @await Html.PartialAsync("_AdminBottomBar")
+
+    </div>
+</body>
+</html>
+
+

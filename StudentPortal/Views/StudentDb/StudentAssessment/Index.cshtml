@@ -1,0 +1,176 @@
+@model StudentPortal.Models.StudentDb.StudentAssessmentViewModel
+@{
+    ViewData["Title"] = "Student Assessment";
+    Layout = "_StudentLayout";
+    ViewBag.CurrentPage = "subjects";
+    ViewBag.EnableSidebarSlide = true;
+    ViewBag.HideSidebar = true;
+    ViewBag.HeaderTitle = ViewBag.SubjectName ?? "Class";
+    ViewBag.HeaderSubtext = $"{(ViewBag.SubjectCode ?? "Assessment")} • {Model.ClassCode}";
+    ViewBag.HeaderShowProfile = false;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/StudentDb/StudentAssessment.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Shared/LibraryModal.css" asp-append-version="true" />
+}
+
+<main class="student-class-shell">
+<section class="class-container">
+
+        <!-- LEFT SECTION — SUBMIT PANEL -->
+        <section class="submit-container class-info">
+            <div class="submit-container-top">
+                <h2 class="submit-header">Your Work</h2>
+                @if (Model.IsAnswered)
+                {
+                    <div class="answered-status">
+                        <span class="status-pill">Submitted</span>
+                        @if (Model.Score.HasValue && Model.MaxScore.HasValue)
+                        {
+                            <span class="score-pill">Score: @Model.Score / @Model.MaxScore</span>
+                        }
+                    </div>
+                }
+
+                <div class="open-quiz @((ViewBag.IsOpenQuizLocked == true) ? "locked" : "")" id="openQuiz"
+                     data-class-code="@Model.ClassCode" data-content-id="@Model.ContentId"
+                     data-blocked="@((ViewBag.IsOpenQuizLocked == true) ? "true" : "false")"
+                     data-url="@(string.IsNullOrWhiteSpace(Model.ClassCode) || string.IsNullOrWhiteSpace(Model.ContentId) ? string.Empty : $"/StudentAnswerAssessment/{Model.ClassCode}/{Model.ContentId}")">
+                    <i class="fa-solid @((ViewBag.IsOpenQuizLocked == true) ? "fa-lock" : "fa-door-closed")"></i>
+                    <span>@((ViewBag.IsOpenQuizLocked == true) ? "Assessment Locked" : "Open Quiz")</span>
+                </div>
+            </div>
+
+            <form method="post" asp-action="MarkAsDone" class="submit-container-bottom">
+                <input type="hidden" name="classCode" value="@Model.ClassCode" />
+                <input type="hidden" name="contentId" value="@Model.ContentId" />
+                <div class="submit-buttons">
+                    <button type="button" class="btn mark-done-btn" id="markDoneBtn">Mark as Done</button>
+                </div>
+            </form>
+
+            <div class="submit-container-middle">
+                <!-- If any scrollable content goes here -->
+            </div>
+
+        </section>
+
+        <!-- RIGHT: ASSESSMENT CONTAINER -->
+        <div class="right-column-task">
+        <nav class="class-breadcrumb" aria-label="Breadcrumb">
+            <a href="@Url.Content("~/studentdb/StudentDb")">Dashboard</a>
+            <span class="sep">/</span>
+            <a href="@Url.Action("Index", "StudentClass", new { classCode = Model.ClassCode })">@((ViewBag.SubjectName ?? ViewBag.HeaderTitle ?? "Assessment"))</a>
+        </nav>
+        <section class="assessment-container" id="assessmentContainer">
+            <div class="assessment-scrollable">
+
+                <!-- TITLE -->
+                <h2 class="assessment-title" id="assessmentTitle">
+                    @Model.AssessmentTitle
+                </h2>
+
+                <!-- DESCRIPTION -->
+                <p class="assessment-description" id="assessmentDescription">
+                    @Model.Description
+                </p>
+
+                <!-- ATTACHMENTS -->
+                <div class="attachments" id="attachmentList">
+                    @foreach (var file in Model.Attachments)
+                    {
+                        <div class="file-item">
+                            <i class="fa-solid fa-paperclip"></i>
+                            <a href="@file.FileUrl" target="_blank">@file.FileName</a>
+                        </div>
+                    }
+                </div>
+
+            </div>
+
+            <div class="assessment-bottom" id="assessmentBottom">
+                <p class="posted-date" id="dateInfo">
+                    Posted @Model.PostedDate • Deadline @Model.Deadline
+                </p>
+            </div>
+        </section>
+
+        <form id="assessmentForm" style="display:none">@Html.AntiForgeryToken()<input type="hidden" name="contentId" value="@Model.ContentId" /><input type="hidden" name="classCode" value="@Model.ClassCode" /></form>
+
+        <section class="public-comment-container" id="publicCommentContainer">
+            <h3 class="public-comment-header">Class Comments</h3>
+
+            <div class="public-comment-input">
+                <textarea id="publicCommentText" placeholder="Add a class comment..."></textarea>
+                <button id="postPublicCommentBtn" class="post-comment-btn">Post</button>
+            </div>
+
+            <div class="public-comment-list" id="publicCommentList"></div>
+        </section>
+        </div>
+    <!-- CONFIRMATION MODAL -->
+    <div class="confirm-modal" id="confirmModal">
+        <div class="confirm-box">
+            <p>Are you sure you want to mark this done without attaching your work?</p>
+            <div class="confirm-actions">
+                <button id="confirmYes" class="btn yes">Yes</button>
+                <button id="confirmNo" class="btn no">No</button>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="toast"></div>
+</section>
+</main>
+
+<!-- Library Modal (shared markup like StudentMaterial) -->
+<div id="libraryBackdrop" class="backdrop" hidden aria-hidden="true" role="dialog" aria-labelledby="libraryTitle" aria-modal="true">
+    <div class="library-modal book-surface" role="document">
+        <button id="closeLibraryBtn" class="close-library" aria-label="Close library">&times;</button>
+        <div class="library-body">
+            <aside class="left-column">
+                <div class="left-inner">
+                    <div class="search-section">
+                        <div class="search-container">
+                            <input id="librarySearch" class="search-input" type="search" placeholder="Search books, categories..." aria-label="Search library" />
+                            <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                    <div class="book-list-section" role="listbox" aria-label="Library book list" tabindex="0">
+                        <ul id="libraryList" class="book-list" tabindex="-1"></ul>
+                    </div>
+                </div>
+            </aside>
+            <div class="separator" aria-hidden="true"></div>
+            <section class="right-column" aria-live="polite">
+                <div class="right-inner">
+                    <div id="bookInfoDefault" class="book-default">Select a book to view more information</div>
+                    <div id="bookDetail" class="book-detail" hidden>
+                        <h4 id="detailTitle" class="detail-title"></h4>
+                        <div id="detailAuthor" class="detail-author"></div>
+                        <div id="detailCategory" class="detail-category"></div>
+                        <textarea id="detailDescription" class="detail-description" readonly></textarea>
+                        <div class="book-action-row">
+                            <button id="reserveBtn" class="btn reserve-btn" disabled>Reserve this book</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<!-- Reserve confirm modal -->
+<div id="reserveBackdrop" class="backdrop" hidden aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="reserve-modal">
+        <p class="reserve-message">Go to library to reserve this book?</p>
+        <div class="reserve-actions">
+            <button id="reserveYesBtn" class="btn reserve-yes">Yes</button>
+            <button id="reserveNoBtn" class="btn reserve-no">No</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/StudentDb/StudentAssessment.js" asp-append-version="true"></script>
+}

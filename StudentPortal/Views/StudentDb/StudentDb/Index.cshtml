@@ -1,0 +1,112 @@
+@model StudentPortal.Models.Studentdb.AdminDashboardViewModel
+@{
+    Layout = "_StudentLayout";
+    ViewData["Title"] = "Student Dashboard";
+    ViewBag.CurrentPage = "home";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/StudentDb/StudentDb.css" asp-append-version="true" />
+}
+
+<main class="dashboard" id="classContainer">
+    <section class="dashboard-top">
+        <div class="courses-scroll classes-container" id="coursesScroll">
+            @if (Model.Classes != null && Model.Classes.Any())
+            {
+                @foreach (var c in Model.Classes)
+                {
+                    var isPending = c.Status == "Pending";
+
+                    <article class="class-card active" data-class-code="@c.ClassCode" @(isPending ? "data-pending=\"true\"" : "")
+                             @(isPending ? "" : "role=\"button\" tabindex=\"0\"")>
+                        <div class="class-card-top">
+                            <div class="class-title-wrap">
+                                <i class="fa-solid fa-book-open class-title-icon" aria-hidden="true"></i>
+                                <div>
+                                    <h3 class="class-title">@c.Title</h3>
+                                    <div class="class-subtitle">@(!string.IsNullOrWhiteSpace(c.SubjectCode) ? c.SubjectCode : "—")</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="class-card-divider" aria-hidden="true"></div>
+
+                        <div class="class-card-bottom">
+                            <div class="detail-grid">
+                                <div class="detail-row">
+                                    <i class="fa-solid fa-users" aria-hidden="true"></i>
+                                    <span class="detail-label">Section</span>
+                                    <span class="detail-value">@c.Section</span>
+                                </div>
+                                <div class="detail-row">
+                                    <i class="fa-solid fa-clock" aria-hidden="true"></i>
+                                    <span class="detail-label">Schedule</span>
+                                    <span class="detail-value">
+                                        @if (string.IsNullOrWhiteSpace(c.RoomDisplay) && string.IsNullOrWhiteSpace(c.ScheduleTimeDisplay))
+                                        {
+                                            <text>—</text>
+                                        }
+                                        else
+                                        {
+                                            <text>@(string.IsNullOrWhiteSpace(c.ScheduleTimeDisplay) ? "" : c.ScheduleTimeDisplay)</text>
+                                            @if (!string.IsNullOrWhiteSpace(c.RoomDisplay))
+                                            {
+                                                <text>@(string.IsNullOrWhiteSpace(c.ScheduleTimeDisplay) ? "" : " • ")@c.RoomDisplay</text>
+                                            }
+                                        }
+                                    </span>
+                                </div>
+                                <div class="detail-row">
+                                    <i class="fa-solid fa-hashtag" aria-hidden="true"></i>
+                                    <span class="detail-label">Class Code</span>
+                                    <span class="detail-value detail-code">@c.ClassCode</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="class-card-footer">
+                            <div class="class-card-professor">
+                                <span class="class-card-professor-name">@c.InstructorName</span>
+                            </div>
+                            <span class="class-card-status @(isPending ? "status-pending" : "status-active")">@(isPending ? "Pending" : "Approved")</span>
+                        </div>
+                    </article>
+                }
+            }
+            else
+            {
+                <p>No classes found.</p>
+            }
+
+        </div>
+    </section>
+    <section class="dashboard-content"></section>
+</main>
+
+<button class="join-class-button" id="joinBtn" title="Join class" aria-haspopup="dialog" aria-controls="joinModal">
+    <i class="fa-solid fa-plus"></i>
+</button>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+    <div class="modal" id="joinModal" role="dialog" aria-modal="true" aria-labelledby="joinTitle">
+        <h3 id="joinTitle">Join a Class</h3>
+        <input type="text" id="classCode" placeholder="Enter class code" />
+        <button id="requestJoin">REQUEST TO JOIN</button>
+    </div>
+</div>          
+
+<!-- Toast Notification -->
+<div id="toast" class="toast"></div>
+
+@section Scripts {
+    <script>
+        const routes = {
+            home: '@Url.Content("~/studentdb/StudentDb")',
+            subjects: '@Url.Content("~/studentdb/StudentDb")',
+            todo: '@Url.Content("~/StudentTodo")',
+            requestJoin: '@Url.Content("~/studentdb/StudentDb/RequestJoin")'
+        };
+    </script>
+    <script src="~/js/StudentDb/StudentDb.js" asp-append-version="true"></script>
+}

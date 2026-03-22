@@ -1,0 +1,1260 @@
+
+@import url('/css/Shared/BottomBar.css');
+
+
+:root {
+    --bottom-h: 64px;
+    --accent: #006b99;
+    --accent-light: #1e3a8a;
+    --card-text: #0b213a;
+    --bg: #eef2f7;
+    --border-light: rgba(16, 24, 40, 0.06);
+    --shadow-soft: 0 6px 16px rgba(16, 24, 40, 0.06);
+    --left-w: 260px;
+    --gap: 32px;
+    font-family: Inter, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* GLOBAL */
+html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--card-text);
+}
+
+/* --- LAYOUT --- */
+.class-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+    gap: 30px;
+    position: relative;
+    max-width: 1800px;
+    margin: 0 auto;
+}
+
+/* LEFT SECTION (sidebar) */
+.class-info {
+    position: fixed;
+    top: 20px;
+    left: 0;
+    width: 23.5%;
+    min-width: 260px;
+    bottom: calc(var(--bottom-h) + 16px);
+    height: auto;
+    background: #fcf7ec;
+    border-radius: 0 14px 14px 0;
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.06);
+    padding: 16px 16px 126px 26px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow: hidden;
+    z-index: 10;
+}
+
+/* Prevent text scaling / layout shift */
+.subject-name,
+.subject-code,
+.class-code,
+.instructor-profile,
+.recent-uploads,
+.back-button {
+    flex-shrink: 0; /* prevents shrinking with viewport */
+}
+
+/* Subject info */
+.subject-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.subject-code,
+.class-code {
+    font-size: 0.9rem;
+    color: #4a5568;
+    margin: 4px 0;
+}
+
+/* Instructor Section */
+.instructor-profile {
+    display: flex;
+    align-items: center;
+    margin: 16px 0;
+}
+
+.instructor-profile-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 700;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.instructor-profile-name {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.instructor-role {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+/* Recent Uploads */
+.recent-uploads {
+    flex-grow: 1; /* takes remaining space without moving others */
+    overflow-y: auto; /* scrolls only inside this section */
+    margin-top: 10px;
+    padding-right: 4px;
+}
+
+    .recent-uploads h3 {
+        font-size: 0.95rem;
+        color: var(--accent);
+        margin-bottom: 8px;
+    }
+
+    .recent-uploads ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .recent-uploads li {
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #1e293b;
+    }
+
+/* Back Button */
+.back-button {
+    margin-top: 16px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    align-self: flex-start;
+    flex-shrink: 0;
+}
+
+    .back-button:hover {
+        background: #00577c;
+    }
+
+
+/* RIGHT SECTION (Scrollable Content) */
+.class-content {
+    margin-left: 27%;
+    width: 70%;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-bottom: 100px; /* spacing above bottom bar */
+}
+
+/* Content Card */
+.content-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.06);
+    padding: 16px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+    .content-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(16, 24, 40, 0.08);
+    }
+
+.content-left {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex: 1;
+    margin-left: 20px;
+}
+
+    .content-left i {
+        font-size: 1.4rem;
+        color: var(--accent);
+    }
+
+.content-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.content-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #0b213a;
+    margin-bottom: 3px;
+}
+
+.content-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+/* Urgency Flags */
+.urgency {
+    width: 12px;
+    border-radius: 10px;
+}
+
+    .urgency.green {
+        background: #22c55e;
+    }
+
+    .urgency.yellow {
+        background: #eab308;
+    }
+
+    .urgency.red {
+        background: #ef4444;
+    }
+
+/* Scrollbar Styling (for class-info) */
+.class-info::-webkit-scrollbar {
+    width: 6px;
+}
+
+.class-info::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+    .class-info::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+/* --- ANNOUNCEMENT CARD --- */
+.announcement {
+    background: #fef9ef; /* light warm tone to differentiate */
+}
+
+    .announcement i {
+        color: #d97706; /* darker gold/orange for icon */
+    }
+
+    .announcement .content-meta {
+        font-size: 0.9rem;
+        color: #854d0e;
+        font-weight: 500;
+        margin-top: 13px;
+    }
+
+/* Hide scrollbars for all elements */
+* {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+    *::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+    }
+
+
+/* Match StudentClass right content rail (AdminClass only) */
+.class-content {
+    width: 100%;
+    display: grid;
+    gap: 12px;
+    padding-top: 2px;
+}
+
+.content-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    background: #ffffff;
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    padding: 12px 14px;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.content-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.content-left {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.content-left i {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    color: #fff;
+    background: #1f4f84;
+    box-shadow: 0 4px 10px rgba(20, 58, 102, 0.22);
+    flex-shrink: 0;
+}
+
+.content-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.content-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1e3a5f;
+    margin: 0 0 2px;
+    line-height: 1.25;
+}
+
+.content-meta {
+    font-size: 0.78rem;
+    color: #66788f;
+    margin: 0;
+}
+
+.urgency {
+    width: 12px;
+    border-radius: 10px;
+    opacity: 0.95;
+}
+
+.urgency.green { background: #22c55e; }
+.urgency.yellow { background: #eab308; }
+.urgency.red { background: #ef4444; }
+
+.announcement {
+    background: #ffffff;
+}
+
+.announcement .content-left i {
+    background: #2d6aaa;
+}
+
+.announcement .content-meta {
+    color: #5f6f82;
+    font-weight: 500;
+}
+
+/* Ensure Admin class-info matches Student class-info dimensions */
+.class-info-top { width: 100%; }
+.class-info-top {
+    margin-top: 0;
+    padding-top: 0;
+}
+.class-info-middle-top {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 20px 0 20px;
+    flex-wrap: wrap;
+}
+.class-info-middle-top .subject-code,
+.class-info-middle-top .class-code {
+    flex: 0 0 100%;
+}
+.class-info-middle {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 20px 0 20px;
+    }
+.class-info-bottom {
+    margin-top: auto;
+    padding: 8px 20px 0 20px;
+}
+
+/* ============================
+   Management Buttons (Admin)
+   ============================ */
+.manage-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding-left: 0;
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 68px; /* sits directly above Back button */
+    z-index: 12002;
+}
+
+/* Base button style - consistent with back-button */
+.manage-btn {
+    width: 100%;
+    background: #fff;
+    color: var(--accent);
+    font-weight: 600;
+    border: 1px solid rgba(10, 20, 40, 0.08);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(16, 24, 40, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+    /* Slight lift on hover (no background color change) */
+    .manage-btn:hover {
+        transform: scale(1.01);
+        box-shadow: 0 6px 16px rgba(16, 24, 40, 0.1);
+    }
+
+    /* Icons slightly smaller for balance */
+    .manage-btn i {
+        font-size: 1rem;
+    }
+
+/* Keep Back button spacing consistent */
+.class-info .back-button {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: auto;
+    width: auto;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 10px rgba(16, 24, 40, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    z-index: 12002;
+    margin: 0;
+}
+.class-info .back-button:hover {
+    background: #00577c;
+    transform: scale(1.01);
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.16);
+}
+
+.class-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    height: 96px;
+    border-radius: 10px;
+    background-color: #eadfca; /* fallback if background image not available */
+    padding: 12px;
+    box-sizing: border-box;
+    margin-bottom: 1px;
+}
+
+.profile-initials {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #243a73, #6b89d4);
+    color: #fff;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 12px rgba(16,24,40,0.08);
+    flex-shrink: 0;
+}
+
+.teacher-details .teacher-name {
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.teacher-details .teacher-meta,
+.teacher-details .room-location {
+    font-size: 0.85rem;
+    color: #5b6b82;
+}
+
+.subject-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0;
+    max-width: 100%;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.subject-code,
+.class-code {
+    font-size: 0.88rem;
+    color: #4a5568;
+}
+.class-info .subject-code,
+.class-info .class-code {
+    display: block;
+    width: 100%;
+}
+.subject-code { margin: 0; }
+.class-code { margin: 0; }
+}
+
+/* ============================
+   MOBILE TOGGLE BUTTON
+   ============================ */
+.mobile-toggle-btn {
+    display: none; /* Hidden by default (desktop) */
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--accent);
+    border: 1px solid rgba(10, 20, 40, 0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 13000;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mobile-toggle-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.mobile-toggle-btn.active i {
+    color: #1a73e8; /* change icon color when active */
+}
+
+/* ============================
+   MOBILE RESPONSIVENESS (AdminClass)
+   ============================ */
+@media (max-width: 768px) {
+    .mobile-toggle-btn {
+        display: flex;
+    }
+
+    .class-container {
+        padding: 12px;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .class-info {
+        position: relative; /* Remove fixed positioning */
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: auto;
+        min-width: unset;
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 0;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Fixed height issues on mobile */
+    .class-info-top,
+    .class-info-middle-top,
+    .class-info-middle {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    /* Adjust manage-buttons and back-button for mobile relative positioning */
+    .manage-buttons {
+        position: relative;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        margin-top: 20px;
+    }
+
+    .class-info .back-button {
+        position: relative;
+        bottom: 0;
+        left: 0;
+        margin-top: 12px;
+    }
+
+    .class-content {
+        margin-left: 0;
+        width: 100%;
+        padding-bottom: 80px;
+    }
+
+    /* Toggle logic */
+    .class-info.mobile-hide,
+    .class-content.mobile-hide {
+        display: none !important;
+    }
+
+    .add-content-button {
+        right: 20px;
+        bottom: 80px;
+        width: 56px;
+        height: 56px;
+    }
+
+    .content-radial {
+        right: 88px;
+        bottom: 80px;
+    }
+}
+
+.recent-uploads ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.recent-uploads li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #1e293b;
+}
+.recent-uploads li i {
+    flex-shrink: 0;
+}
+.recent-uploads .recent-title {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+/* add-content button (same visual as join/create) */
+.add-content-button {
+    margin-bottom: 60px;
+    margin-right: -20px;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    position: fixed;
+    right: 40px;
+    bottom: 24px; /* sits above bottom bar */
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
+    border: 1px solid rgba(10, 20, 40, 0.06);
+    cursor: pointer;
+    z-index: 12002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+    .add-content-button.selected {
+        box-shadow: 0 10px 28px rgba(36, 58, 115, 0.18);
+        border: 1px solid rgba(36, 58, 115, 0.12);
+        transform: scale(1.06);
+    }
+
+        .add-content-button.selected i {
+            color: var(--accent);
+        }
+
+/* Add-content tooltip */
+.add-content-button::after {
+    content: none;
+    display: none;
+}
+.add-content-button:hover::after {
+    display: none;
+}
+
+/* Selection style for delete mode */
+.content-card.selected-for-delete {
+    outline: 3px solid rgba(220, 38, 38, 0.35);
+    outline-offset: 2px;
+    background: #fff7f7;
+}
+
+/* content radial container (curves above top-left of button) */
+.content-radial {
+    position: fixed;
+    right: 108px; /* place left of button */
+    bottom: 88px; /* above the add button */
+    width: 220px;
+    height: 140px;
+    pointer-events: none;
+    z-index: 12001;
+    transform-origin: center;
+    transition: opacity 180ms ease, transform 180ms ease;
+    opacity: 0;
+}
+
+    /* show when toggled */
+    .content-radial.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* small compact tooltip top-left of radial set */
+    .content-radial .content-tooltip {
+        position: absolute;
+        right: -30px;
+        bottom: 10px;
+        background: #182b5c;
+        color: #fff;
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: 5px;
+        box-shadow: 0 8px 20px rgba(10,20,40,0.06);
+        white-space: nowrap;
+        transform: translate(-10%, -10%);
+    }
+
+/* action buttons */
+.content-action {
+    position: absolute;
+    left: 112%;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(10,20,40,0.08);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: transform 0.28s cubic-bezier(.2,.9,.3,1), opacity 0.22s ease;
+    pointer-events: none;
+    overflow: visible;
+    right: 0; /* align with container */
+    cursor: pointer;
+}
+
+/* Base triggers (upload/delete) */
+.content-radial-btn {
+    position: absolute;
+    left: 112%;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(10,20,40,0.08);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: transform 0.28s cubic-bezier(.2,.9,.3,1), opacity 0.22s ease;
+    pointer-events: none;
+    overflow: visible;
+    right: 0;
+    cursor: pointer;
+}
+.content-radial.show .content-radial-btn {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+.content-radial-btn.delete { bottom: 130px; }
+.content-radial-btn.upload { bottom: 70px; }
+.content-radial-btn.selected,
+.content-action.selected {
+    box-shadow: 0 10px 28px rgba(36, 58, 115, 0.18);
+    border: 1px solid rgba(36, 58, 115, 0.12);
+    transform: scale(1.06);
+}
+.content-radial-btn::after {
+    content: attr(data-label);
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%) translateX(-8px);
+    background: #182b5c;
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 300;
+    text-align: right;
+}
+.content-radial-btn:hover::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(-12px);
+}
+
+    /* stack buttons vertically */
+    .content-action.material {
+        bottom: 70px; /* first button above add button */
+    }
+
+    .content-action.task {
+        bottom: 130px; /* second button */
+    }
+
+    .content-action.assessment {
+        bottom: 190px; /* third button */
+    }
+
+    /* Delete mode actions */
+    .content-action.confirm { bottom: 190px; }
+    .content-action.cancel { bottom: 130px; }
+
+    /* ----------------------------
+   Hover label on the left of button
+---------------------------- */
+    .content-action::after {
+        content: attr(data-label);
+        position: absolute;
+        top: 50%; /* vertically center with button */
+        right: 100%; /* position to the left of button */
+        transform: translateY(-50%) translateX(-8px); /* vertical center, slight gap */
+        background: #182b5c;
+        color: #fff;
+        padding: 6px 8px;
+        border-radius: 5px;
+        font-size: 12px;
+        white-space: nowrap;
+        opacity: 0; /* hidden by default */
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 300;
+        text-align: right; /* align text to the right edge of tooltip */
+    }
+
+    /* show tooltip only on hover */
+    .content-action:hover::after {
+        opacity: 1;
+        transform: translateY(-50%) translateX(-12px); /* slide slightly left */
+    }
+
+/* ----------------------------
+   Reveal buttons when radial is open
+---------------------------- */
+.content-radial.show .content-action {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+/* small focus outline */
+.content-action:focus {
+    outline: 3px solid rgba(24,43,92,0.12);
+    outline-offset: 3px;
+}
+
+/* Backdrop stays fixed over viewport but transparent */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 13010;
+    background: rgba(16, 24, 40, 0.2);
+    backdrop-filter: blur(4px);
+}
+
+    .modal-backdrop[hidden] {
+        display: none !important;
+        pointer-events: none;
+    }
+/* independent delete backdrop centers modal */
+#deleteBackdrop {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#deleteBackdrop[aria-hidden="false"] {
+    display: flex;
+}
+
+/* Side modal anchored near content-radial (left of buttons) */
+.content-side-modal {
+    position: fixed;
+    right: 360px;
+    bottom: 140px;
+    z-index: 12005;
+    display: none;
+}
+.content-side-inner {
+    width: 360px;
+    max-width: calc(100vw - 420px);
+    border-radius: 12px;
+    background: #f3f6fb;
+    color: #0b213a;
+    box-shadow: 0 20px 40px rgba(3,7,18,0.12);
+    box-sizing: border-box;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.side-modal-top h3 {
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+}
+.side-modal-middle {
+    max-height: 240px;
+    overflow-y: auto;
+}
+.side-modal-middle::-webkit-scrollbar { display: none; }
+.side-modal-bottom .modal-actions {
+    justify-content: flex-end;
+}
+
+@media (min-width: 768px) {
+    .content-side-inner {
+        width: 420px;
+    }
+}
+
+/* Modal itself - manually positionable */
+.modal {
+    position: relative;
+    width: min(420px, 80vw);
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    background: #f3f6fb;
+    color: #0b213a;
+    box-shadow: 0 20px 40px rgba(3,7,18,0.12);
+    max-height: min(420px, 85vh);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 6px;
+}
+.modal#deleteModal {
+    width: 420px;
+    max-width: 90vw;
+    aspect-ratio: auto;
+}
+.modal.delete-confirm {
+    position: fixed;
+    left: calc(100vw - (108px + 220px));
+    bottom: 88px;
+}
+.modal-bottom .modal-actions {
+    justify-content: flex-end;
+}
+/* Transparent backdrop variant for create modal */
+.modal-backdrop.transparent {
+    background: transparent;
+    backdrop-filter: none;
+    pointer-events: none;
+}
+/* Create-content modal restores legacy sizing/placement */
+.modal.create-content {
+    position: absolute;
+    top: 30px;
+    right: 120px;
+    width: 360px;
+    max-width: calc(100vw - 48px);
+    padding: 16px;
+    border-radius: 10px;
+    background: #f3f6fb;
+    color: #0b213a;
+    box-shadow: 0 20px 40px rgba(3,7,18,0.12);
+    max-height: 90vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+    aspect-ratio: auto;
+    display: block;
+}
+/* allow clicks into modal while backdrop is click-through */
+.modal-backdrop.transparent .modal {
+    pointer-events: auto;
+}
+.modal-top {
+    flex: 0 0 auto;
+}
+.modal-middle {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+.modal-middle::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+.modal-middle {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.modal-bottom {
+    flex: 0 0 auto;
+}
+.modal h3 {
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 400;
+    margin: 0;
+    text-align: center;
+}
+.modal-delete-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0 12px 0;
+    table-layout: fixed;
+}
+.modal-delete-table th,
+.modal-delete-table td {
+    padding: 6px 8px;
+    font-size: 0.9rem;
+}
+.modal-delete-table th:nth-child(1),
+.modal-delete-table td:nth-child(1) {
+    width: 36px;
+}
+.modal-delete-table th:nth-child(3),
+.modal-delete-table td:nth-child(3) {
+    width: 96px;
+}
+.modal-delete-table th {
+    text-transform: uppercase;
+    font-weight: 400;
+    color: #4b5563;
+    border-bottom: 1px solid rgba(15,23,42,0.08);
+}
+.modal-delete-table td:first-child {
+    width: 32px;
+    text-align: center;
+    color: #6b7280;
+}
+.modal-delete-table .cell-ellipsis {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.modal-delete-table td:nth-child(3) {
+    text-transform: uppercase;
+}
+.modal-delete-table tr:nth-child(even) td {
+    background-color: rgba(15,23,42,0.015);
+}
+}
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
+}
+.modal-actions .btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+}
+.modal-actions .btn-delete {
+    background: #dc2626;
+    color: #fff;
+}
+.modal-actions .btn-cancel {
+    background: #64748b;
+    color: #fff;
+}
+
+    /* Inputs & textareas inside modal */
+    .modal input[type="text"],
+    .modal input[type="date"],
+    .modal input[type="url"],
+    .modal textarea,
+    .modal input[type="file"] {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(16,24,40,0.08);
+        background: #fff;
+        margin-bottom: 8px;
+        box-sizing: border-box;
+    }
+
+    .modal textarea {
+        min-height: 80px;
+        resize: vertical;
+    }
+
+/* File list for chosen uploads */
+.file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 160px;
+    overflow: auto;
+    padding: 6px;
+    border: 1px solid rgba(16,24,40,0.08);
+    border-radius: 8px;
+    background: #fff;
+    box-sizing: border-box;
+}
+.file-list::-webkit-scrollbar { display: none; }
+.file-empty {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+.file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border: 1px solid rgba(16,24,40,0.06);
+    border-radius: 8px;
+    background: #f8fafc;
+}
+.file-name {
+    color: #0b213a;
+    font-size: 0.93rem;
+    font-weight: 600;
+    margin-right: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.remove-file {
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.remove-file:hover {
+    opacity: 0.92;
+}
+
+/* Modal action buttons */
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+    .modal-actions .btn {
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        border: none;
+    }
+
+        .modal-actions .btn.primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .modal-actions .btn.ghost {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid rgba(24,43,92,0.08);
+        }
+
+/* create-announcement card style override: icon removed, compact input */
+.create-announcement .content-left {
+    padding-left: 8px;
+}
+
+.create-announcement textarea {
+    width: 100%;
+    border: none;
+    resize: none;
+    background: transparent;
+    font-size: 0.95rem;
+    color: #0b213a;
+    outline: none;
+    padding: 6px 0;
+    line-height: 1.3;
+    min-height: 20px;
+    max-height: 240px;
+    box-sizing: border-box;
+}
+
+/* actions hidden by default; JS toggles the hidden attribute */
+.create-announcement .announcement-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: 12px;
+}
+
+.create-announcement .btn {
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+    .create-announcement .btn.announce {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+    }
+
+    .create-announcement .btn.nevermind {
+        background: transparent;
+        border: 1px solid rgba(24,43,92,0.08);
+        color: var(--accent);
+    }
+
+/* Ensure spacing remains same as other content-cards */
+.create-announcement {
+    align-items: center;
+}
+
+/* small responsive tweak */
+@media (max-width: 720px) {
+    .content-radial {
+        right: 80px;
+        bottom: 120px;
+    }
+
+    .add-content-button {
+        right: 20px;
+        bottom: 18px;
+    }
+}

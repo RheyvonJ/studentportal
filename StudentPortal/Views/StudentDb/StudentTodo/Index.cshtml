@@ -1,0 +1,59 @@
+@model StudentPortal.Models.StudentDb.StudentTodoViewModel
+@{
+    Layout = "_StudentLayout";
+    ViewData["Title"] = "To-Do";
+    ViewBag.CurrentPage = "todo";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/StudentDb/StudentTodo.css" asp-append-version="true" />
+}
+
+<main class="student-todo-shell">
+    <header class="student-todo-top">
+        <div class="student-todo-heading">
+            <h1 class="student-todo-title"><i class="fa-solid fa-list-check" aria-hidden="true"></i> To-Do</h1>
+            <p class="student-todo-sub">Tasks across your classes</p>
+        </div>
+        <div class="toggle-button" id="toggleButton" role="tablist" aria-label="Filter tasks by status">
+            <span class="option active" role="tab" aria-selected="true" data-view="todo" tabindex="0">To-Do</span>
+            <span class="option" role="tab" aria-selected="false" data-view="pastdue" tabindex="0">Past due</span>
+        </div>
+    </header>
+
+    @if (Model.Subjects == null || !Model.Subjects.Any())
+    {
+        <div class="student-todo-empty">
+            <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>
+            <p>No open tasks right now.</p>
+        </div>
+    }
+    else
+    {
+        <div class="column-container">
+            @foreach (var subj in Model.Subjects)
+            {
+                <div class="subject-column">
+                    <h2 class="subject-name">@subj.Title</h2>
+                    <div class="tasks-vertical">
+                        @foreach (var t in subj.Tasks)
+                        {
+                            <a class="task-card @t.ColorClass" data-status="@t.Status" href="@t.TargetUrl">
+                                <div class="task-content">
+                                    <h3 class="task-name">@t.Name</h3>
+                                    <p class="deadline">Deadline: @t.Deadline</p>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</main>
+
+<div id="toast" class="toast"></div>
+
+@section Scripts {
+    <script src="~/js/StudentDb/StudentTodo.js" asp-append-version="true"></script>
+}

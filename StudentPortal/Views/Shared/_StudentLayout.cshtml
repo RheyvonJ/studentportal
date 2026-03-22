@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>@ViewData["Title"] - Student Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="~/css/Shared/StudentSidebar.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Shared/BottomBar.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/StudentDb/StudentDb.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+    <style>
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 12000;
+        }
+
+        .modal-backdrop.show {
+            display: flex;
+        }
+
+        .page { min-height: 100vh; }
+
+        .class-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="slsp-shell page @(ViewBag.HideSidebar == true ? "sidebar-collapsed" : "") @(ViewBag.EnableSidebarSlide == true ? "sidebar-slide-enabled" : "")">
+        @await Html.PartialAsync("_StudentSidebar")
+        <div class="slsp-main" role="main">
+            @if (ViewBag.HideBottomBar != true)
+            {
+                @await Html.PartialAsync("_StudentHeader")
+            }
+            <div class="slsp-content">@RenderBody()</div>
+            @if (ViewBag.HideBottomBar != true)
+            {
+                @await Html.PartialAsync("_StudentBottomNav")
+            }
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

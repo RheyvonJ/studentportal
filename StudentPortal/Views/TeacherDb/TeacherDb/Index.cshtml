@@ -1,0 +1,103 @@
+@model StudentPortal.Models.ProfessorDb.ProfessorDashboardViewModel
+@{
+    Layout = "_StudentLayout";
+    ViewData["Title"] = "Professor Dashboard";
+    ViewBag.CurrentPage = "home";
+    ViewBag.Role = "Professor";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/AdminDb/AdminDb.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Shared/BottomBar.css" asp-append-version="true" />
+}
+
+<main class="dashboard" id="dashboard">
+    <section class="dashboard-top">
+        <div class="courses-scroll classes-container" id="coursesScroll">
+            @if (Model.Classes != null && Model.Classes.Any())
+            {
+                foreach (var cls in Model.Classes)
+                {
+                    var headerStyle = !string.IsNullOrEmpty(cls.BackgroundImageUrl)
+                        ? ("background-image:url('" + cls.BackgroundImageUrl + "'); background-size: cover; background-position: center;")
+                        : "";
+                    <article class="class-card active" data-class-code="@cls.ClassCode" onclick="window.location.href='/TeacherClass/@cls.ClassCode'" role="button" tabindex="0">
+                        <div class="class-card-header" style="@headerStyle"></div>
+                        <div class="class-card-actions" aria-label="Class actions">
+                            <button type="button" class="delete-class-btn" data-class-id="@cls.Id" data-class-code="@cls.ClassCode" title="Archive / Delete class" aria-label="Archive or delete this class"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                        <div class="class-card-body">
+                            <h3 class="class-card-title">@cls.SubjectName</h3>
+                            <div class="class-card-meta">
+                                <span><i class="fa-solid fa-users"></i> @(string.IsNullOrWhiteSpace(cls.SectionLabel) ? cls.Section : cls.SectionLabel) @if (!string.IsNullOrWhiteSpace(cls.RoomDisplay)) {<text> • </text>@cls.RoomDisplay}</span>
+                                @if (!string.IsNullOrWhiteSpace(cls.ScheduleTimeDisplay))
+                                {
+                                    <span><i class="fa-solid fa-calendar-days"></i> @cls.ScheduleTimeDisplay</span>
+                                }
+                                else
+                                {
+                                    <span><i class="fa-solid fa-clock"></i> Class code: @cls.ClassCode</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="class-card-footer">
+                            <div class="class-card-professor">
+                                <div class="class-card-avatar">@(string.IsNullOrWhiteSpace(Model.ProfessorInitials) ? "PR" : Model.ProfessorInitials)</div>
+                                <span class="class-card-professor-name">@Model.ProfessorName</span>
+                            </div>
+                            <span class="class-card-status @(cls.IsArchived ? "status-archived" : "status-active")">@(cls.IsArchived ? "Archived" : "Active")</span>
+                        </div>
+                    </article>
+                }
+            }
+            else
+            {
+                <p>No classes found.</p>
+            }
+        </div>
+    </section>
+
+    <section class="dashboard-content"></section>
+    </main>
+
+<button class="create-class-button" id="createBtn" title="Create class" aria-haspopup="dialog" aria-controls="createModal">
+    <i class="fa-solid fa-pen-to-square"></i>
+    </button>
+
+<div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+    <div class="modal" id="createModal" role="dialog" aria-modal="true" aria-labelledby="createTitle">
+        <h3 id="createTitle">Create a Class</h3>
+        <form id="createForm" method="post" asp-controller="TeacherDb" asp-action="CreateClass">
+            @Html.AntiForgeryToken()
+            <div class="custom-select" id="profSubjectSelect" data-value="">
+                <div class="selected">Select Subject (optional)</div>
+                <div class="options"></div>
+            </div>
+            <input type="hidden" id="profSubjectValue" />
+            <input type="hidden" id="scheduleId" name="scheduleId" />
+            <input type="text" id="section" name="section" placeholder="Enter section (e.g., BSIT-2025-2025-0017)" />
+            <input type="text" id="subjectName" name="subjectName" placeholder="Enter subject name" />
+            <input type="text" id="subjectCode" name="subjectCode" placeholder="Enter subject code" />
+            <input type="text" id="schoolYear" name="schoolYear" placeholder="School Year" readonly />
+            <button id="createClass" type="submit">CREATE CLASS</button>
+        </form>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="deleteClassBackdrop" role="presentation" aria-hidden="true">
+    <div class="modal" id="deleteClassModal" role="dialog" aria-modal="true" aria-labelledby="deleteClassTitle">
+        <h3 id="deleteClassTitle">Archive / Delete Class</h3>
+        <p id="deleteClassText"></p>
+        <div class="modal-actions">
+            <button id="cancelDeleteClass" type="button">Cancel</button>
+            <button id="confirmDeleteClass" type="button">Delete</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>(function(){try{if(document&&document.body){document.body.dataset.role='Professor';}else{document.addEventListener('DOMContentLoaded',function(){document.body.dataset.role='Professor';});}}catch(e){}})();</script>
+    <script src="~/js/AdminDb/AdminDb.js" asp-append-version="true"></script>
+}
+
+@await Html.PartialAsync("_StudentBottomBar")
