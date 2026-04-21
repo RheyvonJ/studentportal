@@ -1,5 +1,9 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using StudentPortal.Models.AdminClass;
+using StudentPortal.Models.AdminDb;
 using StudentPortal.Models.AdminMaterial;
+using StudentPortal.Models.Library;
 using StudentPortal.Services;
 using System;
 using System.Linq;
@@ -10,10 +14,14 @@ namespace StudentPortal.Controllers
     public class AdminMaterialController : Controller
     {
         private readonly MongoDbService _mongoDb;
+        private readonly IWebHostEnvironment _env;
+        private readonly LibraryService _libraryService;
 
-        public AdminMaterialController(MongoDbService mongoDb)
+        public AdminMaterialController(MongoDbService mongoDb, IWebHostEnvironment env, LibraryService libraryService)
         {
             _mongoDb = mongoDb;
+            _env = env;
+            _libraryService = libraryService;
         }
 
         [HttpGet("/AdminMaterial/{classCode}/{contentId}")]
@@ -36,13 +44,22 @@ namespace StudentPortal.Controllers
             if (contentItem.ClassId != classItem.Id)
                 return NotFound("Material not found in this class.");
 
-            // Get recent materials for this class (limit to 3)
-            var recentMaterials = (await _mongoDb.GetRecentMaterialsByClassIdAsync(classItem.Id))?
+            var materialList = await _mongoDb.GetMaterialsByClassIdAsync(classItem.Id);
+            var recentMaterials = materialList
                 .Take(3)
-                .ToList() ?? new System.Collections.Generic.List<string>();
+                .Select(m => new AdminClassRecentUpload
+                {
+                    ContentId = m.Id ?? "",
+                    Title = string.IsNullOrWhiteSpace(m.Title) ? "(Untitled)" : m.Title,
+                    IconClass = "fa-solid fa-book-open-reader",
+                    TargetUrl = Url.Action("Index", "AdminMaterial", new { classCode = classItem.ClassCode, contentId = m.Id }) ?? "#"
+                })
+                .ToList();
 
             // Get uploaded files for this material from Uploads collection - USING ContentId now
             var uploadedFiles = await _mongoDb.GetUploadsByContentIdAsync(contentId);
+
+            await TryAutoLinkLibraryEbooksAsync(contentItem, classItem);
 
             var professorName = HttpContext.Session.GetString("UserName") ?? "Professor";
             var professorEmail = HttpContext.Session.GetString("UserEmail") ?? (classItem.OwnerEmail ?? string.Empty);
@@ -110,10 +127,18 @@ namespace StudentPortal.Controllers
                 catch { }
             }
 
+            List<MaterialLinkedEbookDisplay> linkedEbooks = new();
+            try
+            {
+                linkedEbooks = await _libraryService.GetLinkedEbookDisplaysAsync(contentItem.LinkedLibraryEbookIds ?? new List<string>());
+            }
+            catch { /* library DB optional */ }
+
             var vm = new AdminMaterialViewModel
             {
                 MaterialId = contentItem.Id,
                 SubjectName = classItem.SubjectName,
+                SectionName = !string.IsNullOrWhiteSpace(classItem.SectionLabel) ? classItem.SectionLabel : (classItem.Section ?? string.Empty),
                 SubjectCode = classItem.SubjectCode,
                 ClassCode = classItem.ClassCode,
                 InstructorName = displayName,
@@ -125,8 +150,9 @@ namespace StudentPortal.Controllers
                 MaterialName = contentItem.Title,
                 MaterialDescription = contentItem.Description,
                 Attachments = uploadedFiles.Select(u => u.FileName).ToList(), // Use actual uploaded files
-                PostedDate = contentItem.CreatedAt.ToString("MMM d, yyyy"),
-                EditedDate = contentItem.UpdatedAt > contentItem.CreatedAt ? contentItem.UpdatedAt.ToString("MMM d, yyyy") : "",
+                LinkedEbooks = linkedEbooks,
+                PostedDate = contentItem.CreatedAt.ToLocalTime().ToString("MMM d, yyyy"),
+                EditedDate = contentItem.UpdatedAt > contentItem.CreatedAt ? contentItem.UpdatedAt.ToLocalTime().ToString("MMM d, yyyy") : "",
                 RecentMaterials = recentMaterials
             };
 
@@ -154,7 +180,7 @@ namespace StudentPortal.Controllers
                 // Link the most recent upload record to this content
                 var uploads = await _mongoDb.GetUploadsByClassIdAsync(contentItem.ClassId);
                 var recentUpload = uploads
-                    .Where(u => u.UploadedBy == (User?.Identity?.Name ?? "Admin") && u.FileName == request.FileName)
+                    .Where(u => u.FileName == request.FileName && string.IsNullOrEmpty(u.ContentId))
                     .OrderByDescending(u => u.UploadedAt)
                     .FirstOrDefault();
 
@@ -219,6 +245,45 @@ namespace StudentPortal.Controllers
             }
         }
 
+        [HttpPost("/AdminMaterial/SetLinkedEbook")]
+        public async Task<IActionResult> SetLinkedEbook([FromBody] SetLinkedEbookRequest request)
+        {
+            try
+            {
+                if (request == null || string.IsNullOrWhiteSpace(request.MaterialId) || string.IsNullOrWhiteSpace(request.BookId))
+                    return BadRequest(new { success = false, message = "Missing materialId or bookId." });
+
+                var contentItem = await _mongoDb.GetContentByIdAsync(request.MaterialId);
+                if (contentItem == null || contentItem.Type != "material")
+                    return NotFound(new { success = false, message = "Material not found." });
+
+                var book = await _libraryService.GetBookByIdAsync(request.BookId);
+                if (book == null)
+                    return BadRequest(new { success = false, message = "Library item not found." });
+                if (!book.EffectiveIsEBook)
+                    return BadRequest(new { success = false, message = "Only eBooks can be attached." });
+
+                // Single eBook per material for now (replace behavior).
+                contentItem.LinkedLibraryEbookIds = new System.Collections.Generic.List<string> { request.BookId.Trim() };
+                contentItem.UpdatedAt = DateTime.UtcNow;
+                contentItem.MetaText = GenerateUpdatedMetaText(contentItem);
+                await _mongoDb.UpdateContentAsync(contentItem);
+
+                var linked = await _libraryService.GetLinkedEbookDisplaysAsync(contentItem.LinkedLibraryEbookIds);
+                return Ok(new { success = true, linkedEbooks = linked });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        public class SetLinkedEbookRequest
+        {
+            public string MaterialId { get; set; } = string.Empty;
+            public string BookId { get; set; } = string.Empty;
+        }
+
         [HttpGet("/AdminMaterial/DownloadFile/{fileName}")]
         public async Task<IActionResult> DownloadFile(string fileName, string contentId)
         {
@@ -230,7 +295,7 @@ namespace StudentPortal.Controllers
 
                 var url = uploadItem.FileUrl ?? string.Empty;
                 var fileWithGuid = System.IO.Path.GetFileName(url);
-                var uploadsDir = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                var uploadsDir = System.IO.Path.Combine(_env.WebRootPath, "uploads");
                 var physPath = !string.IsNullOrWhiteSpace(fileWithGuid)
                     ? System.IO.Path.Combine(uploadsDir, fileWithGuid)
                     : string.Empty;
@@ -290,7 +355,7 @@ namespace StudentPortal.Controllers
 
                 var url = uploadItem.FileUrl ?? string.Empty;
                 var fileWithGuid = System.IO.Path.GetFileName(url);
-                var uploadsDir = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                var uploadsDir = System.IO.Path.Combine(_env.WebRootPath, "uploads");
                 var physPath = !string.IsNullOrWhiteSpace(fileWithGuid)
                     ? System.IO.Path.Combine(uploadsDir, fileWithGuid)
                     : string.Empty;
@@ -330,6 +395,34 @@ namespace StudentPortal.Controllers
             return string.Concat(parts.Select(p => p[0])).ToUpper();
         }
 
+        /// <summary>
+        /// When no eBooks are linked yet, discover SLSHS Library eBooks (is_ebook) from the shared catalog and persist ids on the material.
+        /// </summary>
+        private async Task TryAutoLinkLibraryEbooksAsync(ContentItem contentItem, ClassItem classItem)
+        {
+            try
+            {
+                if (contentItem.LinkedLibraryEbookIds != null && contentItem.LinkedLibraryEbookIds.Count > 0)
+                    return;
+
+                var discovered = await _libraryService.DiscoverEbookIdsForMaterialAsync(
+                    classItem.SubjectName,
+                    classItem.SubjectCode,
+                    contentItem.Title);
+                if (discovered == null || discovered.Count == 0)
+                    return;
+
+                contentItem.LinkedLibraryEbookIds = discovered.ToList();
+                contentItem.UpdatedAt = DateTime.UtcNow;
+                contentItem.MetaText = GenerateUpdatedMetaText(contentItem);
+                await _mongoDb.UpdateContentAsync(contentItem);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AdminMaterial] TryAutoLinkLibraryEbooksAsync: {ex.Message}");
+            }
+        }
+
         // Request models
         public class UpdateMaterialRequest
         {
@@ -345,14 +438,14 @@ namespace StudentPortal.Controllers
 
         private string GenerateUpdatedMetaText(StudentPortal.Models.AdminMaterial.ContentItem content)
         {
-            var meta = $"Posted: {content.CreatedAt:MMM dd, yyyy}";
+            var meta = $"Posted: {content.CreatedAt.ToLocalTime():MMM dd, yyyy}";
             if (content.Deadline.HasValue)
             {
-                meta += $" | Deadline: {content.Deadline.Value:MMM dd, yyyy}";
+                meta += $" | Deadline: {content.Deadline.Value.ToLocalTime():MMM dd, yyyy}";
             }
             if (content.UpdatedAt > content.CreatedAt)
             {
-                meta += $" | Edited: {content.UpdatedAt:MMM dd, yyyy}";
+                meta += $" | Edited: {content.UpdatedAt.ToLocalTime():MMM dd, yyyy}";
             }
             var filesCount = content.Attachments?.Count ?? 0;
             if (filesCount > 0)

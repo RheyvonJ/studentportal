@@ -1,0 +1,56 @@
+/* Professor portal: hide scrollbars while preserving scroll (mouse wheel / touch).
+   Scoped with :has() so student and other layouts are unaffected. */
+
+body:has(#dashboard.professor-db-dashboard),
+body:has(#adminClassPage),
+body:has(#adminMaterialPage),
+body:has(#adminTaskPage),
+body:has(#adminAssessmentPage),
+body:has(#adminManageClassPage),
+html:has(#dashboard.professor-db-dashboard),
+html:has(#adminClassPage),
+html:has(#adminMaterialPage),
+html:has(#adminTaskPage),
+html:has(#adminAssessmentPage),
+html:has(#adminManageClassPage) {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+body:has(#dashboard.professor-db-dashboard)::-webkit-scrollbar,
+body:has(#adminClassPage)::-webkit-scrollbar,
+body:has(#adminMaterialPage)::-webkit-scrollbar,
+body:has(#adminTaskPage)::-webkit-scrollbar,
+body:has(#adminAssessmentPage)::-webkit-scrollbar,
+body:has(#adminManageClassPage)::-webkit-scrollbar,
+html:has(#dashboard.professor-db-dashboard)::-webkit-scrollbar,
+html:has(#adminClassPage)::-webkit-scrollbar,
+html:has(#adminMaterialPage)::-webkit-scrollbar,
+html:has(#adminTaskPage)::-webkit-scrollbar,
+html:has(#adminAssessmentPage)::-webkit-scrollbar,
+html:has(#adminManageClassPage)::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+body:has(#dashboard.professor-db-dashboard) *,
+body:has(#adminClassPage) *,
+body:has(#adminMaterialPage) *,
+body:has(#adminTaskPage) *,
+body:has(#adminAssessmentPage) *,
+body:has(#adminManageClassPage) * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+body:has(#dashboard.professor-db-dashboard) *::-webkit-scrollbar,
+body:has(#adminClassPage) *::-webkit-scrollbar,
+body:has(#adminMaterialPage) *::-webkit-scrollbar,
+body:has(#adminTaskPage) *::-webkit-scrollbar,
+body:has(#adminAssessmentPage) *::-webkit-scrollbar,
+body:has(#adminManageClassPage) *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}

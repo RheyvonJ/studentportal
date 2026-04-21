@@ -1,6 +1,11 @@
 // Verify script is loaded
 console.log('AdminManageClass.js loaded');
 
+/** Data attributes live on #adminManageClassPage when using _StudentLayout (was on body with Layout=null). */
+function managePageRoot() {
+    return document.getElementById('adminManageClassPage') || document.body;
+}
+
 const studentListContainer = document.getElementById("student-list");
 const studentCountEl = document.getElementById("studentCount");
 const classSearchInput = document.getElementById("classSearch");
@@ -20,6 +25,9 @@ let attendanceMenuEl = null;
 const seatingGridEl = document.getElementById('seating-grid');
 const seatRowsInput = document.getElementById('seat-rows');
 const seatColsInput = document.getElementById('seat-cols');
+let seatDnDWired = false;
+let seatDragFromIndex = -1;
+let seatDragDidMove = false;
 const focusProgress = document.getElementById('focus-progress');
 const progressText = document.getElementById('progress-text');
 const progressFill = document.getElementById('progress-fill');
@@ -40,19 +48,170 @@ const closeManageMeetingModal = document.getElementById('close-manage-meeting-mo
 const meetingDurationValue = document.getElementById('meeting-duration-value');
 const manageMeetingJoinBtn = document.getElementById('manage-meeting-join-btn');
 const manageMeetingStopBtn = document.getElementById('manage-meeting-stop-btn');
+const endMeetConfirmModal = document.getElementById('end-meet-confirm-modal');
+const endMeetConfirmClose = document.getElementById('end-meet-confirm-close');
+const endMeetConfirmCancel = document.getElementById('end-meet-confirm-cancel');
+const endMeetConfirmOk = document.getElementById('end-meet-confirm-ok');
 let focusIndex = -1;
 let meetingDurationInterval = null;
-let currentMeetingState = { meetingId: '', joinUrl: '', startTime: null };
+
+function showManageClassToast(message) {
+    if (!message) return;
+    if (typeof window.ensureToastInBodyForPortal === 'function') {
+        window.ensureToastInBodyForPortal();
+    }
+    if (typeof window.showToast === 'function') {
+        window.showToast(message);
+        return;
+    }
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+function openEndMeetConfirmModal() {
+    if (!endMeetConfirmModal) return;
+    endMeetConfirmModal.style.display = 'flex';
+    endMeetConfirmModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeEndMeetConfirmModal() {
+    if (!endMeetConfirmModal) return;
+    endMeetConfirmModal.style.display = 'none';
+    endMeetConfirmModal.setAttribute('aria-hidden', 'true');
+}
 
 function clamp(n, min, max) { n = parseInt(n, 10) || 0; return Math.max(min, Math.min(max, n)); }
 
 function getGridSize() {
-    const classCode = document.body.dataset.classCode || '';
+    const classCode = managePageRoot().dataset.classCode || '';
     const lsRows = localStorage.getItem(`seatRows_${classCode}`);
     const lsCols = localStorage.getItem(`seatCols_${classCode}`);
     const rows = clamp(seatRowsInput?.value || lsRows || 4, 1, 20);
     const cols = clamp(seatColsInput?.value || lsCols || 6, 1, 20);
     return { rows, cols };
+}
+
+function studentSeatKey(student) {
+    const id = (student?.id || '').trim();
+    if (id) return id;
+    return (student?.studentEmail || '').trim();
+}
+
+function buildSeatAssignmentsPayload() {
+    const { rows, cols } = getGridSize();
+    const total = rows * cols;
+    const assignments = [];
+    for (let i = 0; i < total; i++) {
+        const s = studentsData[i];
+        if (!s) continue;
+        const key = studentSeatKey(s);
+        if (!key) continue;
+        assignments.push({ studentKey: key, seatIndex: i });
+    }
+    return assignments;
+}
+
+async function persistSeatAssignments() {
+    const classCode = managePageRoot().dataset.classCode || currentClassCode || '';
+    if (!classCode) return;
+    try {
+        const body = { classCode, assignments: buildSeatAssignmentsPayload() };
+        const res = await fetch('/AdminManageClass/SaveSeatAssignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            credentials: 'same-origin'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.success === false) {
+            throw new Error(data?.message || `Save failed (${res.status})`);
+        }
+        if (typeof window.showToast === 'function') window.showToast('Seating updated.');
+    } catch (e) {
+        console.error('persistSeatAssignments', e);
+        if (typeof window.showToast === 'function') window.showToast('⚠️ Could not save seating. Changes may not persist.');
+    }
+}
+
+function moveStudentInSeatOrder(fromIndex, toIndex) {
+    if (!Array.isArray(studentsData)) return;
+    const fi = fromIndex | 0;
+    const ti = toIndex | 0;
+    if (fi < 0 || ti < 0 || fi === ti || fi >= studentsData.length) return;
+    const moved = studentsData.splice(fi, 1)[0];
+    // If removing before the insert point, indices shift; splice handles relative to current array.
+    const insertAt = fi < ti ? (ti - 1) : ti;
+    const clamped = Math.max(0, Math.min(studentsData.length, insertAt));
+    studentsData.splice(clamped, 0, moved);
+}
+
+function wireSeatDnDOnce() {
+    if (seatDnDWired) return;
+    if (!seatingGridEl) return;
+    seatDnDWired = true;
+
+    seatingGridEl.addEventListener('dragstart', (e) => {
+        const seat = e.target && e.target.closest ? e.target.closest('.seat') : null;
+        if (!seat || !seat.classList.contains('filled')) return;
+        const idx = parseInt(seat.getAttribute('data-seat-index') || '-1', 10);
+        if (!(idx >= 0)) return;
+        seatDragFromIndex = idx;
+        seatDragDidMove = false;
+        try {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(idx));
+        } catch { }
+        seat.classList.add('dragging');
+    });
+
+    seatingGridEl.addEventListener('dragend', (e) => {
+        const seat = e.target && e.target.closest ? e.target.closest('.seat') : null;
+        if (seat) seat.classList.remove('dragging');
+        seatingGridEl.querySelectorAll('.seat.drag-over').forEach(el => el.classList.remove('drag-over'));
+        seatDragFromIndex = -1;
+    });
+
+    seatingGridEl.addEventListener('dragover', (e) => {
+        const seat = e.target && e.target.closest ? e.target.closest('.seat') : null;
+        if (!seat) return;
+        e.preventDefault();
+        try { e.dataTransfer.dropEffect = 'move'; } catch { }
+        if (!seat.classList.contains('drag-over')) seat.classList.add('drag-over');
+    });
+
+    seatingGridEl.addEventListener('dragleave', (e) => {
+        const seat = e.target && e.target.closest ? e.target.closest('.seat') : null;
+        if (!seat) return;
+        // Only clear when leaving the seat element itself
+        const related = e.relatedTarget;
+        if (related && seat.contains(related)) return;
+        seat.classList.remove('drag-over');
+    });
+
+    seatingGridEl.addEventListener('drop', async (e) => {
+        const seat = e.target && e.target.closest ? e.target.closest('.seat') : null;
+        if (!seat) return;
+        e.preventDefault();
+        seat.classList.remove('drag-over');
+
+        let from = seatDragFromIndex;
+        try {
+            const raw = e.dataTransfer.getData('text/plain');
+            const parsed = parseInt(raw, 10);
+            if (Number.isFinite(parsed)) from = parsed;
+        } catch { }
+
+        const to = parseInt(seat.getAttribute('data-seat-index') || '-1', 10);
+        if (!(from >= 0) || !(to >= 0)) return;
+        if (from === to) return;
+
+        seatDragDidMove = true;
+        moveStudentInSeatOrder(from, to);
+        renderSeatGridFromData();
+        await persistSeatAssignments();
+    });
 }
 
 function initialsFrom(name) {
@@ -65,6 +224,7 @@ function initialsFrom(name) {
 
 function renderSeatGridFromData() {
     if (!seatingGridEl) return;
+    wireSeatDnDOnce();
     const { rows, cols } = getGridSize();
     seatingGridEl.style.setProperty('--seat-cols', cols);
     const total = rows * cols;
@@ -73,12 +233,14 @@ function renderSeatGridFromData() {
     for (let i = 0; i < total; i++) {
         const seat = document.createElement('div');
         seat.className = 'seat';
+        seat.setAttribute('data-seat-index', String(i));
         const student = studentsData[i];
         if (student) {
             seat.classList.add('filled');
             seat.setAttribute('data-student-id', student.id || '');
             seat.setAttribute('data-student-email', student.studentEmail || '');
             seat.setAttribute('data-student-name', student.studentName || '');
+            seat.setAttribute('draggable', 'true');
             const name = student.studentName || '';
             const init = initialsFrom(name);
             const avatar = document.createElement('div');
@@ -97,6 +259,10 @@ function renderSeatGridFromData() {
             seat.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                if (seatDragDidMove) {
+                    seatDragDidMove = false;
+                    return;
+                }
                 openStudentMenu(seat, seat);
             });
         } else {
@@ -108,19 +274,26 @@ function renderSeatGridFromData() {
 }
 
 function persistGridSize() {
-    const classCode = document.body.dataset.classCode || '';
+    const classCode = managePageRoot().dataset.classCode || '';
     if (seatRowsInput) localStorage.setItem(`seatRows_${classCode}`, clamp(seatRowsInput.value, 1, 20));
     if (seatColsInput) localStorage.setItem(`seatCols_${classCode}`, clamp(seatColsInput.value, 1, 20));
 }
 
 // Dummy data removed - now using real data from database via ExportData endpoint
 
-// Back button - go back to class page
-backButton?.addEventListener('click', () => { 
-    if (typeof window.showToast === 'function') {
-        window.showToast('Returning...');
+// Back — same chrome as AdminClass; prefer return to subject (AdminClass) when URL is provided
+backButton?.addEventListener('click', () => {
+    const root = managePageRoot();
+    const target = (root?.dataset?.adminClassUrl || '').trim() || '/professordb/ProfessorDb';
+    const msg = typeof window.resolveAdminNavToastMessage === 'function'
+        ? window.resolveAdminNavToastMessage(target)
+        : 'Returning...';
+    if (typeof window.navigateWithProfessorLoading === 'function') {
+        window.navigateWithProfessorLoading(target, msg, 600);
+    } else {
+        if (typeof window.showToast === 'function') window.showToast(msg);
+        setTimeout(() => { window.location.href = target; }, 600);
     }
-    setTimeout(() => window.location.href = '/professordb/ProfessorDb', 600);
 });
 
 function renderStudents(list) {
@@ -138,16 +311,30 @@ function renderStudents(list) {
             const name = student.studentName || '';
             const parts = name.split(/\s+/).filter(Boolean);
             const initials = parts.length ? (parts[0].slice(0,1) + (parts.length > 1 ? parts[parts.length-1].slice(0,1) : '')) .toUpperCase() : '';
+            const statusLower = (student.status || '').toLowerCase();
+            const attClass = statusLower === 'present' ? 'present' : statusLower === 'late' ? 'late' : statusLower === 'absent' ? 'absent' : '';
+            const stClass = statusLower === 'present' ? 'status-present' : statusLower === 'late' ? 'status-late' : statusLower === 'absent' ? 'status-absent' : '';
+            const stLabel = (student.status || '').trim();
+            const id = student.id || '';
+            const email = student.studentEmail || '';
 
             const card = document.createElement('div');
-            card.classList.add('student-card');
-            card.setAttribute('data-student-id', student.id || '');
+            card.className = 'student-card' + (attClass ? ' ' + attClass : '');
+            card.setAttribute('data-student-id', id);
+            card.setAttribute('data-student-email', email);
+            card.setAttribute('data-student-name', name);
             card.innerHTML = `
                 <div class="student-photo avatar">${initials}</div>
                 <div class="student-info">
                     <div class="student-name">${name}</div>
-                    <div class="student-email">${student.studentEmail || ''}</div>
-                    <div class="student-id">ID: ${student.id || ''}</div>
+                    <div class="student-email">${email}</div>
+                    <div class="student-id">ID: ${id}</div>
+                </div>
+                <div class="student-card-actions">
+                    <span class="student-status seat-status ${stClass}">${stLabel}</span>
+                    <button type="button" class="student-card-more" data-id="${id}" data-student-id="${id}" aria-haspopup="true" aria-label="Student actions">
+                        <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                    </button>
                 </div>`;
             studentListContainer.appendChild(card);
         });
@@ -155,6 +342,10 @@ function renderStudents(list) {
 
     if (studentCountEl) {
         studentCountEl.textContent = `Students: ${arr.length}`;
+    }
+    const sidebarCount = document.getElementById('sidebarStudentCount');
+    if (sidebarCount) {
+        sidebarCount.textContent = String(arr.length);
     }
 }
 
@@ -324,25 +515,33 @@ async function markAttendance(studentId, status) {
         });
         const data = await res.json();
         if (typeof window.showToast === 'function') window.showToast(data.message || 'Attendance updated');
-        // Optimistically update the row's status label
-        const row = document.querySelector(`.student-card .actions [data-id='${studentId}']`)?.closest('.student-card');
+        const sid = String(studentId ?? '');
+        const stu = studentsData.find(s => String(s.id) === sid);
+        if (stu) stu.status = status;
+        renderSeatGridFromData();
+
+        let row = null;
+        studentListContainer?.querySelectorAll('.student-card').forEach((c) => {
+            if ((c.getAttribute('data-student-id') || '') === sid) row = c;
+        });
         if (row) {
             const label = row.querySelector('.student-status');
             if (label) {
                 const statusLower = (status || '').toLowerCase();
-                // update class to match server-rendered style: status-<lower>
-                label.className = `student-status status-${statusLower}`;
+                label.className = `student-status seat-status status-${statusLower}`;
 
-                // update inner att-text if present
                 const att = label.querySelector('.att-text');
                 if (att) att.textContent = status;
 
-                // update icon if present
                 const iconEl = label.querySelector('i');
                 if (iconEl) {
                     iconEl.className = `fa-solid ${statusLower === 'present' ? 'fa-circle-check' : statusLower === 'late' ? 'fa-clock' : 'fa-circle-xmark'}`;
                 }
+                if (!att && !iconEl) label.textContent = status || '';
             }
+            row.classList.remove('present', 'absent', 'late');
+            const sl = (status || '').toLowerCase();
+            if (sl === 'present' || sl === 'absent' || sl === 'late') row.classList.add(sl);
         }
         // Do not reload students; attendance is stored separately from StudentRecord list
     } catch (err) { console.error(err); if (typeof window.showToast === 'function') window.showToast("⚠️ Could not update attendance."); }
@@ -378,7 +577,7 @@ function computeStanding(attStatusList, taskAttained, taskTotal) {
 
 async function exportData() {
     try {
-        const classCode = document.body?.dataset?.classCode || "CLASSCODE";
+        const classCode = managePageRoot()?.dataset?.classCode || "CLASSCODE";
         if (typeof window.showToast === 'function') {
             window.showToast("📥 Loading data from database...");
         }
@@ -434,7 +633,8 @@ async function exportData() {
         });
         const dateStr = reportDate.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
         const sectionName = ((document.querySelector('.section-name')?.textContent) || '').replace(/^Section:\s*/i,'').trim();
-        const teacherName = (document.querySelector('.bottom-bar .user-name')?.textContent || '').trim();
+        const teacherName = (document.getElementById('manageClassTeacherName')?.textContent
+            || document.querySelector('.bottom-bar .user-name')?.textContent || '').trim();
         const html = `
 <!doctype html>
 <html>
@@ -513,14 +713,38 @@ body { font-family: Arial, 'Segoe UI', Roboto, sans-serif; margin: 40px; color: 
                     const stStyle = sl === 'present' ? 'statusPresent' : sl === 'late' ? 'statusLate' : 'statusAbsent';
                     body.push([{ text: r.fullName || '', style: 'cell' }, { text: r.status || '', style: stStyle }]);
                 });
+                /** Match preview HTML: logo + centered block, then Attendance | date row, then table */
+                const headerStack = [
+                    { text: schoolName, style: 'school', alignment: 'center' },
+                    { text: subjectName || '', style: 'subtitle', alignment: 'center', margin: [0, 2, 0, 0] }
+                ];
+                if (sectionName) {
+                    headerStack.push({ text: `Section: ${sectionName}`, style: 'metaHead', alignment: 'center', margin: [0, 2, 0, 0] });
+                }
+                if (teacherName) {
+                    headerStack.push({ text: `Teacher: ${teacherName}`, style: 'metaHead', alignment: 'center', margin: [0, 2, 0, 0] });
+                }
+                const headerBlock = logoDataUrl
+                    ? {
+                        columns: [
+                            { image: logoDataUrl, width: 64, margin: [0, 0, 12, 0] },
+                            { width: '*', stack: headerStack }
+                        ],
+                        margin: [0, 0, 0, 0]
+                    }
+                    : { stack: headerStack, margin: [0, 0, 0, 0] };
+
                 const docDefinition = {
                     info: { title: `${subjectName} — Attendance ${dateStr}` },
                     content: [
-                        { text: 'Sta. Lucia Senior Highschool', style: 'school' },
-                        { text: subjectName || 'Subject', style: 'title', margin: [0, 2, 0, 0] },
-                        { text: (sectionName ? `Section: ${sectionName}` : ''), style: 'meta' },
-                        { text: (teacherName ? `Teacher: ${teacherName}` : ''), style: 'meta' },
-                        { text: dateStr, style: 'meta', margin: [0, 0, 0, 8] },
+                        headerBlock,
+                        {
+                            columns: [
+                                { text: 'Attendance', style: 'attendanceLabel', width: '*' },
+                                { text: dateStr, style: 'metaDate', alignment: 'right', width: 'auto' }
+                            ],
+                            margin: [0, 26, 0, 24]
+                        },
                         {
                             table: {
                                 headerRows: 1,
@@ -528,14 +752,16 @@ body { font-family: Arial, 'Segoe UI', Roboto, sans-serif; margin: 40px; color: 
                                 body
                             },
                             layout: {
-                                fillColor: (rowIndex) => rowIndex === 0 ? '#f3f6fb' : null
+                                fillColor: (rowIndex) => rowIndex === 0 ? '#f1f5f9' : null
                             }
                         }
                     ],
                     styles: {
-                        school: { fontSize: 12, bold: true, color: '#1e293b' },
-                        title: { fontSize: 14, bold: true, color: '#0b213a' },
-                        meta: { fontSize: 10, color: '#475569' },
+                        school: { fontSize: 22, bold: true, color: '#0b213a' },
+                        subtitle: { fontSize: 16, bold: true, color: '#334155' },
+                        metaHead: { fontSize: 15, bold: true, color: '#334155' },
+                        attendanceLabel: { fontSize: 14, bold: true, color: '#0b213a' },
+                        metaDate: { fontSize: 14, color: '#0b213a' },
                         tableHeader: { bold: true, fontSize: 11, color: '#111827' },
                         cell: { fontSize: 10 },
                         statusPresent: { fontSize: 10, color: '#16a34a' },
@@ -587,17 +813,7 @@ body { font-family: Arial, 'Segoe UI', Roboto, sans-serif; margin: 40px; color: 
         const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
         const baseName = `Class_${classCode}_Attendance_${ts}`;
         const overlay = document.createElement("div");
-        overlay.style.position = "fixed";
-        overlay.style.right = "20px";
-        overlay.style.bottom = "20px";
-        overlay.style.background = "#fff";
-        overlay.style.border = "1px solid rgba(16,24,40,0.12)";
-        overlay.style.borderRadius = "10px";
-        overlay.style.boxShadow = "0 10px 24px rgba(16,24,40,0.12)";
-        overlay.style.padding = "10px";
-        overlay.style.display = "flex";
-        overlay.style.gap = "8px";
-        overlay.style.zIndex = "9999";
+        overlay.className = "admin-manage-export-overlay";
         const btnPdf = document.createElement("button");
         btnPdf.textContent = "Preview";
         btnPdf.className = "btn small primary";
@@ -777,14 +993,23 @@ document.addEventListener("click", async (e) => {
     }
 
     if (e.target.closest && e.target.closest('#join-meet-btn')) {
-        const meetingId = document.body.dataset.meetingId || '';
-        const joinUrl = document.body.dataset.meetingJoinUrl || '';
-        const createdAt = document.body.dataset.meetingCreatedAt || '';
-        if (joinUrl && (meetingId || createdAt)) {
-            openManageMeetingModal(joinUrl, meetingId, createdAt || new Date().toISOString());
-        } else if (typeof window.showToast === 'function') {
-            window.showToast('⚠️ Meeting link not found.');
+        const root = managePageRoot();
+        const joinUrl = root.dataset.meetingJoinUrl || '';
+        if (joinUrl) {
+            window.open(joinUrl, '_blank', 'noopener,noreferrer');
+        } else {
+            showManageClassToast('⚠️ Meeting link not found.');
         }
+        return;
+    }
+
+    if (e.target.closest && e.target.closest('#end-meet-btn')) {
+        const meetingId = managePageRoot().dataset.meetingId || '';
+        if (!meetingId) {
+            showManageClassToast('⚠️ No active meeting.');
+            return;
+        }
+        openEndMeetConfirmModal();
         return;
     }
 
@@ -809,10 +1034,17 @@ function closeAttendanceModal() {
     if (focusProgress) focusProgress.style.display = 'none';
 }
 
+/** Value for <input type="datetime-local"> in local time (minute precision). */
+function formatDateTimeLocalValue(date) {
+    const d = date instanceof Date ? date : new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function openMeetModal() {
     if (!meetModal) return;
     if (meetTitleInput) meetTitleInput.value = '';
-    if (meetScheduleInput) meetScheduleInput.value = '';
+    if (meetScheduleInput) meetScheduleInput.value = formatDateTimeLocalValue(new Date());
     meetModal.style.display = 'flex';
     document.body.classList.add('focus-mode-active');
 }
@@ -821,35 +1053,6 @@ function closeMeetModalInternal() {
     if (!meetModal) return;
     meetModal.style.display = 'none';
     document.body.classList.remove('focus-mode-active');
-}
-
-function formatDuration(ms) {
-    const totalSec = Math.floor(ms / 1000);
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
-}
-
-function openManageMeetingModal(joinUrl, meetingId, startTimeIso) {
-    currentMeetingState = { meetingId: meetingId || '', joinUrl: joinUrl || '', startTime: startTimeIso ? new Date(startTimeIso) : new Date() };
-    if (manageMeetingModal) {
-        manageMeetingModal.classList.add('show');
-        manageMeetingModal.style.display = 'flex';
-        document.body.classList.add('focus-mode-active');
-    }
-    if (meetingDurationValue) meetingDurationValue.textContent = '00:00:00';
-    if (manageMeetingJoinBtn) manageMeetingJoinBtn.dataset.joinUrl = joinUrl || '';
-    if (manageMeetingStopBtn) manageMeetingStopBtn.dataset.meetingId = meetingId || '';
-
-    if (meetingDurationInterval) clearInterval(meetingDurationInterval);
-    function tick() {
-        if (!currentMeetingState.startTime || !meetingDurationValue) return;
-        const elapsed = Date.now() - currentMeetingState.startTime.getTime();
-        meetingDurationValue.textContent = formatDuration(Math.max(0, elapsed));
-    }
-    tick();
-    meetingDurationInterval = setInterval(tick, 1000);
 }
 
 function closeManageMeetingModalInternal() {
@@ -874,6 +1077,7 @@ document.addEventListener('keydown', (e) => {
         closeAttendanceModal();
         closeMeetModalInternal();
         closeManageMeetingModalInternal();
+        closeEndMeetConfirmModal();
         closeMenus();
     }
 });
@@ -890,15 +1094,18 @@ manageMeetingModal?.addEventListener('click', (e) => {
 closeManageMeetingModal?.addEventListener('click', closeManageMeetingModalInternal);
 
 manageMeetingJoinBtn?.addEventListener('click', () => {
-    const url = manageMeetingJoinBtn?.dataset?.joinUrl || currentMeetingState.joinUrl;
-    if (url) window.location.href = url;
+    const root = managePageRoot();
+    const url = manageMeetingJoinBtn?.dataset?.joinUrl || root.dataset?.meetingJoinUrl || '';
+    if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
 });
 
-manageMeetingStopBtn?.addEventListener('click', async () => {
-    const meetingId = manageMeetingStopBtn?.dataset?.meetingId || currentMeetingState.meetingId;
+/** Deletes meeting content server-side and reloads so Create Meet can be used again. */
+async function stopMeetingAndReload(meetingId) {
     if (!meetingId) {
         if (typeof window.showToast === 'function') window.showToast('⚠️ Meeting ID not found.');
-        return;
+        return false;
     }
     try {
         const res = await fetch('/AdminManageClass/DeleteMeeting', {
@@ -911,49 +1118,179 @@ manageMeetingStopBtn?.addEventListener('click', async () => {
             closeManageMeetingModalInternal();
             if (typeof window.showToast === 'function') window.showToast('Meeting ended.');
             window.location.reload();
-        } else {
-            if (typeof window.showToast === 'function') window.showToast(data?.message || 'Failed to stop meeting.');
+            return true;
         }
+        if (typeof window.showToast === 'function') window.showToast(data?.message || 'Failed to stop meeting.');
+        return false;
     } catch (err) {
         console.error('Stop meeting error:', err);
         if (typeof window.showToast === 'function') window.showToast('⚠️ Could not stop meeting.');
+        return false;
     }
+}
+
+manageMeetingStopBtn?.addEventListener('click', async () => {
+    const root = managePageRoot();
+    const meetingId = manageMeetingStopBtn?.dataset?.meetingId || root.dataset?.meetingId || '';
+    await stopMeetingAndReload(meetingId);
 });
 
+endMeetConfirmModal?.addEventListener('click', (e) => {
+    if (e.target === endMeetConfirmModal) closeEndMeetConfirmModal();
+});
+endMeetConfirmClose?.addEventListener('click', closeEndMeetConfirmModal);
+endMeetConfirmCancel?.addEventListener('click', closeEndMeetConfirmModal);
+endMeetConfirmOk?.addEventListener('click', async () => {
+    const meetingId = managePageRoot().dataset.meetingId || '';
+    closeEndMeetConfirmModal();
+    if (!meetingId) return;
+    await stopMeetingAndReload(meetingId);
+});
+
+function formatMeetScheduleBadge(isoOrMs) {
+    if (isoOrMs == null || isoOrMs === '') return '';
+    const d = new Date(isoOrMs);
+    if (Number.isNaN(d.getTime())) return '';
+    try {
+        return d.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        });
+    } catch (_) {
+        return '';
+    }
+}
+
+/** After CreateMeet API success: swap toolbar to Join / End without full page reload. */
+function applyMeetingToolbarAfterCreate(data) {
+    if (!data || !data.success) return;
+    const root = managePageRoot();
+    if (data.contentId) root.dataset.meetingId = String(data.contentId);
+    if (data.joinAppUrl) root.dataset.meetingJoinUrl = String(data.joinAppUrl);
+    const created = data.createdAt;
+    if (created != null) {
+        root.dataset.meetingCreatedAt = typeof created === 'string'
+            ? created
+            : new Date(created).toISOString();
+    }
+
+    const createBtn = document.getElementById('create-meet-btn');
+    const exportBtn = document.getElementById('export-btn');
+    if (!createBtn || !exportBtn || !exportBtn.parentNode) return;
+
+    const topRight = exportBtn.parentNode;
+    createBtn.remove();
+
+    const joinBtn = document.createElement('button');
+    joinBtn.id = 'join-meet-btn';
+    joinBtn.type = 'button';
+    joinBtn.className = 'btn small primary';
+    joinBtn.title = 'Open the class meeting (Jitsi) in a new tab';
+    joinBtn.innerHTML = '<i class="fa-solid fa-video" aria-hidden="true"></i> Join Meeting';
+
+    const endBtn = document.createElement('button');
+    endBtn.id = 'end-meet-btn';
+    endBtn.type = 'button';
+    endBtn.className = 'btn small danger';
+    endBtn.title = 'End this meeting for the class. You can create a new meeting afterward.';
+    endBtn.innerHTML = '<i class="fa-solid fa-phone-slash" aria-hidden="true"></i> End Meeting';
+
+    topRight.insertBefore(joinBtn, exportBtn);
+    topRight.insertBefore(endBtn, exportBtn);
+
+    if (data.scheduledAt) {
+        const schedText = formatMeetScheduleBadge(data.scheduledAt);
+        if (schedText) {
+            const wrap = document.createElement('span');
+            wrap.className = 'meet-schedule-label';
+            wrap.title = 'Meeting scheduled start';
+            wrap.innerHTML =
+                '<i class="fa-regular fa-calendar-days" aria-hidden="true"></i>' +
+                '<span class="meet-schedule-text">' +
+                '<span class="meet-schedule-key">Scheduled</span>' +
+                '<span class="meet-schedule-datetime"></span>' +
+                '</span>';
+            const dtEl = wrap.querySelector('.meet-schedule-datetime');
+            if (dtEl) dtEl.textContent = schedText;
+            topRight.insertBefore(wrap, exportBtn);
+        }
+    }
+}
+
+/** datetime-local value is wall time in the user's timezone — convert to ISO UTC for the server. */
+function meetScheduleToIsoUtc(value) {
+    const v = (value || '').trim();
+    if (!v) return new Date().toISOString();
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return new Date().toISOString();
+    return d.toISOString();
+}
+
 async function createMeet() {
-    const classCode = document.body.dataset.classCode || '';
+    const classCode = managePageRoot().dataset.classCode || '';
     if (!classCode) {
         if (typeof window.showToast === 'function') window.showToast('⚠️ Missing class code.');
         return;
     }
     const title = meetTitleInput?.value || '';
-    const scheduledAt = meetScheduleInput?.value || '';
+    const scheduledAt = meetScheduleToIsoUtc(meetScheduleInput?.value || '');
+
+    closeMeetModalInternal();
+    if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(true);
+    if (confirmMeetBtn) {
+        confirmMeetBtn.disabled = true;
+        confirmMeetBtn.setAttribute('aria-busy', 'true');
+    }
+
     try {
         const res = await fetch('/AdminManageClass/CreateMeet', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ classCode, title, scheduledAt })
         });
-        const data = await res.json();
+        let data;
+        try {
+            data = await res.json();
+        } catch (parseErr) {
+            if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(false);
+            if (confirmMeetBtn) {
+                confirmMeetBtn.disabled = false;
+                confirmMeetBtn.removeAttribute('aria-busy');
+            }
+            if (typeof window.showToast === 'function') window.showToast('⚠️ Invalid response from server.');
+            return;
+        }
         if (!res.ok || !data.success) {
+            if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(false);
+            if (confirmMeetBtn) {
+                confirmMeetBtn.disabled = false;
+                confirmMeetBtn.removeAttribute('aria-busy');
+            }
             const msg = data.message || 'Failed to create meeting.';
             if (typeof window.showToast === 'function') window.showToast(`⚠️ ${msg}`);
             return;
         }
-        closeMeetModalInternal();
-        if (typeof window.showToast === 'function') {
-            window.showToast(data.message || '✅ Meeting created and emails sent.');
+
+        if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(false);
+        if (confirmMeetBtn) {
+            confirmMeetBtn.disabled = false;
+            confirmMeetBtn.removeAttribute('aria-busy');
         }
-        const joinAppUrl = data.joinAppUrl || data.joinUrl || '';
-        const contentId = data.contentId || '';
-        const createdAt = data.createdAt ? (typeof data.createdAt === 'string' ? data.createdAt : new Date(data.createdAt).toISOString()) : new Date().toISOString();
-        if (joinAppUrl) {
-            openManageMeetingModal(joinAppUrl, contentId, createdAt);
-        } else {
-            setTimeout(() => window.location.reload(), 800);
-        }
+
+        applyMeetingToolbarAfterCreate(data);
+        const okMsg = data.message || 'Meeting created.';
+        if (typeof window.showToast === 'function') window.showToast(okMsg);
+        else showManageClassToast(okMsg);
     } catch (err) {
         console.error('CreateMeet error:', err);
+        if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(false);
+        if (confirmMeetBtn) {
+            confirmMeetBtn.disabled = false;
+            confirmMeetBtn.removeAttribute('aria-busy');
+        }
         if (typeof window.showToast === 'function') window.showToast('⚠️ Could not create meeting.');
     }
 }
@@ -1112,7 +1449,7 @@ document.addEventListener('click', (ev) => {
     const subOpen = attendanceMenuEl && attendanceMenuEl.style.display === 'block';
     const inStudentMenu = menuOpen && studentMenuEl.contains(target);
     const inAttendanceMenu = subOpen && attendanceMenuEl.contains(target);
-    const onAnchor = !!(target.closest && (target.closest('.seat.filled') || target.closest('.unenroll-btn')));
+    const onAnchor = !!(target.closest && (target.closest('.seat.filled') || target.closest('.unenroll-btn') || target.closest('.student-card-more')));
 
     if (subOpen && !inAttendanceMenu && !inStudentMenu && !onAnchor) {
         attendanceMenuEl.style.display = 'none';
@@ -1122,11 +1459,26 @@ document.addEventListener('click', (ev) => {
     }
 });
 
+function wireStudentListActionMenus() {
+    if (!studentListContainer || studentListContainer.dataset.studentMenuWired === '1') return;
+    studentListContainer.dataset.studentMenuWired = '1';
+    studentListContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest && e.target.closest('.student-card-more');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const card = btn.closest('.student-card');
+        if (!card) return;
+        openStudentMenu(btn, card);
+    });
+}
+
 // Initialize on page load
 document.addEventListener("DOMContentLoaded", async () => {
-    currentClassCode = document.body.dataset.classCode || '';
+    currentClassCode = managePageRoot().dataset.classCode || '';
     console.log('AdminManageClass initialized with classCode:', currentClassCode);
     
+    wireStudentListActionMenus();
     attachButtonListeners();
     wireInlineButtons(document);
     

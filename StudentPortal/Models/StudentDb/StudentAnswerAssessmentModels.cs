@@ -34,6 +34,12 @@ namespace StudentPortal.Models.StudentDb
 	{
 		public string StudentId { get; set; } = ""; // optional
 
+		/// <summary>
+		/// Optional routing context for server-side integrity checks (recommended for JSON submits).
+		/// </summary>
+		public string ClassCode { get; set; } = "";
+		public string ContentId { get; set; } = "";
+
 		public List<QuestionAnswer> Answers { get; set; } = new();
 		public string AntiCheatSummary { get; set; } = "";
 		public DateTime SubmittedAtUtc { get; set; } = DateTime.UtcNow;

@@ -26,7 +26,13 @@ namespace StudentPortal.Controllers
 
             var email = HttpContext.Session.GetString("UserEmail");
             if (string.IsNullOrEmpty(email))
-                return RedirectToAction("Index", "StudentDb");
+            {
+                // Preserve the exact invitation/deep-link (including query string) so the user lands back here after login.
+                var returnUrl = $"{Request.Path}{Request.QueryString}";
+                if (string.IsNullOrWhiteSpace(returnUrl))
+                    returnUrl = $"/StudentClass/{classCode}";
+                return RedirectToAction("Login", "Account", new { returnUrl });
+            }
 
             // Get class details from database
             var classItem = await _mongoDb.GetClassByCodeAsync(classCode);
@@ -55,7 +61,7 @@ namespace StudentPortal.Controllers
                     "material" => $"/StudentMaterial/{classItem.ClassCode}/{content.Id}",
                     "task" => $"/StudentTask/{classItem.ClassCode}/{content.Id}",
                     "assessment" => $"/StudentAssessment/{classItem.ClassCode}/{content.Id}",
-                    "announcement" => $"/StudentAnnouncement/{classItem.ClassCode}/{content.Id}",
+                    "announcement" => null,
                     "meeting" => !string.IsNullOrWhiteSpace(content.LinkUrl) ? content.LinkUrl : null,
                     _ => null
                 };
@@ -65,13 +71,19 @@ namespace StudentPortal.Controllers
 
                 contentCards.Add(new ContentCard
                 {
-                    Type = contentType, // USE ACTUAL DATABASE TYPE
-                    Title = content.Title,
-                    Meta = !string.IsNullOrEmpty(content.MetaText)
-                           ? content.MetaText
-                           : $"Posted: {content.CreatedAt:MMM dd, yyyy}",
+                    ContentId = content.Id ?? string.Empty,
+                    Type = contentType,
+                    Title = contentType == "announcement"
+                        ? (string.IsNullOrWhiteSpace(content.Description) ? "(No announcement text)" : content.Description)
+                        : content.Title,
+                    Meta = contentType == "announcement"
+                        ? $"Posted: {content.CreatedAt.ToLocalTime():MMM d, yyyy h:mm tt}"
+                        : (!string.IsNullOrEmpty(content.MetaText)
+                            ? content.MetaText
+                            : $"Posted: {content.CreatedAt:MMM dd, yyyy}"),
                     TargetAction = targetAction,
-                    Urgency = urgency // USE ACTUAL DATABASE URGENCY
+                    IconClass = GetIconByContentType(contentType),
+                    Urgency = urgency
                 });
             }
 
@@ -85,22 +97,63 @@ namespace StudentPortal.Controllers
                                     ? classItem.CreatorInitials
                                     : GetInitials(resolvedInstructorName);
 
-            var roleLabel = (!string.IsNullOrWhiteSpace(classItem.CreatorRole) && classItem.CreatorRole.ToLower() == "professor") ? "Professor" : "Instructor";
+            var roleLabel = "Teacher";
+            string teacherDepartment = string.Empty;
+            string roomName = string.Empty;
+            string floorDisplay = string.Empty;
+            if (!string.IsNullOrWhiteSpace(classItem.OwnerEmail))
+            {
+                try
+                {
+                    teacherDepartment = await _mongoDb.GetProfessorDepartmentByEmailAsync(classItem.OwnerEmail) ?? string.Empty;
+                    var prof = await _mongoDb.GetProfessorByEmailAsync(classItem.OwnerEmail);
+                    if (string.IsNullOrWhiteSpace(teacherDepartment) && prof?.Programs != null && prof.Programs.Count > 0)
+                        teacherDepartment = prof.Programs[0];
+                }
+                catch { /* optional */ }
+            }
+            if (!string.IsNullOrWhiteSpace(classItem.ScheduleId))
+            {
+                try
+                {
+                    var (schedRoom, schedFloor) = await _mongoDb.GetRoomAndFloorByScheduleIdAsync(classItem.ScheduleId);
+                    if (!string.IsNullOrWhiteSpace(schedRoom)) roomName = schedRoom;
+                    if (!string.IsNullOrWhiteSpace(schedFloor)) floorDisplay = schedFloor;
+                }
+                catch { /* optional */ }
+            }
 
             var viewModel = new StudentClassViewModel
             {
                 SubjectName = classItem.SubjectName ?? "Computer Science 101",
+                SectionName = !string.IsNullOrWhiteSpace(classItem.SectionLabel) ? classItem.SectionLabel : (classItem.Section ?? string.Empty),
                 SubjectCode = classItem.SubjectCode ?? "CS101",
                 ClassCode = classItem.ClassCode ?? classCode,
                 InstructorName = resolvedInstructorName,
                 InstructorInitials = resolvedInitials,
                 InstructorRole = roleLabel,
+                TeacherDepartment = teacherDepartment,
+                RoomName = roomName,
+                FloorDisplay = floorDisplay,
                 UserName = user.FullName ?? "Von GPT",
                 Avatar = GetAvatarInitials(user.FullName ?? "Von GPT"),
                 Contents = contentCards
             };
 
             return View("~/Views/StudentDb/StudentClass/Index.cshtml", viewModel);
+        }
+
+        private static string GetIconByContentType(string contentType)
+        {
+            return (contentType ?? string.Empty).ToLowerInvariant() switch
+            {
+                "material" => "fa-solid fa-book-open-reader",
+                "task" => "fa-solid fa-file-pen",
+                "assessment" => "fa-solid fa-circle-question",
+                "announcement" => "fa-solid fa-bullhorn",
+                "meeting" => "fa-solid fa-video",
+                _ => "fa-solid fa-file"
+            };
         }
 
         private string GetInitials(string name)
@@ -157,8 +210,8 @@ namespace StudentPortal.Controllers
                 SubjectName = "Computer Science 101",
                 TaskTitle = "Task 1: Intro Essay",
                 Description = "Write an essay introducing yourself and your interests in the field of Computer Science.",
-                PostedDate = System.DateTime.UtcNow.ToString("MMM d, yyyy"),
-                Deadline = System.DateTime.UtcNow.AddDays(7).ToString("MMM d, yyyy"),
+                PostedDate = System.DateTime.UtcNow.ToLocalTime().ToString("MMM d, yyyy"),
+                Deadline = System.DateTime.UtcNow.AddDays(7).ToLocalTime().ToString("MMM d, yyyy"),
                 StudentName = "Von GPT",
                 StudentInitials = "VG",
                 Attachments = new List<TaskAttachment>

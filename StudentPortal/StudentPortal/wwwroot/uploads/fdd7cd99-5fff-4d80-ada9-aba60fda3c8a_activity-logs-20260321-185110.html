@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Activity Logs Report</title>
+    <style>
+        :root {
+            --ink: #1f2940;
+            --muted: #6b7280;
+            --accent: #0f172a;
+            --brand: #0b6b2b;
+            --line: #e5e7eb;
+            --subtle: #f8fafc;
+        }
+        html, body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            color: var(--ink);
+            margin: 0;
+            background: #ffffff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .page {
+            padding: 28px 40px;
+        }
+        .report-header {
+            border-bottom: 2px solid var(--line);
+            padding-bottom: 16px;
+            display: grid;
+            grid-template-columns: 80px 1fr 80px;
+            align-items: center;
+        }
+        .header-logo {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        .logo-img {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+        }
+        .header-center {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .school {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: .3px;
+        }
+        .subtitle {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+        .report-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--line);
+        }
+        .table th, .table td {
+            border-top: 1px solid var(--line);
+            border-right: 1px solid var(--line);
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+        .table th:last-child, .table td:last-child { border-right: 0; }
+        .table thead th {
+            background: var(--subtle);
+            font-weight: 700;
+            text-align: left;
+        }
+        .table tbody tr:nth-child(even) td {
+            background: #fafafa;
+        }
+        .footer {
+            margin-top: 18px;
+            font-size: 11px;
+            color: var(--muted);
+            text-align: right;
+        }
+        @media print {
+            .page { padding: 0 12mm; }
+            .footer { page-break-inside: avoid; }
+        }
+    </style>
+    </head>
+<body>
+    <div class="page">
+        <div class="report-header">
+            <div class="header-logo">
+                <img class="logo-img" src="/img/logo.png" alt="School logo" />
+            </div>
+            <div class="header-center">
+                <div class="school">Sta. Lucia Senior Highschool</div>
+                <div class="report-title">Activity Logs Report</div>
+            </div>
+            <div></div>
+        </div>
+
+        <div class="meta">
+            <div>Generated: March 21, 2026 06:51 pm</div>
+            <div>Section: All Sections</div>
+            <div>Total Records: 9</div>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width: 22%;">Admin</th>
+                    <th style="width: 16%;">Email</th>
+                    <th style="width: 12%;">Date</th>
+                    <th style="width: 10%;">Time</th>
+                    <th style="width: 18%;">Action</th>
+                    <th style="width: 22%;">Target</th>
+                </tr>
+            </thead>
+            <tbody>
+                        <tr>
+                            <td>Rheyvon Enriquez Osorio</td>
+                            <td>osoriorheyvone@gmail.com</td>
+                            <td>03/15/2026</td>
+                            <td>11:40:44 am</td>
+                            <td>Create Teacher Account</td>
+                            <td>Danyels Ochoa Tolentino</td>
+                        </tr>
+                        <tr>
+                            <td>Rheyvon Enriquez Osorio</td>
+                            <td>osoriorheyvone@gmail.com</td>
+                            <td>03/15/2026</td>
+                            <td>11:36:40 am</td>
+                            <td>Create Teacher Account</td>
+                            <td>Danyel Ochoa Tolentino</td>
+                        </tr>
+                        <tr>
+                            <td>Rheyvon Enriquez Osorio</td>
+                            <td>osoriorheyvone@gmail.com</td>
+                            <td>03/12/2026</td>
+                            <td>05:44:16 pm</td>
+                            <td>Create Teacher Account</td>
+                            <td>Jelo Calderon</td>
+                        </tr>
+                        <tr>
+                            <td>Rheyvon Enriquez Osorio</td>
+                            <td>osoriorheyvone@gmail.com</td>
+                            <td>03/12/2026</td>
+                            <td>05:43:26 pm</td>
+                            <td>Create Teacher Account</td>
+                            <td>Ron Ivan Enriquez Osorio</td>
+                        </tr>
+                        <tr>
+                            <td>Rheyvon Enriquez Osorio</td>
+                            <td>osoriorheyvone@gmail.com</td>
+                            <td>03/12/2026</td>
+                            <td>05:42:51 pm</td>
+                            <td>Create Teacher Account</td>
+                            <td>Rheyvon E. Osorio</td>
+                        </tr>
+                        <tr>
+                            <td>Rheyvon Enriquez Osorio</td>
+                            <td>osoriorheyvone@gmail.com</td>
+                            <td>03/12/2026</td>
+                            <td>11:58:07 am</td>
+                            <td>Create Teacher Account</td>
+                            <td>daniel tolentino</td>
+                        </tr>
+                        <tr>
+                            <td>Rheyvon Enriquez Osorio</td>
+                            <td>osoriorheyvone@gmail.com</td>
+                            <td>02/24/2026</td>
+                            <td>04:34:08 pm</td>
+                            <td>Create Teacher Account</td>
+                            <td>daniel tolentino</td>
+                        </tr>
+                        <tr>
+                            <td>Rheyvon Enriquez Osorio</td>
+                            <td>osoriorheyvone@gmail.com</td>
+                            <td>02/24/2026</td>
+                            <td>03:42:32 pm</td>
+                            <td>Create Teacher Account</td>
+                            <td>Ron Ivan Enriquez Osorio</td>
+                        </tr>
+                        <tr>
+                            <td>Rheyvon Enriquez Osorio</td>
+                            <td>osoriorheyvone@gmail.com</td>
+                            <td>02/20/2026</td>
+                            <td>12:25:11 am</td>
+                            <td>Create Teacher Account</td>
+                            <td>Vo Von</td>
+                        </tr>
+            </tbody>
+        </table>
+
+        <div class="footer">
+            Exported by adminAccountCreation • 2026-03-21 18:51:10
+        </div>
+    </div>
+
+<!-- Visual Studio Browser Link -->
+<script type="text/javascript" src="/_vs/browserLink" async="async" id="__browserLink_initializationData" data-requestId="b6c4edc708094a12943c50f90ea7347e" data-requestMappingFromServer="false" data-connectUrl="http://localhost:57447/b35a95891b6646c2be36abc3b3931495/browserLink"></script>
+<!-- End Browser Link -->
+<script src="/_framework/aspnetcore-browser-refresh.js"></script></body>
+</html>

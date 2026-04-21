@@ -7,6 +7,7 @@ using StudentPortal.Models.AdminClass;
 using StudentPortal.Models.AdminDb;
 using StudentPortal.Models.AdminMaterial;
 using StudentPortal.Models.AdminTask;
+using StudentPortal.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -487,14 +488,38 @@ namespace StudentPortal.Services
                         professor.Email = email.Trim();
 
                     // Password / hash
-                    if (doc.Contains("passwordHash") && doc["passwordHash"].IsString)
-                        professor.PasswordHash = doc["passwordHash"].AsString;
-                    else if (doc.Contains("PasswordHash") && doc["PasswordHash"].IsString)
-                        professor.PasswordHashLegacy = doc["PasswordHash"].AsString;
-                    else if (doc.Contains("Password") && doc["Password"].IsString)
-                        professor.Password = doc["Password"].AsString;
-                    else if (doc.Contains("password") && doc["password"].IsString)
-                        professor.Password = doc["password"].AsString;
+                    //
+                    // IMPORTANT:
+                    // The StudentDB "Teachers" collection may store an ASP.NET Identity PasswordHasher hash.
+                    // StudentPortal login verifies professors using BCrypt. If we propagate the Teachers hash here,
+                    // the login will always fail with "wrong password" even if a correct BCrypt hash exists in Users.
+                    //
+                    // Prefer the portal Users.Password (BCrypt) when available; otherwise, fall back to whatever
+                    // the Teachers document contains.
+                    try
+                    {
+                        var portalUser = await GetUserByEmailAsync(professor.GetEmail());
+                        if (portalUser != null && !string.IsNullOrWhiteSpace(portalUser.Password))
+                        {
+                            professor.PasswordHash = portalUser.Password;
+                        }
+                    }
+                    catch
+                    {
+                        // Best-effort only; proceed with legacy fields below.
+                    }
+
+                    if (string.IsNullOrWhiteSpace(professor.GetPasswordHash()))
+                    {
+                        if (doc.Contains("passwordHash") && doc["passwordHash"].IsString)
+                            professor.PasswordHash = doc["passwordHash"].AsString;
+                        else if (doc.Contains("PasswordHash") && doc["PasswordHash"].IsString)
+                            professor.PasswordHashLegacy = doc["PasswordHash"].AsString;
+                        else if (doc.Contains("Password") && doc["Password"].IsString)
+                            professor.Password = doc["Password"].AsString;
+                        else if (doc.Contains("password") && doc["password"].IsString)
+                            professor.Password = doc["password"].AsString;
+                    }
 
                     // Name fields
                     string given = string.Empty;
@@ -619,6 +644,8 @@ namespace StudentPortal.Services
                 var bsonFilter = Builders<BsonDocument>.Filter.Or(
                     Builders<BsonDocument>.Filter.Regex("Email", regex),
                     Builders<BsonDocument>.Filter.Regex("email", regex),
+                    Builders<BsonDocument>.Filter.Regex("Student.Email", regex),
+                    Builders<BsonDocument>.Filter.Regex("Student.email", regex),
                     Builders<BsonDocument>.Filter.Regex("Username", regex),
                     Builders<BsonDocument>.Filter.Regex("username", regex)
                 );
@@ -636,6 +663,8 @@ namespace StudentPortal.Services
                 bsonFilter = Builders<BsonDocument>.Filter.Or(
                     Builders<BsonDocument>.Filter.Eq("Email", emailTrim),
                     Builders<BsonDocument>.Filter.Eq("email", emailTrim),
+                    Builders<BsonDocument>.Filter.Eq("Student.Email", emailTrim),
+                    Builders<BsonDocument>.Filter.Eq("Student.email", emailTrim),
                     Builders<BsonDocument>.Filter.Eq("Username", emailTrim),
                     Builders<BsonDocument>.Filter.Eq("username", emailTrim)
                 );
@@ -650,6 +679,8 @@ namespace StudentPortal.Services
                 bsonFilter = Builders<BsonDocument>.Filter.Or(
                     Builders<BsonDocument>.Filter.Eq("Email", normalizedEmail),
                     Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+                    Builders<BsonDocument>.Filter.Eq("Student.Email", normalizedEmail),
+                    Builders<BsonDocument>.Filter.Eq("Student.email", normalizedEmail),
                     Builders<BsonDocument>.Filter.Eq("Username", normalizedEmail),
                     Builders<BsonDocument>.Filter.Eq("username", normalizedEmail)
                 );
@@ -681,20 +712,43 @@ namespace StudentPortal.Services
                 var bsonCollection = _enrollmentDatabase.GetCollection<BsonDocument>(collectionName);
                 
                 // Try case-insensitive regex search
-                var bsonFilter = Builders<BsonDocument>.Filter.Regex("Email", new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(normalizedEmail)}$", "i"));
+                var emailRegex = new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(normalizedEmail)}$", "i");
+                var bsonFilter = Builders<BsonDocument>.Filter.Or(
+                    Builders<BsonDocument>.Filter.Regex("Email", emailRegex),
+                    Builders<BsonDocument>.Filter.Regex("email", emailRegex),
+                    Builders<BsonDocument>.Filter.Regex("Student.Email", emailRegex),
+                    Builders<BsonDocument>.Filter.Regex("Student.email", emailRegex),
+                    Builders<BsonDocument>.Filter.Regex("Username", emailRegex),
+                    Builders<BsonDocument>.Filter.Regex("username", emailRegex)
+                );
                 var bsonStudent = await bsonCollection.Find(bsonFilter).FirstOrDefaultAsync();
                 
                 if (bsonStudent == null)
                 {
                     // Fallback: Try exact match
-                    bsonFilter = Builders<BsonDocument>.Filter.Eq("Email", email.Trim());
+                    var exact = email.Trim();
+                    bsonFilter = Builders<BsonDocument>.Filter.Or(
+                        Builders<BsonDocument>.Filter.Eq("Email", exact),
+                        Builders<BsonDocument>.Filter.Eq("email", exact),
+                        Builders<BsonDocument>.Filter.Eq("Student.Email", exact),
+                        Builders<BsonDocument>.Filter.Eq("Student.email", exact),
+                        Builders<BsonDocument>.Filter.Eq("Username", exact),
+                        Builders<BsonDocument>.Filter.Eq("username", exact)
+                    );
                     bsonStudent = await bsonCollection.Find(bsonFilter).FirstOrDefaultAsync();
                 }
                 
                 if (bsonStudent == null)
                 {
                     // Fallback: Try normalized lowercase
-                    bsonFilter = Builders<BsonDocument>.Filter.Eq("Email", normalizedEmail);
+                    bsonFilter = Builders<BsonDocument>.Filter.Or(
+                        Builders<BsonDocument>.Filter.Eq("Email", normalizedEmail),
+                        Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+                        Builders<BsonDocument>.Filter.Eq("Student.Email", normalizedEmail),
+                        Builders<BsonDocument>.Filter.Eq("Student.email", normalizedEmail),
+                        Builders<BsonDocument>.Filter.Eq("Username", normalizedEmail),
+                        Builders<BsonDocument>.Filter.Eq("username", normalizedEmail)
+                    );
                     bsonStudent = await bsonCollection.Find(bsonFilter).FirstOrDefaultAsync();
                 }
                 
@@ -708,25 +762,84 @@ namespace StudentPortal.Services
                     }
                     return result;
                 }
+
+                // Some enrollment DBs store name fields at the root (or nested) instead of ExtraFields.
+                if (bsonStudent != null)
+                {
+                    var result = new Dictionary<string, string>();
+                    string GetStr(BsonDocument d, string key)
+                        => d.TryGetValue(key, out var v) && v.BsonType != BsonType.Null ? v.ToString() : string.Empty;
+
+                    // Root variants
+                    var fn = GetStr(bsonStudent, "FirstName");
+                    var mn = GetStr(bsonStudent, "MiddleName");
+                    var ln = GetStr(bsonStudent, "LastName");
+                    var full = GetStr(bsonStudent, "FullName");
+
+                    // Nested variants: Student: { FirstName, ... }
+                    if (bsonStudent.TryGetValue("Student", out var stuVal) && stuVal.IsBsonDocument)
+                    {
+                        var stu = stuVal.AsBsonDocument;
+                        if (string.IsNullOrWhiteSpace(fn)) fn = GetStr(stu, "FirstName");
+                        if (string.IsNullOrWhiteSpace(mn)) mn = GetStr(stu, "MiddleName");
+                        if (string.IsNullOrWhiteSpace(ln)) ln = GetStr(stu, "LastName");
+                        if (string.IsNullOrWhiteSpace(full)) full = GetStr(stu, "FullName");
+                    }
+
+                    // Also accept lowercase keys
+                    if (string.IsNullOrWhiteSpace(fn)) fn = GetStr(bsonStudent, "firstName");
+                    if (string.IsNullOrWhiteSpace(mn)) mn = GetStr(bsonStudent, "middleName");
+                    if (string.IsNullOrWhiteSpace(ln)) ln = GetStr(bsonStudent, "lastName");
+                    if (string.IsNullOrWhiteSpace(full)) full = GetStr(bsonStudent, "fullName");
+
+                    if (!string.IsNullOrWhiteSpace(fn)) result["Student.FirstName"] = fn;
+                    if (!string.IsNullOrWhiteSpace(mn)) result["Student.MiddleName"] = mn;
+                    if (!string.IsNullOrWhiteSpace(ln)) result["Student.LastName"] = ln;
+                    if (!string.IsNullOrWhiteSpace(full)) result["Student.FullName"] = full;
+
+                    if (result.Count > 0) return result;
+                }
                 
                 // If not found in "students" collection, try "enrollmentRequests" collection
                 var enrollmentCollection = _enrollmentDatabase.GetCollection<BsonDocument>("enrollmentRequests");
                 
                 // Try case-insensitive regex search
-                bsonFilter = Builders<BsonDocument>.Filter.Regex("Email", new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(normalizedEmail)}$", "i"));
+                bsonFilter = Builders<BsonDocument>.Filter.Or(
+                    Builders<BsonDocument>.Filter.Regex("Email", emailRegex),
+                    Builders<BsonDocument>.Filter.Regex("email", emailRegex),
+                    Builders<BsonDocument>.Filter.Regex("Student.Email", emailRegex),
+                    Builders<BsonDocument>.Filter.Regex("Student.email", emailRegex),
+                    Builders<BsonDocument>.Filter.Regex("Username", emailRegex),
+                    Builders<BsonDocument>.Filter.Regex("username", emailRegex)
+                );
                 var bsonEnrollment = await enrollmentCollection.Find(bsonFilter).FirstOrDefaultAsync();
                 
                 if (bsonEnrollment == null)
                 {
                     // Fallback: Try exact match
-                    bsonFilter = Builders<BsonDocument>.Filter.Eq("Email", email.Trim());
+                    var exact = email.Trim();
+                    bsonFilter = Builders<BsonDocument>.Filter.Or(
+                        Builders<BsonDocument>.Filter.Eq("Email", exact),
+                        Builders<BsonDocument>.Filter.Eq("email", exact),
+                        Builders<BsonDocument>.Filter.Eq("Student.Email", exact),
+                        Builders<BsonDocument>.Filter.Eq("Student.email", exact),
+                        Builders<BsonDocument>.Filter.Eq("Username", exact),
+                        Builders<BsonDocument>.Filter.Eq("username", exact)
+                    );
                     bsonEnrollment = await enrollmentCollection.Find(bsonFilter).FirstOrDefaultAsync();
                 }
                 
                 if (bsonEnrollment == null)
                 {
                     // Fallback: Try normalized lowercase
-                    bsonFilter = Builders<BsonDocument>.Filter.Eq("Email", normalizedEmail);
+                    bsonFilter = Builders<BsonDocument>.Filter.Or(
+                        Builders<BsonDocument>.Filter.Eq("Email", normalizedEmail),
+                        Builders<BsonDocument>.Filter.Eq("email", normalizedEmail),
+                        Builders<BsonDocument>.Filter.Eq("Student.Email", normalizedEmail),
+                        Builders<BsonDocument>.Filter.Eq("Student.email", normalizedEmail),
+                        Builders<BsonDocument>.Filter.Eq("Username", normalizedEmail),
+                        Builders<BsonDocument>.Filter.Eq("username", normalizedEmail)
+                    );
                     bsonEnrollment = await enrollmentCollection.Find(bsonFilter).FirstOrDefaultAsync();
                 }
                 
@@ -739,6 +852,40 @@ namespace StudentPortal.Services
                         result[field.Name] = field.Value?.ToString() ?? string.Empty;
                     }
                     return result;
+                }
+
+                // Same fallback extraction for enrollmentRequests if no ExtraFields exist.
+                if (bsonEnrollment != null)
+                {
+                    var result = new Dictionary<string, string>();
+                    string GetStr(BsonDocument d, string key)
+                        => d.TryGetValue(key, out var v) && v.BsonType != BsonType.Null ? v.ToString() : string.Empty;
+
+                    var fn = GetStr(bsonEnrollment, "FirstName");
+                    var mn = GetStr(bsonEnrollment, "MiddleName");
+                    var ln = GetStr(bsonEnrollment, "LastName");
+                    var full = GetStr(bsonEnrollment, "FullName");
+
+                    if (bsonEnrollment.TryGetValue("Student", out var stuVal) && stuVal.IsBsonDocument)
+                    {
+                        var stu = stuVal.AsBsonDocument;
+                        if (string.IsNullOrWhiteSpace(fn)) fn = GetStr(stu, "FirstName");
+                        if (string.IsNullOrWhiteSpace(mn)) mn = GetStr(stu, "MiddleName");
+                        if (string.IsNullOrWhiteSpace(ln)) ln = GetStr(stu, "LastName");
+                        if (string.IsNullOrWhiteSpace(full)) full = GetStr(stu, "FullName");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(fn)) fn = GetStr(bsonEnrollment, "firstName");
+                    if (string.IsNullOrWhiteSpace(mn)) mn = GetStr(bsonEnrollment, "middleName");
+                    if (string.IsNullOrWhiteSpace(ln)) ln = GetStr(bsonEnrollment, "lastName");
+                    if (string.IsNullOrWhiteSpace(full)) full = GetStr(bsonEnrollment, "fullName");
+
+                    if (!string.IsNullOrWhiteSpace(fn)) result["Student.FirstName"] = fn;
+                    if (!string.IsNullOrWhiteSpace(mn)) result["Student.MiddleName"] = mn;
+                    if (!string.IsNullOrWhiteSpace(ln)) result["Student.LastName"] = ln;
+                    if (!string.IsNullOrWhiteSpace(full)) result["Student.FullName"] = full;
+
+                    if (result.Count > 0) return result;
                 }
                 
                 return null;
@@ -836,14 +983,63 @@ namespace StudentPortal.Services
             
             if (extraFields != null)
             {
-                extraFields.TryGetValue("Student.LastName", out lastName);
-                extraFields.TryGetValue("Student.FirstName", out firstName);
-                extraFields.TryGetValue("Student.MiddleName", out middleName);
+                static string GetAny(Dictionary<string, string> dict, params string[] keys)
+                {
+                    foreach (var k in keys)
+                    {
+                        if (dict.TryGetValue(k, out var v) && !string.IsNullOrWhiteSpace(v))
+                            return v.Trim();
+                    }
+                    return string.Empty;
+                }
+
+                // Support multiple field conventions across Enrollment/ExtraFields payloads
+                firstName = GetAny(extraFields,
+                    "Student.FirstName", "FirstName", "firstName",
+                    "Student.GivenName", "GivenName", "givenName");
+
+                middleName = GetAny(extraFields,
+                    "Student.MiddleName", "MiddleName", "middleName",
+                    "Student.MI", "MI", "mi");
+
+                lastName = GetAny(extraFields,
+                    "Student.LastName", "LastName", "lastName",
+                    "Student.Surname", "Surname", "surname",
+                    "Student.FamilyName", "FamilyName", "familyName");
                 
                 // Build FullName from parts
                 var nameParts = new List<string>();
                 if (!string.IsNullOrWhiteSpace(firstName)) nameParts.Add(firstName);
                 if (!string.IsNullOrWhiteSpace(middleName)) nameParts.Add(middleName);
+                if (!string.IsNullOrWhiteSpace(lastName)) nameParts.Add(lastName);
+                fullName = string.Join(" ", nameParts);
+            }
+            else
+            {
+                // Fallback: EnrollmentSystem SHSStudents stores name at the root.
+                lastName = enrollmentStudent.LastName ?? string.Empty;
+                firstName = enrollmentStudent.FirstName ?? string.Empty;
+                middleName = enrollmentStudent.MiddleName ?? string.Empty;
+
+                var nameParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(firstName)) nameParts.Add(firstName);
+                if (!string.IsNullOrWhiteSpace(middleName) && !string.Equals(middleName.Trim(), "NA", System.StringComparison.OrdinalIgnoreCase))
+                    nameParts.Add(middleName);
+                if (!string.IsNullOrWhiteSpace(lastName)) nameParts.Add(lastName);
+                fullName = string.Join(" ", nameParts);
+            }
+
+            // If ExtraFields lookup succeeded but didn't contain name keys, still fall back to SHSStudents root fields.
+            if (string.IsNullOrWhiteSpace(fullName) && (enrollmentStudent.FirstName != null || enrollmentStudent.LastName != null))
+            {
+                lastName = string.IsNullOrWhiteSpace(lastName) ? (enrollmentStudent.LastName ?? string.Empty) : lastName;
+                firstName = string.IsNullOrWhiteSpace(firstName) ? (enrollmentStudent.FirstName ?? string.Empty) : firstName;
+                middleName = string.IsNullOrWhiteSpace(middleName) ? (enrollmentStudent.MiddleName ?? string.Empty) : middleName;
+
+                var nameParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(firstName)) nameParts.Add(firstName);
+                if (!string.IsNullOrWhiteSpace(middleName) && !string.Equals(middleName.Trim(), "NA", System.StringComparison.OrdinalIgnoreCase))
+                    nameParts.Add(middleName);
                 if (!string.IsNullOrWhiteSpace(lastName)) nameParts.Add(lastName);
                 fullName = string.Join(" ", nameParts);
             }
@@ -1088,7 +1284,7 @@ namespace StudentPortal.Services
                 return null;
 
             var trimmed = code.Trim();
-            var exact = await _classes.Find(c => c.ClassCode == trimmed).FirstOrDefaultAsync();
+            var exact = await _classes.Find( c => c.ClassCode == trimmed).FirstOrDefaultAsync();
             if (exact != null)
                 return exact;
 
@@ -1099,7 +1295,7 @@ namespace StudentPortal.Services
                     new BsonRegularExpression($"^{Regex.Escape(trimmed)}$", "i")))
                 .FirstOrDefaultAsync();
         }
-
+      
         public async Task<ClassItem?> GetClassBySubjectCodeAsync(string subjectCode)
         {
             if (string.IsNullOrWhiteSpace(subjectCode)) return null;
@@ -1154,6 +1350,49 @@ namespace StudentPortal.Services
                 newClass.Id = ObjectId.GenerateNewId().ToString();
 
             await _classes.InsertOneAsync(newClass);
+        }
+
+        public async Task<bool> UpdateClassSeatAssignmentsAsync(string classCode, Dictionary<string, int> assignmentsByStudentKey)
+        {
+            if (string.IsNullOrWhiteSpace(classCode)) return false;
+
+            var map = assignmentsByStudentKey ?? new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            // Normalize keys + values
+            var cleaned = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in map)
+            {
+                var k = (kv.Key ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(k)) continue;
+                cleaned[k] = kv.Value;
+            }
+
+            var filter = Builders<ClassItem>.Filter.Eq(c => c.ClassCode, classCode.Trim());
+            var update = Builders<ClassItem>.Update
+                .Set(c => c.SeatAssignmentsByStudentKey, cleaned);
+
+            var result = await _classes.UpdateOneAsync(filter, update);
+            return result.MatchedCount > 0;
+        }
+
+        private static List<StudentRecord> OrderRosterBySeatAssignments(List<StudentRecord> roster, Dictionary<string, int>? seatMap)
+        {
+            if (roster == null || roster.Count == 0) return roster ?? new List<StudentRecord>();
+            if (seatMap == null || seatMap.Count == 0)
+                return roster.OrderBy(r => r.StudentName, StringComparer.OrdinalIgnoreCase).ToList();
+
+            int SeatRank(StudentRecord r)
+            {
+                var id = (r.Id ?? string.Empty).Trim();
+                var email = (r.StudentEmail ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(id) && seatMap.TryGetValue(id, out var idxId)) return idxId;
+                if (!string.IsNullOrWhiteSpace(email) && seatMap.TryGetValue(email, out var idxEm)) return idxEm;
+                return int.MaxValue - 1; // keep unassigned students after assigned seats, stable by name
+            }
+
+            return roster
+                .OrderBy(SeatRank)
+                .ThenBy(r => r.StudentName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         public async Task<bool> DeleteClassByIdAsync(string classId)
@@ -1316,6 +1555,8 @@ namespace StudentPortal.Services
                         { "scheduleId", scheduleId },
                         { "subjectName", subjectName }
                     };
+                    if (!string.IsNullOrWhiteSpace(section) && ObjectId.TryParse(section.Trim(), out _))
+                        doc["sectionId"] = section.Trim();
 
                     // Enrich with classCode if a class already exists linked to this schedule
                     try
@@ -1349,11 +1590,16 @@ namespace StudentPortal.Services
                         var docs = await coll.Find(filter).ToListAsync();
                         foreach (var m in docs)
                         {
-                            string section = m.Contains("SectionName") ? m["SectionName"].ToString() : (m.Contains("SectionId") ? m["SectionId"].ToString() : string.Empty);
+                            string section = MeetingSectionDisplayLabel(m);
+                            var sectionEnrollId = ReadEnrollmentSectionIdFromMeetingDoc(m);
                             string subjectCode = m.Contains("SubjectCode") ? m["SubjectCode"].ToString() : string.Empty;
                             string subjectName = m.Contains("SubjectName") ? m["SubjectName"].ToString() : string.Empty;
                             string units = m.Contains("Units") ? m["Units"].ToString() : string.Empty;
                             string schoolYear = m.Contains("SchoolYear") ? m["SchoolYear"].ToString() : string.Empty;
+                        string semester = m.Contains("Semester") ? m["Semester"].ToString()
+                            : (m.Contains("semester") ? m["semester"].ToString()
+                            : (m.Contains("Term") ? m["Term"].ToString()
+                            : (m.Contains("term") ? m["term"].ToString() : string.Empty)));
                             string timeSlotDisplay = m.Contains("TimeSlotDisplay") ? m["TimeSlotDisplay"].ToString() : string.Empty;
                             string roomName = m.Contains("RoomName") ? m["RoomName"].ToString() : string.Empty;
                             string scheduleId = string.Empty;
@@ -1370,9 +1616,12 @@ namespace StudentPortal.Services
                                 { "scheduleId", scheduleId },
                             { "subjectName", subjectName },
                             { "schoolYear", schoolYear },
+                            { "semester", semester },
                             { "timeSlotDisplay", timeSlotDisplay },
                             { "roomName", roomName }
                             };
+                            if (!string.IsNullOrWhiteSpace(sectionEnrollId))
+                                doc["sectionId"] = sectionEnrollId;
                             result.Add(doc);
                             seen.Add(key);
                         }
@@ -1446,7 +1695,8 @@ namespace StudentPortal.Services
                     var docs = await coll.Find(filter).ToListAsync();
                     foreach (var m in docs)
                     {
-                        string section = m.Contains("SectionName") ? m["SectionName"].ToString() : (m.Contains("SectionId") ? m["SectionId"].ToString() : string.Empty);
+                        string section = MeetingSectionDisplayLabel(m);
+                        var sectionEnrollId = ReadEnrollmentSectionIdFromMeetingDoc(m);
                         string subjectCode = m.Contains("SubjectCode") ? m["SubjectCode"].ToString() : string.Empty;
                         string subjectName = m.Contains("SubjectName") ? m["SubjectName"].ToString() : string.Empty;
                         string units = m.Contains("Units") ? m["Units"].ToString() : string.Empty;
@@ -1463,6 +1713,8 @@ namespace StudentPortal.Services
                             { "subjectName", subjectName },
                             { "schoolYear", schoolYear }
                         };
+                        if (!string.IsNullOrWhiteSpace(sectionEnrollId))
+                            doc["sectionId"] = sectionEnrollId;
                         result.Add(doc);
                     }
                     if (result.Count > 0) break;
@@ -1549,11 +1801,16 @@ namespace StudentPortal.Services
                     var docs = await coll.Find(filter).ToListAsync();
                     foreach (var m in docs)
                     {
-                        string section = m.Contains("SectionName") ? m["SectionName"].ToString() : (m.Contains("SectionId") ? m["SectionId"].ToString() : string.Empty);
+                        string section = MeetingSectionDisplayLabel(m);
+                        var sectionEnrollId = ReadEnrollmentSectionIdFromMeetingDoc(m);
                         string subjectCode = m.Contains("SubjectCode") ? m["SubjectCode"].ToString() : string.Empty;
                         string subjectName = m.Contains("SubjectName") ? m["SubjectName"].ToString() : string.Empty;
                         string units = m.Contains("Units") ? m["Units"].ToString() : string.Empty;
                         string schoolYear = m.Contains("SchoolYear") ? m["SchoolYear"].ToString() : string.Empty;
+                        string semester = m.Contains("Semester") ? m["Semester"].ToString()
+                            : (m.Contains("semester") ? m["semester"].ToString()
+                            : (m.Contains("Term") ? m["Term"].ToString()
+                            : (m.Contains("term") ? m["term"].ToString() : string.Empty)));
                         string timeSlotDisplay = m.Contains("TimeSlotDisplay") ? m["TimeSlotDisplay"].ToString() : string.Empty;
                         string roomName = m.Contains("RoomName") ? m["RoomName"].ToString() : string.Empty;
                         string scheduleId = string.Empty;
@@ -1567,9 +1824,12 @@ namespace StudentPortal.Services
                             { "scheduleId", scheduleId },
                             { "subjectName", subjectName },
                             { "schoolYear", schoolYear },
+                            { "semester", semester },
                             { "timeSlotDisplay", timeSlotDisplay },
                             { "roomName", roomName }
                         };
+                        if (!string.IsNullOrWhiteSpace(sectionEnrollId))
+                            doc["sectionId"] = sectionEnrollId;
                         result.Add(doc);
                     }
                     if (result.Count > 0) break;
@@ -1671,8 +1931,206 @@ namespace StudentPortal.Services
             return result;
         }
 
+        /// <summary>SHSSchedules / classMeetings often store the enrollment FK as SectionID (capital ID).</summary>
+        private static string ReadEnrollmentSectionIdFromMeetingDoc(BsonDocument m)
+        {
+            if (m == null) return string.Empty;
+            foreach (var key in new[] { "SectionID", "SectionId", "sectionId" })
+            {
+                if (m.Contains(key) && !m[key].IsBsonNull)
+                {
+                    var s = m[key].ToString()?.Trim();
+                    if (!string.IsNullOrWhiteSpace(s)) return s;
+                }
+            }
+            return string.Empty;
+        }
+
+        private static string MeetingSectionDisplayLabel(BsonDocument m)
+        {
+            if (m == null) return string.Empty;
+            foreach (var key in new[] { "SectionName", "sectionName" })
+            {
+                if (m.Contains(key) && !m[key].IsBsonNull)
+                {
+                    var s = m[key].ToString()?.Trim();
+                    if (!string.IsNullOrWhiteSpace(s)) return s;
+                }
+            }
+            var enrollId = ReadEnrollmentSectionIdFromMeetingDoc(m);
+            return string.IsNullOrWhiteSpace(enrollId) ? string.Empty : enrollId;
+        }
+
+        private static string EnrollmentSectionKey(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+            return new string(s.Trim().Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+        }
+
+        private static string? ReadEmailFromStudentBson(BsonDocument d)
+        {
+            if (d.Contains("Email") && !d["Email"].IsBsonNull)
+            {
+                var e = d["Email"].ToString();
+                if (!string.IsNullOrWhiteSpace(e)) return e.Trim();
+            }
+            if (d.Contains("email") && !d["email"].IsBsonNull)
+            {
+                var e = d["email"].ToString();
+                if (!string.IsNullOrWhiteSpace(e)) return e.Trim();
+            }
+            if (d.TryGetValue("Student", out var stu) && stu.IsBsonDocument)
+            {
+                var sd = stu.AsBsonDocument;
+                if (sd.Contains("Email") && !sd["Email"].IsBsonNull)
+                {
+                    var e = sd["Email"].ToString();
+                    if (!string.IsNullOrWhiteSpace(e)) return e.Trim();
+                }
+                if (sd.Contains("email") && !sd["email"].IsBsonNull)
+                {
+                    var e = sd["email"].ToString();
+                    if (!string.IsNullOrWhiteSpace(e)) return e.Trim();
+                }
+            }
+            return null;
+        }
+
+        private static string? ReadEnrollmentUsernameFromDoc(BsonDocument d)
+        {
+            static string? Pick(BsonDocument doc, string key)
+            {
+                if (!doc.Contains(key) || doc[key].IsBsonNull) return null;
+                var s = doc[key].ToString()?.Trim();
+                return string.IsNullOrWhiteSpace(s) ? null : s;
+            }
+            return Pick(d, "StudentUsername") ?? Pick(d, "studentUsername")
+                   ?? Pick(d, "Username") ?? Pick(d, "username")
+                   ?? Pick(d, "StudentId") ?? Pick(d, "studentId");
+        }
+
+        private static void AddEqStringOrObjectId(string field, string sid, ICollection<FilterDefinition<BsonDocument>> filters)
+        {
+            filters.Add(Builders<BsonDocument>.Filter.Eq(field, sid));
+            if (ObjectId.TryParse(sid.Trim(), out var oid))
+                filters.Add(Builders<BsonDocument>.Filter.Eq(field, oid));
+        }
+
+        /// <summary>Find SHSSections (etc.) documents whose name/label matches the class section text.</summary>
+        private async Task<List<string>> ResolveSectionDocumentIdsByLabelFromEnrollmentAsync(string label)
+        {
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (string.IsNullOrWhiteSpace(label)) return ids.ToList();
+            var trimmed = label.Trim();
+            var norm = EnrollmentSectionKey(trimmed);
+            var sectionsCollectionNames = new[] { "SHSSections", "SHSSection", "Sections", "sections" };
+            foreach (var collName in sectionsCollectionNames)
+            {
+                try
+                {
+                    var coll = _enrollmentDatabase.GetCollection<BsonDocument>(collName);
+                    var escaped = Regex.Escape(trimmed);
+                    var rx = new BsonRegularExpression("^" + escaped + "$", "i");
+                    var nameMatch = Builders<BsonDocument>.Filter.Or(
+                        Builders<BsonDocument>.Filter.Regex("SectionName", rx),
+                        Builders<BsonDocument>.Filter.Regex("sectionName", rx),
+                        Builders<BsonDocument>.Filter.Regex("Name", rx),
+                        Builders<BsonDocument>.Filter.Regex("name", rx),
+                        Builders<BsonDocument>.Filter.Regex("Title", rx),
+                        Builders<BsonDocument>.Filter.Regex("title", rx),
+                        Builders<BsonDocument>.Filter.Regex("Label", rx),
+                        Builders<BsonDocument>.Filter.Regex("label", rx),
+                        Builders<BsonDocument>.Filter.Regex("Code", rx),
+                        Builders<BsonDocument>.Filter.Regex("code", rx)
+                    );
+                    using var cur = await coll.Find(nameMatch).Limit(40).ToCursorAsync();
+                    while (await cur.MoveNextAsync())
+                    {
+                        foreach (var doc in cur.Current)
+                        {
+                            if (doc.TryGetValue("_id", out var idv) && idv != null && !idv.IsBsonNull)
+                                ids.Add(idv.ToString()!);
+                            if (doc.Contains("Id") && !doc["Id"].IsBsonNull)
+                            {
+                                var s = doc["Id"].ToString();
+                                if (!string.IsNullOrWhiteSpace(s)) ids.Add(s.Trim());
+                            }
+                        }
+                    }
+
+                    if (ids.Count == 0 && !string.IsNullOrEmpty(norm))
+                    {
+                        var proj = Builders<BsonDocument>.Projection.Include("_id").Include("Id")
+                            .Include("SectionName").Include("sectionName").Include("Name").Include("name")
+                            .Include("Title").Include("title").Include("Label").Include("label").Include("Code").Include("code");
+                        using var cur2 = await coll.Find(FilterDefinition<BsonDocument>.Empty).Project(proj).Limit(4000).ToCursorAsync();
+                        while (await cur2.MoveNextAsync())
+                        {
+                            foreach (var doc in cur2.Current)
+                            {
+                                foreach (var k in new[] { "SectionName", "sectionName", "Name", "name", "Title", "title", "Label", "label", "Code", "code" })
+                                {
+                                    if (!doc.Contains(k) || doc[k].IsBsonNull) continue;
+                                    var txt = doc[k].ToString();
+                                    if (string.IsNullOrWhiteSpace(txt)) continue;
+                                    if (EnrollmentSectionKey(txt) != norm) continue;
+                                    if (doc.TryGetValue("_id", out var idv2) && idv2 != null && !idv2.IsBsonNull)
+                                        ids.Add(idv2.ToString()!);
+                                    if (doc.Contains("Id") && !doc["Id"].IsBsonNull)
+                                    {
+                                        var s = doc["Id"].ToString();
+                                        if (!string.IsNullOrWhiteSpace(s)) ids.Add(s.Trim());
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { continue; }
+            }
+            return ids.ToList();
+        }
+
+        private async Task<List<string>> TryGetStudentEmailsMatchingSectionTextAsync(string sectionText)
+        {
+            var emails = new List<string>();
+            if (string.IsNullOrWhiteSpace(sectionText)) return emails;
+            var sec = sectionText.Trim();
+            var escaped = Regex.Escape(sec);
+            var rx = new BsonRegularExpression("^" + escaped + "$", "i");
+            var textFilters = Builders<BsonDocument>.Filter.Or(
+                Builders<BsonDocument>.Filter.Regex("Section", rx),
+                Builders<BsonDocument>.Filter.Regex("section", rx),
+                Builders<BsonDocument>.Filter.Regex("SectionName", rx),
+                Builders<BsonDocument>.Filter.Regex("sectionName", rx),
+                Builders<BsonDocument>.Filter.Regex("CurrentSection", rx),
+                Builders<BsonDocument>.Filter.Regex("currentSection", rx),
+                Builders<BsonDocument>.Filter.Regex("Student.Section", rx),
+                Builders<BsonDocument>.Filter.Regex("Student.section", rx),
+                Builders<BsonDocument>.Filter.Regex("Student.SectionName", rx)
+            );
+            var studentCollections = new[] { _enrollmentStudents?.CollectionNamespace.CollectionName ?? "SHSStudents", "SHSStudents", "shsstudents", "Students", "students", "STUDENTS" };
+            foreach (var collName in studentCollections.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var coll = _enrollmentDatabase.GetCollection<BsonDocument>(collName);
+                    var docs = await coll.Find(textFilters).Limit(2000).ToListAsync();
+                    foreach (var d in docs)
+                    {
+                        var e = ReadEmailFromStudentBson(d);
+                        if (!string.IsNullOrWhiteSpace(e)) emails.Add(e);
+                    }
+                    if (emails.Count > 0) break;
+                }
+                catch { continue; }
+            }
+            return emails;
+        }
+
         /// <summary>
-        /// Gets student emails from SHSStudents where CurrentSectionId equals the given sectionId.
+        /// Gets student emails from enrollment student collections where section id fields match.
         /// </summary>
         public async Task<List<string>> GetStudentEmailsBySectionIdAsync(string sectionId)
         {
@@ -1680,24 +2138,35 @@ namespace StudentPortal.Services
             if (string.IsNullOrWhiteSpace(sectionId)) return emails;
             try
             {
-                var studentCollections = new[] { "SHSStudents", "shsstudents", "Students", "students" };
-                foreach (var collName in studentCollections)
+                var sid = sectionId.Trim();
+                var sectionFilters = new List<FilterDefinition<BsonDocument>>();
+                foreach (var field in new[]
+                         {
+                             "CurrentSectionId", "currentSectionId",
+                             "SectionID", "SectionId", "sectionId",
+                             "AssignedSectionId", "assignedSectionId",
+                             "Student.CurrentSectionId", "Student.currentSectionId",
+                             "Student.SectionID", "Student.SectionId", "Student.sectionId"
+                         })
+                {
+                    AddEqStringOrObjectId(field, sid, sectionFilters);
+                }
+
+                var studentCollections = new[] { _enrollmentStudents?.CollectionNamespace.CollectionName ?? "SHSStudents", "SHSStudents", "shsstudents", "Students", "students", "STUDENTS" };
+                foreach (var collName in studentCollections.Distinct(StringComparer.OrdinalIgnoreCase))
                 {
                     try
                     {
                         var coll = _enrollmentDatabase.GetCollection<BsonDocument>(collName);
-                        var filter = Builders<BsonDocument>.Filter.Or(
-                            Builders<BsonDocument>.Filter.Eq("CurrentSectionId", sectionId),
-                            Builders<BsonDocument>.Filter.Eq("currentSectionId", sectionId)
-                        );
-                        var projection = Builders<BsonDocument>.Projection.Include("Email").Include("email");
+                        var filter = Builders<BsonDocument>.Filter.Or(sectionFilters);
+                        var projection = Builders<BsonDocument>.Projection
+                            .Include("Email").Include("email")
+                            .Include("Student");
                         var docs = await coll.Find(filter).Project(projection).ToListAsync();
                         foreach (var d in docs)
                         {
-                            string? e = null;
-                            if (d.Contains("Email")) e = d["Email"].ToString();
-                            else if (d.Contains("email")) e = d["email"].ToString();
-                            if (!string.IsNullOrWhiteSpace(e)) emails.Add(e.Trim());
+                            var e = ReadEmailFromStudentBson(d);
+                            if (!string.IsNullOrWhiteSpace(e)) emails.Add(e);
                         }
                         if (emails.Count > 0) break;
                     }
@@ -1755,18 +2224,35 @@ namespace StudentPortal.Services
 
                 if (string.IsNullOrWhiteSpace(sectionId))
                 {
-                    // Fallback: try classMeetings collections if they exist
-                    var meetingCollections = new[] { "classMeetings", "ClassMeetings", "classMeeting", "ClassMeeting" };
+                    // Enrollment DB: SHSSchedules links schedule _id → SectionID → SHSStudents.CurrentSectionId
+                    var meetingCollections = new[]
+                    {
+                        "SHSSchedules", "SHSSchedule", "SHSSchedules_v2",
+                        "classMeetings", "ClassMeetings", "classMeeting", "ClassMeeting",
+                        "Schedules", "schedules"
+                    };
                     BsonDocument? meeting = null;
                     foreach (var collName in meetingCollections)
                     {
                         try
                         {
                             var coll = _enrollmentDatabase.GetCollection<BsonDocument>(collName);
-                            var filter = Builders<BsonDocument>.Filter.Or(new[] {
-                                Builders<BsonDocument>.Filter.Eq("Id", scheduleId),
-                                Builders<BsonDocument>.Filter.Eq("_id", scheduleId)
-                            });
+                            var schedTrim = scheduleId.Trim();
+                            var idFilters = new List<FilterDefinition<BsonDocument>>
+                            {
+                                Builders<BsonDocument>.Filter.Eq("Id", schedTrim),
+                                Builders<BsonDocument>.Filter.Eq("_id", schedTrim),
+                                Builders<BsonDocument>.Filter.Eq("ScheduleId", schedTrim),
+                                Builders<BsonDocument>.Filter.Eq("scheduleId", schedTrim)
+                            };
+                            if (ObjectId.TryParse(schedTrim, out var schedOid))
+                            {
+                                idFilters.Add(Builders<BsonDocument>.Filter.Eq("_id", schedOid));
+                                idFilters.Add(Builders<BsonDocument>.Filter.Eq("Id", schedOid));
+                                idFilters.Add(Builders<BsonDocument>.Filter.Eq("ScheduleId", schedOid));
+                                idFilters.Add(Builders<BsonDocument>.Filter.Eq("scheduleId", schedOid));
+                            }
+                            var filter = Builders<BsonDocument>.Filter.Or(idFilters);
                             meeting = await coll.Find(filter).FirstOrDefaultAsync();
                             if (meeting != null) break;
                         }
@@ -1775,12 +2261,18 @@ namespace StudentPortal.Services
 
                     if (meeting != null)
                     {
-                        if (meeting.Contains("SectionId")) sectionId = meeting["SectionId"].ToString();
+                        if (meeting.Contains("SectionID")) sectionId = meeting["SectionID"].ToString();
+                        else if (meeting.Contains("SectionId")) sectionId = meeting["SectionId"].ToString();
                         else if (meeting.Contains("sectionId")) sectionId = meeting["sectionId"].ToString();
                     }
                 }
 
                 if (string.IsNullOrWhiteSpace(sectionId)) return emails;
+
+                // Prefer SHSStudents.CurrentSectionId (matches SHSSections._id / SHSSchedules.SectionID)
+                var directBySection = await GetStudentEmailsBySectionIdAsync(sectionId);
+                if (directBySection.Count > 0)
+                    return directBySection.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
                 var enrollmentCollections = new[] { "studentsectionenrollment", "studentSectionEnrollment", "StudentSectionEnrollment", "studentSectionEnrollments", "StudentSectionEnrollments", "student_section_enrollments" };
                 var usernames = new List<string>();
@@ -1789,16 +2281,25 @@ namespace StudentPortal.Services
                     try
                     {
                         var coll = _enrollmentDatabase.GetCollection<BsonDocument>(collName);
-                        var filter = Builders<BsonDocument>.Filter.Or(new[] {
+                        var secFilters = new List<FilterDefinition<BsonDocument>>
+                        {
+                            Builders<BsonDocument>.Filter.Eq("SectionID", sectionId),
                             Builders<BsonDocument>.Filter.Eq("SectionId", sectionId),
                             Builders<BsonDocument>.Filter.Eq("sectionId", sectionId)
-                        });
+                        };
+                        if (ObjectId.TryParse(sectionId.Trim(), out var enrollSecOid))
+                        {
+                            secFilters.Add(Builders<BsonDocument>.Filter.Eq("SectionID", enrollSecOid));
+                            secFilters.Add(Builders<BsonDocument>.Filter.Eq("SectionId", enrollSecOid));
+                            secFilters.Add(Builders<BsonDocument>.Filter.Eq("sectionId", enrollSecOid));
+                        }
+                        var filter = Builders<BsonDocument>.Filter.Or(secFilters);
                         var docs = await coll.Find(filter).ToListAsync();
                         if (docs != null && docs.Count > 0)
                         {
                             foreach (var d in docs)
                             {
-                                var u = d.Contains("StudentUsername") ? d["StudentUsername"].ToString() : d.GetValue("studentUsername", BsonNull.Value)?.ToString();
+                                var u = ReadEnrollmentUsernameFromDoc(d);
                                 if (!string.IsNullOrWhiteSpace(u)) usernames.Add(u);
                             }
                             break;
@@ -1821,15 +2322,15 @@ namespace StudentPortal.Services
                         var coll = _enrollmentDatabase.GetCollection<BsonDocument>(collName);
                         var filter = Builders<BsonDocument>.Filter.Or(
                             Builders<BsonDocument>.Filter.In("Username", usernames),
-                            Builders<BsonDocument>.Filter.In("username", usernames)
+                            Builders<BsonDocument>.Filter.In("username", usernames),
+                            Builders<BsonDocument>.Filter.In("StudentId", usernames),
+                            Builders<BsonDocument>.Filter.In("studentId", usernames)
                         );
-                        var projection = Builders<BsonDocument>.Projection.Include("Email").Include("email").Include("Username").Include("username");
+                        var projection = Builders<BsonDocument>.Projection.Include("Email").Include("email").Include("Username").Include("username").Include("Student");
                         var docs = await coll.Find(filter).Project(projection).ToListAsync();
                         foreach (var d in docs)
                         {
-                            string? e = null;
-                            if (d.Contains("Email")) e = d["Email"].ToString();
-                            else if (d.Contains("email")) e = d["email"].ToString();
+                            var e = ReadEmailFromStudentBson(d);
                             if (!string.IsNullOrWhiteSpace(e)) emails.Add(e);
                         }
                         if (emails.Count > 0) break;
@@ -1978,6 +2479,24 @@ namespace StudentPortal.Services
             if (string.IsNullOrWhiteSpace(section)) return emails;
             try
             {
+                var sec = section.Trim();
+                // SHSSections._id as 24-char hex → SHSStudents.CurrentSectionId
+                if (sec.Length == 24 && Regex.IsMatch(sec, @"^[a-fA-F0-9]{24}$"))
+                {
+                    var bySectionId = await GetStudentEmailsBySectionIdAsync(sec);
+                    if (bySectionId.Count > 0)
+                        return bySectionId.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                }
+
+                foreach (var rid in await ResolveSectionDocumentIdsByLabelFromEnrollmentAsync(sec))
+                {
+                    var part = await GetStudentEmailsBySectionIdAsync(rid);
+                    if (part.Count > 0) emails.AddRange(part);
+                }
+                emails = emails.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                if (emails.Count > 0)
+                    return emails;
+
                 // Try multiple variations of the enrollment collection name
                 var enrollmentCollections = new[] { "studentsectionenrollment", "studentSectionEnrollment", "StudentSectionEnrollment", "student_section_enrollment", "studentSectionEnrollments", "StudentSectionEnrollments" };
                 var usernames = new List<string>();
@@ -1986,16 +2505,25 @@ namespace StudentPortal.Services
                     try
                     {
                         var coll = _enrollmentDatabase.GetCollection<BsonDocument>(collName);
-                        var filter = Builders<BsonDocument>.Filter.Or(new[] {
-                            Builders<BsonDocument>.Filter.Eq("SectionId", section),
-                            Builders<BsonDocument>.Filter.Eq("sectionId", section)
-                        });
+                        var enrollSecFilters = new List<FilterDefinition<BsonDocument>>
+                        {
+                            Builders<BsonDocument>.Filter.Eq("SectionID", sec),
+                            Builders<BsonDocument>.Filter.Eq("SectionId", sec),
+                            Builders<BsonDocument>.Filter.Eq("sectionId", sec)
+                        };
+                        if (ObjectId.TryParse(sec, out var secOid))
+                        {
+                            enrollSecFilters.Add(Builders<BsonDocument>.Filter.Eq("SectionID", secOid));
+                            enrollSecFilters.Add(Builders<BsonDocument>.Filter.Eq("SectionId", secOid));
+                            enrollSecFilters.Add(Builders<BsonDocument>.Filter.Eq("sectionId", secOid));
+                        }
+                        var filter = Builders<BsonDocument>.Filter.Or(enrollSecFilters);
                         var docs = await coll.Find(filter).ToListAsync();
                         if (docs != null && docs.Count > 0)
                         {
                             foreach (var d in docs)
                             {
-                                var u = d.Contains("StudentUsername") ? d["StudentUsername"].ToString() : d.GetValue("studentUsername", BsonNull.Value)?.ToString();
+                                var u = ReadEnrollmentUsernameFromDoc(d);
                                 if (!string.IsNullOrWhiteSpace(u)) usernames.Add(u);
                             }
                             break;
@@ -2015,15 +2543,16 @@ namespace StudentPortal.Services
                         try
                         {
                             var coll = _enrollmentDatabase.GetCollection<BsonDocument>(collName);
-                            var regex = new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(section)}$", "i");
+                            var regex = new BsonRegularExpression($"^{Regex.Escape(sec)}$", "i");
                             var filter = Builders<BsonDocument>.Filter.Or(
+                                Builders<BsonDocument>.Filter.Regex("SectionID", regex),
                                 Builders<BsonDocument>.Filter.Regex("SectionId", regex),
                                 Builders<BsonDocument>.Filter.Regex("sectionId", regex)
                             );
                             var docs = await coll.Find(filter).ToListAsync();
                             foreach (var d in docs)
                             {
-                                var u = d.Contains("StudentUsername") ? d["StudentUsername"].ToString() : d.GetValue("studentUsername", BsonNull.Value)?.ToString();
+                                var u = ReadEnrollmentUsernameFromDoc(d);
                                 if (!string.IsNullOrWhiteSpace(u)) usernames.Add(u);
                             }
                             if (usernames.Count > 0) break;
@@ -2032,7 +2561,11 @@ namespace StudentPortal.Services
                     }
                 }
 
-                if (usernames.Count == 0) return emails;
+                if (usernames.Count == 0)
+                {
+                    var byText = await TryGetStudentEmailsMatchingSectionTextAsync(sec);
+                    return byText.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                }
 
                 var mainStudentCollection = _enrollmentStudents?.CollectionNamespace.CollectionName ?? "SHSStudents";
                 var studentCollections = new[] { mainStudentCollection, "SHSStudents", "shsstudents", "students", "Students", "STUDENTS" };
@@ -2043,15 +2576,15 @@ namespace StudentPortal.Services
                         var coll = _enrollmentDatabase.GetCollection<BsonDocument>(collName);
                         var filter = Builders<BsonDocument>.Filter.Or(
                             Builders<BsonDocument>.Filter.In("Username", usernames),
-                            Builders<BsonDocument>.Filter.In("username", usernames)
+                            Builders<BsonDocument>.Filter.In("username", usernames),
+                            Builders<BsonDocument>.Filter.In("StudentId", usernames),
+                            Builders<BsonDocument>.Filter.In("studentId", usernames)
                         );
-                        var projection = Builders<BsonDocument>.Projection.Include("Email").Include("email").Include("Username").Include("username");
+                        var projection = Builders<BsonDocument>.Projection.Include("Email").Include("email").Include("Username").Include("username").Include("Student");
                         var docs = await coll.Find(filter).Project(projection).ToListAsync();
                         foreach (var d in docs)
                         {
-                            string? e = null;
-                            if (d.Contains("Email")) e = d["Email"].ToString();
-                            else if (d.Contains("email")) e = d["email"].ToString();
+                            var e = ReadEmailFromStudentBson(d);
                             if (!string.IsNullOrWhiteSpace(e)) emails.Add(e);
                         }
                         if (emails.Count > 0) break;
@@ -2066,6 +2599,44 @@ namespace StudentPortal.Services
             {
             }
             return emails.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>
+        /// Best-effort: fetch enrolled student emails for a class.
+        /// Prefers ScheduleId → SectionId resolution, then falls back to SectionLabel/Section.
+        /// </summary>
+        public async Task<List<string>> GetStudentEmailsForClassAsync(StudentPortal.Models.AdminDb.ClassItem classItem)
+        {
+            var recipients = new List<string>();
+            try
+            {
+                if (classItem == null) return recipients;
+
+                if (!string.IsNullOrWhiteSpace(classItem.EnrollmentSectionId))
+                    recipients = await GetStudentEmailsBySectionIdAsync(classItem.EnrollmentSectionId) ?? new List<string>();
+
+                if (recipients.Count == 0 && !string.IsNullOrWhiteSpace(classItem.ScheduleId))
+                    recipients = await GetStudentEmailsByScheduleIdAsync(classItem.ScheduleId) ?? new List<string>();
+
+                if (recipients.Count == 0)
+                {
+                    var sec = !string.IsNullOrWhiteSpace(classItem.SectionLabel)
+                        ? classItem.SectionLabel
+                        : (classItem.Section ?? string.Empty);
+                    if (!string.IsNullOrWhiteSpace(sec))
+                        recipients = await GetStudentEmailsBySectionAsync(sec) ?? new List<string>();
+                }
+            }
+            catch
+            {
+                // Notifications are best-effort
+            }
+
+            return recipients
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => e.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         // ---------------- STUDENT MANAGEMENT ----------------
@@ -2093,9 +2664,8 @@ namespace StudentPortal.Services
             var classItem = await _classes.Find(c => c.ClassCode == classCode).FirstOrDefaultAsync();
             if (classItem == null) return new List<StudentRecord>();
 
-            var students = await GetStudentsByClassIdAsync(classItem.Id);
-
-            return students.Select(s => new StudentRecord
+            var joined = await GetStudentsByClassIdAsync(classItem.Id);
+            var roster = joined.Select(s => new StudentRecord
             {
                 Id = s.Id,
                 ClassId = classItem.Id,
@@ -2104,6 +2674,84 @@ namespace StudentPortal.Services
                 Status = "Active",
                 Grade = 0.0
             }).ToList();
+
+            List<string> enrolledEmails;
+            try
+            {
+                enrolledEmails = await GetStudentEmailsForClassAsync(classItem);
+            }
+            catch
+            {
+                enrolledEmails = new List<string>();
+            }
+
+            var seen = new HashSet<string>(
+                roster.Where(r => !string.IsNullOrWhiteSpace(r.StudentEmail)).Select(r => r.StudentEmail),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var email in enrolledEmails.Where(e => !string.IsNullOrWhiteSpace(e)))
+            {
+                var em = email.Trim();
+                if (seen.Contains(em)) continue;
+                seen.Add(em);
+
+                User? portalUser = null;
+                try
+                {
+                    portalUser = await GetUserByEmailAsync(em);
+                }
+                catch
+                {
+                    portalUser = null;
+                }
+
+                EnrollmentStudent? enr = null;
+                try
+                {
+                    enr = await GetEnrollmentStudentByEmailAsync(em);
+                }
+                catch
+                {
+                    enr = null;
+                }
+
+                string id;
+                string name;
+                if (portalUser != null && !string.IsNullOrWhiteSpace(portalUser.Id))
+                {
+                    id = portalUser.Id;
+                    name = !string.IsNullOrWhiteSpace(portalUser.FullName)
+                        ? portalUser.FullName
+                        : string.Join(" ", new[] { portalUser.FirstName, portalUser.MiddleName, portalUser.LastName }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                    if (string.IsNullOrWhiteSpace(name)) name = em;
+                }
+                else if (enr != null)
+                {
+                    id = string.IsNullOrWhiteSpace(enr.Id) ? em : enr.Id;
+                    var nameParts = new[] { enr.FirstName, enr.MiddleName, enr.LastName }.Where(x => !string.IsNullOrWhiteSpace(x));
+                    name = string.Join(" ", nameParts);
+                    if (string.IsNullOrWhiteSpace(name))
+                        name = string.IsNullOrWhiteSpace(enr.Username) ? em : enr.Username;
+                }
+                else
+                {
+                    id = em;
+                    name = em;
+                }
+
+                roster.Add(new StudentRecord
+                {
+                    Id = id,
+                    ClassId = classItem.Id,
+                    StudentName = name,
+                    StudentEmail = em,
+                    Status = "Not joined",
+                    Grade = 0.0
+                });
+            }
+
+            var seatMap = classItem.SeatAssignmentsByStudentKey;
+            return OrderRosterBySeatAssignments(roster, seatMap);
         }
 
         // ---------------- CONTENT ----------------
@@ -2203,7 +2851,9 @@ namespace StudentPortal.Services
                 .Set(c => c.Description, content.Description)
                 .Set(c => c.LinkUrl, content.LinkUrl)
                 .Set(c => c.Deadline, content.Deadline)
+                .Set(c => c.AllowSubmissionsPastDeadline, content.AllowSubmissionsPastDeadline)
                 .Set(c => c.Attachments, content.Attachments)
+                .Set(c => c.LinkedLibraryEbookIds, content.LinkedLibraryEbookIds)
                 .Set(c => c.MetaText, content.MetaText)
                 .Set(c => c.MaxGrade, content.MaxGrade)
                 .Set(c => c.UpdatedAt, DateTime.UtcNow);
@@ -2230,9 +2880,26 @@ namespace StudentPortal.Services
 
         public async Task<UploadItem?> GetUploadByFileNameAsync(string fileName, string contentId)
         {
-            return await _uploadCollection
-                .Find(u => u.FileName == fileName && u.ContentId == contentId)
-                .FirstOrDefaultAsync();
+            if (string.IsNullOrWhiteSpace(fileName)) return null;
+
+            if (!string.IsNullOrWhiteSpace(contentId))
+            {
+                var exact = await _uploadCollection
+                    .Find(u => u.FileName == fileName && u.ContentId == contentId)
+                    .FirstOrDefaultAsync();
+                if (exact != null) return exact;
+
+                var content = await GetContentByIdAsync(contentId);
+                if (content != null && !string.IsNullOrWhiteSpace(content.ClassId))
+                {
+                    return await _uploadCollection
+                        .Find(u => u.FileName == fileName && u.ClassId == content.ClassId)
+                        .SortByDescending(u => u.UploadedAt)
+                        .FirstOrDefaultAsync();
+                }
+            }
+
+            return null;
         }
 
         public async Task<List<UploadItem>> GetUploadsByClassIdAsync(string classId)
@@ -2387,6 +3054,8 @@ namespace StudentPortal.Services
                 .Set(s => s.IsApproved, isApproved)
                 .Set(s => s.HasPassed, hasPassed)
                 .Set(s => s.Grade, grade)
+                .Set(s => s.TeacherRemarks, feedback)
+                // Keep legacy field updated for older readers.
                 .Set(s => s.Feedback, feedback)
                 .Set(s => s.ApprovedDate, isApproved ? DateTime.UtcNow : (DateTime?)null)
                 .Set(s => s.UpdatedAt, DateTime.UtcNow);
@@ -2915,7 +3584,9 @@ namespace StudentPortal.Services
                     Console.WriteLine($"  Approved: {sub.IsApproved}");
                     Console.WriteLine($"  Passed: {sub.HasPassed}");
                     Console.WriteLine($"  Grade: {sub.Grade}");
-                    Console.WriteLine($"  Feedback: {sub.Feedback}");
+                    Console.WriteLine($"  PrivateComment: {sub.PrivateComment}");
+                    Console.WriteLine($"  TeacherRemarks: {sub.TeacherRemarks}");
+                    Console.WriteLine($"  Feedback(Legacy): {sub.Feedback}");
                     Console.WriteLine($"  Created: {sub.CreatedAt}");
                     Console.WriteLine($"  Updated: {sub.UpdatedAt}");
                     Console.WriteLine($"  ---");
@@ -2948,6 +3619,8 @@ namespace StudentPortal.Services
                 submission.IsApproved = isApproved;
                 submission.HasPassed = hasPassed;
                 submission.Grade = grade;
+                submission.TeacherRemarks = feedback;
+                // Keep legacy field updated for older readers.
                 submission.Feedback = feedback;
                 submission.ApprovedDate = isApproved ? DateTime.UtcNow : (DateTime?)null;
                 submission.UpdatedAt = DateTime.UtcNow;
@@ -2974,6 +3647,8 @@ namespace StudentPortal.Services
             string details,
             int withinSeconds = 2)
         {
+            if (string.IsNullOrWhiteSpace(classId) || string.IsNullOrWhiteSpace(contentId))
+                return false;
             var cutoff = DateTime.UtcNow.AddSeconds(-withinSeconds);
             var filter = Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.ClassId, classId)
                        & Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.ContentId, contentId)
@@ -2986,9 +3661,88 @@ namespace StudentPortal.Services
 
         public async Task<List<StudentPortal.Models.AdminDb.AntiCheatLog>> GetAntiCheatLogsAsync(string classId, string contentId)
         {
+            if (string.IsNullOrWhiteSpace(classId) || string.IsNullOrWhiteSpace(contentId))
+                return new List<StudentPortal.Models.AdminDb.AntiCheatLog>();
             var filter = Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.ClassId, classId)
                        & Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.ContentId, contentId);
             return await _antiCheatLogsCollection.Find(filter).ToListAsync();
+        }
+
+        /// <summary>
+        /// Students whose summed integrity events for this assessment meet or exceed <see cref="AssessmentAntiCheatRules.IntegrityLockThreshold"/>.
+        /// </summary>
+        public async Task<List<CheatLockedStudentRow>> GetIntegrityThresholdStudentRowsAsync(string classId, string contentId)
+        {
+            var logs = await GetAntiCheatLogsAsync(classId, contentId);
+            if (logs == null || logs.Count == 0) return new List<CheatLockedStudentRow>();
+
+            var groups = new Dictionary<string, List<StudentPortal.Models.AdminDb.AntiCheatLog>>(StringComparer.Ordinal);
+            foreach (var log in logs)
+            {
+                if (string.IsNullOrEmpty(log.StudentId) && string.IsNullOrWhiteSpace(log.StudentEmail)) continue;
+                var key = !string.IsNullOrEmpty(log.StudentId)
+                    ? "id:" + log.StudentId
+                    : "em:" + (log.StudentEmail ?? "").Trim().ToLowerInvariant();
+                if (!groups.TryGetValue(key, out var list))
+                {
+                    list = new List<StudentPortal.Models.AdminDb.AntiCheatLog>();
+                    groups[key] = list;
+                }
+                list.Add(log);
+            }
+
+            var result = new List<CheatLockedStudentRow>();
+            foreach (var kv in groups)
+            {
+                var list = kv.Value;
+                var total = list.Sum(l => l.EventCount > 0 ? l.EventCount : 1);
+
+                var sample = list.OrderByDescending(l => l.LogTimeUtc).First();
+                var sid = list.FirstOrDefault(l => !string.IsNullOrEmpty(l.StudentId))?.StudentId ?? "";
+                var email = sample.StudentEmail ?? "";
+                if (string.IsNullOrEmpty(sid) && !string.IsNullOrWhiteSpace(email))
+                {
+                    var u = await GetUserByEmailAsync(email);
+                    sid = u?.Id ?? "";
+                }
+
+                var name = sample.StudentName ?? "";
+                if (string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(email))
+                {
+                    var uName = await GetUserByEmailAsync(email);
+                    if (!string.IsNullOrWhiteSpace(uName?.FullName)) name = uName.FullName;
+                }
+
+                StudentPortal.Models.AdminDb.AssessmentUnlock? unlock = null;
+                if (!string.IsNullOrEmpty(sid))
+                    unlock = await GetAssessmentUnlockAsync(classId, contentId, sid);
+                // For display/decisioning: when unlocked, only count events since unlock.
+                var totalForLock = AssessmentAntiCheatRules.SumIntegrityEventsForLock(list, sid, email, unlock);
+                // Keep row visible if teacher restored access (so "Remove override" still works),
+                // otherwise only show students currently at/above threshold.
+                if (totalForLock < AssessmentAntiCheatRules.IntegrityLockThreshold && !(unlock != null && unlock.Unlocked)) continue;
+
+                var canTeacherRestoreIntegrity = true;
+                if (!string.IsNullOrEmpty(sid))
+                {
+                    var assessRes = await GetAssessmentResultAsync(classId, contentId, sid);
+                    canTeacherRestoreIntegrity = (assessRes?.TeacherIntegrityRestoreCount ?? 0) < 1;
+                }
+
+                result.Add(new CheatLockedStudentRow
+                {
+                    StudentId = sid,
+                    StudentEmail = email,
+                    StudentName = string.IsNullOrWhiteSpace(name) ? (email ?? "Student") : name,
+                    IntegrityEventTotal = totalForLock,
+                    TeacherRestoredAccess = unlock != null && unlock.Unlocked,
+                    RestoredByEmail = unlock?.UnlockedBy,
+                    RestoredAtUtc = unlock?.UnlockedAtUtc,
+                    CanTeacherRestoreIntegrity = canTeacherRestoreIntegrity
+                });
+            }
+
+            return result.OrderByDescending(r => r.IntegrityEventTotal).ToList();
         }
 
         public async Task<StudentPortal.Models.AdminDb.AssessmentUnlock?> GetAssessmentUnlockAsync(string classId, string contentId, string studentId)
@@ -3038,6 +3792,109 @@ namespace StudentPortal.Services
                 .FirstOrDefaultAsync();
         }
 
+        /// <summary>
+        /// Resolves the student's assessment row by <paramref name="user"/>.<c>Id</c> when present, otherwise by email
+        /// (for accounts where BSON id is missing so integrity lock rows still match after navigation).
+        /// </summary>
+        public async Task<StudentPortal.Models.StudentDb.AssessmentResult?> GetAssessmentResultForStudentAsync(string classId, string contentId, User? user)
+        {
+            if (string.IsNullOrEmpty(classId) || string.IsNullOrEmpty(contentId) || user == null) return null;
+            if (!string.IsNullOrEmpty(user.Id))
+                return await GetAssessmentResultAsync(classId, contentId, user.Id);
+            if (string.IsNullOrWhiteSpace(user.Email)) return null;
+            var escaped = Regex.Escape(user.Email.Trim());
+            var filter = Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.And(
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.ClassId, classId),
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.ContentId, contentId),
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Regex(
+                    r => r.StudentEmail,
+                    new BsonRegularExpression($"^{escaped}$", "i")));
+            return await _assessmentResultsCollection.Find(filter).FirstOrDefaultAsync();
+        }
+
+        /// <summary>
+        /// Persists integrity lock on the student's assessment result so reopening the quiz cannot bypass
+        /// the lock if anti-cheat log queries or client state are inconsistent.
+        /// </summary>
+        public async Task SetAssessmentIntegrityLockAsync(string classId, string classCode, string contentId, string studentId, string studentEmail)
+        {
+            if (string.IsNullOrEmpty(classId) || string.IsNullOrEmpty(contentId) || string.IsNullOrEmpty(studentId)) return;
+            var filter = Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.And(
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.ClassId, classId),
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.ContentId, contentId),
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.StudentId, studentId)
+            );
+            var now = DateTime.UtcNow;
+            var update = Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Update
+                .SetOnInsert(r => r.Id, ObjectId.GenerateNewId().ToString())
+                .SetOnInsert(r => r.ClassId, classId)
+                .SetOnInsert(r => r.ClassCode, classCode ?? string.Empty)
+                .SetOnInsert(r => r.ContentId, contentId)
+                .SetOnInsert(r => r.StudentId, studentId)
+                .SetOnInsert(r => r.StudentEmail, studentEmail ?? string.Empty)
+                .SetOnInsert(r => r.Status, "pending")
+                .Set(r => r.StudentEmail, studentEmail ?? string.Empty)
+                .Set(r => r.IntegrityLockedAtUtc, now);
+            await _assessmentResultsCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+        }
+
+        /// <summary>
+        /// Same as <see cref="SetAssessmentIntegrityLockAsync"/> but supports students without a Mongo user id by keying the upsert on email.
+        /// </summary>
+        public async Task SetAssessmentIntegrityLockForUserAsync(string classId, string classCode, string contentId, User user)
+        {
+            if (string.IsNullOrEmpty(classId) || string.IsNullOrEmpty(contentId) || user == null) return;
+            if (!string.IsNullOrEmpty(user.Id))
+            {
+                await SetAssessmentIntegrityLockAsync(classId, classCode, contentId, user.Id, user.Email ?? string.Empty);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(user.Email)) return;
+            var escaped = Regex.Escape(user.Email.Trim());
+            var filter = Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.And(
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.ClassId, classId),
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.ContentId, contentId),
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Regex(
+                    r => r.StudentEmail,
+                    new BsonRegularExpression($"^{escaped}$", "i")));
+            var now = DateTime.UtcNow;
+            var update = Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Update
+                .SetOnInsert(r => r.Id, ObjectId.GenerateNewId().ToString())
+                .SetOnInsert(r => r.ClassId, classId)
+                .SetOnInsert(r => r.ClassCode, classCode ?? string.Empty)
+                .SetOnInsert(r => r.ContentId, contentId)
+                .SetOnInsert(r => r.StudentId, string.Empty)
+                .SetOnInsert(r => r.Status, "pending")
+                .Set(r => r.StudentEmail, user.Email.Trim())
+                .Set(r => r.IntegrityLockedAtUtc, now);
+            await _assessmentResultsCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+        }
+
+        /// <summary>
+        /// Records one teacher &quot;Restore integrity access&quot; for this student/assessment (max one restore per policy).
+        /// </summary>
+        public async Task IncrementTeacherIntegrityRestoreCountAsync(string classId, string classCode, string contentId, string studentId, string studentEmail)
+        {
+            if (string.IsNullOrEmpty(classId) || string.IsNullOrEmpty(contentId) || string.IsNullOrEmpty(studentId)) return;
+            var filter = Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.And(
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.ClassId, classId),
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.ContentId, contentId),
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.StudentId, studentId)
+            );
+            var update = Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Update
+                .SetOnInsert(r => r.Id, ObjectId.GenerateNewId().ToString())
+                .SetOnInsert(r => r.ClassId, classId)
+                .SetOnInsert(r => r.ClassCode, classCode ?? string.Empty)
+                .SetOnInsert(r => r.ContentId, contentId)
+                .SetOnInsert(r => r.StudentId, studentId)
+                .SetOnInsert(r => r.StudentEmail, studentEmail ?? string.Empty)
+                .SetOnInsert(r => r.Status, "pending")
+                .Set(r => r.StudentEmail, studentEmail ?? string.Empty)
+                .Inc(r => r.TeacherIntegrityRestoreCount, 1);
+            await _assessmentResultsCollection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = true });
+        }
+
         public async Task UpsertAssessmentSubmittedAsync(string classId, string classCode, string contentId, string studentId, string studentEmail)
         {
             var filter = Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.And(
@@ -3076,6 +3933,23 @@ namespace StudentPortal.Services
                 .Set(r => r.Status, "done");
             var options = new UpdateOptions { IsUpsert = true };
             await _assessmentResultsCollection.UpdateOneAsync(filter, update, options);
+        }
+
+        public async Task ResetAssessmentResultAsync(string classId, string contentId, string studentId)
+        {
+            if (string.IsNullOrEmpty(classId) || string.IsNullOrEmpty(contentId) || string.IsNullOrEmpty(studentId)) return;
+            var filter = Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.And(
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.ClassId, classId),
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.ContentId, contentId),
+                Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Filter.Eq(r => r.StudentId, studentId)
+            );
+            var update = Builders<StudentPortal.Models.StudentDb.AssessmentResult>.Update
+                .Set(r => r.SubmittedAt, (DateTime?)null)
+                .Set(r => r.Status, "pending")
+                .Set(r => r.Score, (double?)null)
+                .Set(r => r.MaxScore, (double?)null)
+                .Set(r => r.IntegrityLockedAtUtc, (DateTime?)null);
+            await _assessmentResultsCollection.UpdateOneAsync(filter, update);
         }
         public async Task UpdateAssessmentScoreAsync(string classId, string contentId, string studentId, double? score, double? maxScore)
         {

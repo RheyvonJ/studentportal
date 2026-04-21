@@ -20,6 +20,16 @@ namespace StudentPortal.Models
         [BsonElement("Email")]
         public string Email { get; set; } = string.Empty;
 
+        // Name fields (present in SHSStudents)
+        [BsonElement("FirstName")]
+        public string? FirstName { get; set; }
+        [BsonElement("MiddleName")]
+        public string? MiddleName { get; set; }
+        [BsonElement("LastName")]
+        public string? LastName { get; set; }
+        [BsonElement("Suffix")]
+        public string? Suffix { get; set; }
+
         public string Type { get; set; } = string.Empty;
 
         public string ResetTokenHash { get; set; } = "";
@@ -28,6 +38,30 @@ namespace StudentPortal.Models
 
         // Optional fields that may or may not exist in the database
         public string? AccountStatus { get; set; }
+
+        // Fields used by EnrollmentSystem/SHSStudents for activation/deactivation
+        // Example keys observed: IsActive, enrollmentStatus, deactivatedAt, deactivationReason, SchoolYear
+        [BsonElement("IsActive")]
+        public bool? IsActive { get; set; }
+
+        // Some deployments may store the same flag in camelCase.
+        [BsonElement("isActive")]
+        public bool? IsActiveCamel { get; set; }
+
+        [BsonElement("enrollmentStatus")]
+        public string? EnrollmentStatus { get; set; }
+
+        [BsonElement("deactivatedAt")]
+        public DateTime? DeactivatedAt { get; set; }
+
+        [BsonElement("deactivationReason")]
+        public string? DeactivationReason { get; set; }
+
+        [BsonElement("SchoolYear")]
+        public string? SchoolYear { get; set; }
+
+        [BsonElement("schoolYear")]
+        public string? SchoolYearCamel { get; set; }
 
         public string? LastEnrolledProgram { get; set; }
         public string? LastEnrolledYearLevel { get; set; }

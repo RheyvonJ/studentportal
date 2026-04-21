@@ -1,0 +1,310 @@
+@model StudentPortal.Models.StudentDb.StudentTaskViewModel
+@{
+    ViewData["Title"] = $"{Model.SubjectName} - Task";
+    var toastMessage = TempData["ToastMessage"] as string;
+    Layout = "_StudentLayout";
+    ViewBag.CurrentPage = "subjects";
+    ViewBag.EnableSidebarSlide = true;
+    ViewBag.HideSidebar = true;
+    ViewBag.HeaderTitle = "Task";
+    ViewBag.HeaderSubtext = $"{Model.SectionName} • {Model.SubjectName} • {Model.SubjectCode} • {Model.ClassCode}";
+    ViewBag.SuppressMobilePageContext = true;
+    ViewBag.HeaderShowProfile = false;
+    var taskStatusLabel = "Active";
+    var taskStatusVariant = "active";
+    if (Model.DeadlineDate.HasValue)
+    {
+        var daysLeft = (Model.DeadlineDate.Value.Date - DateTime.UtcNow.Date).TotalDays;
+        if (daysLeft < 0)
+        {
+            taskStatusLabel = "Overdue";
+            taskStatusVariant = "closed";
+        }
+        else if (daysLeft <= 3)
+        {
+            taskStatusLabel = "Due Soon";
+            taskStatusVariant = "draft";
+        }
+    }
+    var postedDisplay = Model.PostedDate;
+    var editedDisplay = string.Empty;
+    var deadlineDisplay = string.IsNullOrWhiteSpace(Model.Deadline) ? "N/A" : Model.Deadline;
+    var deadlineIso = Model.DeadlineDate.HasValue ? Model.DeadlineDate.Value.ToString("yyyy-MM-dd") : string.Empty;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/StudentDb/StudentClass.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/StudentDb/StudentTask.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminClass.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminAssessment.theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminClass.theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminTask.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Shared/PublicComments.css" asp-append-version="true" />
+}
+
+<main class="student-class-shell admin-class-page admin-task-page student-task-page" id="studentTaskPage" data-class-code="@Model.ClassCode" data-student-dashboard-url="@Url.Content("~/studentdb/StudentDb")">
+    <section class="class-container admin-class-view-container">
+        <div class="admin-class-topbar admin-class-topbar--breadcrumb-only">
+            <nav class="admin-class-topbar-right class-breadcrumb aae-breadcrumb slsp-crumb-tabs" aria-label="Breadcrumb">
+                <a class="slsp-crumb-tab" href="@Url.Content("~/studentdb/StudentDb")" title="Dashboard">
+                    <i class="fa-solid fa-table-cells-large" aria-hidden="true"></i>
+                    <span>Dashboard</span>
+                </a>
+                <span class="slsp-crumb-divider" aria-hidden="true"></span>
+                <a class="slsp-crumb-tab" href="@Url.Action("Index", "StudentClass", new { classCode = Model.ClassCode })" title="@Model.SubjectName">
+                    <i class="fa-solid fa-book" aria-hidden="true"></i>
+                    <span>@Model.SubjectCode</span>
+                </a>
+                <span class="slsp-crumb-divider" aria-hidden="true"></span>
+                <span class="slsp-crumb-tab is-active" aria-current="page" title="@Model.TaskTitle">
+                    <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+                    <span>@Model.TaskTitle</span>
+                </span>
+            </nav>
+        </div>
+        <section class="class-info aae-profile-card">
+            <div class="aae-profile">
+                <div class="aae-profile-avatar" aria-hidden="true">@Model.InstructorInitials</div>
+                <div class="aae-profile-text">
+                    <div class="aae-profile-name">@Model.InstructorName</div>
+                    <div class="aae-profile-secondary">
+                        @Model.InstructorRole
+                        @if (!string.IsNullOrWhiteSpace(Model.TeacherDepartment))
+                        {
+                            <text> · @Model.TeacherDepartment</text>
+                        }
+                    </div>
+                    <div class="aae-profile-secondary aae-profile-muted">
+                        @Model.RoomName
+                        @if (!string.IsNullOrWhiteSpace(Model.FloorDisplay))
+                        {
+                            <text> · @Model.FloorDisplay</text>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="aae-subject-block">
+                <h2 class="aae-subject-title">@Model.SubjectName</h2>
+                <p class="aae-subject-line"><span class="aae-label">Subject code</span> <span class="aae-value">@Model.SubjectCode</span></p>
+                <p class="aae-subject-line"><span class="aae-label">Class code</span> <span class="aae-value">@Model.ClassCode</span></p>
+            </div>
+
+            <div class="aae-divider" role="presentation"></div>
+
+            <div class="class-info-middle">
+                @if (Model.RecentTasks != null && Model.RecentTasks.Count > 0)
+                {
+                    <div class="recent-uploads student-task-recent-tasks">
+                        <h3 class="aae-aside-heading"><i class="fa-regular fa-clock"></i> Recent tasks</h3>
+                        <ul>
+                            @foreach (var t in Model.RecentTasks)
+                            {
+                                <li class="recent-upload-row @(t.IsCurrent ? "is-current" : "")" data-content-id="@(t.ContentId ?? "")">
+                                    @if (t.IsCurrent)
+                                    {
+                                        <span class="recent-upload-static">
+                                            <i class="fa-solid fa-file-pen" aria-hidden="true"></i>
+                                            <span class="recent-title">@t.Title</span>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <a class="recent-upload-link" href="@Url.Action("Index", "StudentTask", new { classCode = Model.ClassCode, contentId = t.ContentId })" title="@t.Title">
+                                            <i class="fa-solid fa-file-pen" aria-hidden="true"></i>
+                                            <span class="recent-title">@t.Title</span>
+                                        </a>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+
+            <div class="student-task-work-panel submit-container aae-profile-card" id="submitContainer">
+                <div class="submit-container-top">
+                    <h2 class="submit-header">Your Work</h2>
+                    @if (!string.IsNullOrWhiteSpace(Model.Grade))
+                    {
+                        <div class="grade-indicator">Grade: @Model.Grade</div>
+                    }
+                    @if (Model.IsSubmitted)
+                    {
+                        <div class="status-card submitted">
+                            <div class="status-title">Submitted</div>
+                            <div class="status-meta">@Model.SubmittedAt?.ToString("MMM d, yyyy h:mm tt")</div>
+                            @if (Model.IsApproved || !string.IsNullOrWhiteSpace(Model.Grade) || Model.HasPassed)
+                            {
+                                @if (!string.IsNullOrWhiteSpace(Model.Feedback))
+                                {
+                                    <div class="status-badge">@Model.Feedback</div>
+                                }
+                                else
+                                {
+                                    <div class="status-badge">Checked</div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="status-badge">Pending Instructor Review</div>
+                            }
+                        </div>
+                    }
+                </div>
+                <div id="submissionForm" style="@(Model.IsSubmitted ? "display:none" : "")">
+                    <form method="post" asp-action="SubmitTask" id="taskForm" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="taskId" value="@Model.TaskId" />
+                        <input type="hidden" name="classCode" value="@Model.ClassCode" />
+                        <input type="hidden" name="studentEmail" value="@Model.StudentEmail" />
+                        <div class="attachment-area">
+                            <label for="fileInput" class="attach-label">
+                                <i class="fa-solid fa-paperclip"></i> Attach File
+                            </label>
+                            <input type="file" id="fileInput" name="file" multiple hidden>
+                        </div>
+                        <div id="selectedFileList" class="st-file-list" aria-live="polite"></div>
+
+                        <div class="st-private-comment-area">
+                            <label for="privateCommentInput" class="st-field-label">Private Comment (Student)</label>
+                            <textarea id="privateCommentInput" name="privateComment" class="st-private-comment-input" placeholder="Add a private note for your teacher...">@Model.PrivateComment</textarea>
+                        </div>
+
+                        <div class="st-remarks-area">
+                            <label class="st-field-label">Teacher Remarks</label>
+                            <div class="st-remarks-display">@(string.IsNullOrWhiteSpace(Model.Feedback) ? "No remarks yet." : Model.Feedback)</div>
+                        </div>
+
+                        <div class="submit-buttons">
+                            <button type="button" class="btn submit-btn" id="submitBtn">Submit</button>
+                            <button type="button" class="btn mark-done-btn" id="markDoneBtn">Mark as Done</button>
+                        </div>
+                    </form>
+                </div>
+
+                @if (Model.IsSubmitted)
+                {
+                    <div id="resubmissionSection">
+                        <button class="btn update-btn" id="resubmitBtn">Update Submission</button>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="class-content admin-class-right-column" id="classContent">
+            <div class="admin-task-stack">
+                <section class="task-container aae-assessment-card" id="taskContainer" data-task-id="@Model.TaskId">
+                    <div class="task-scrollable aae-assessment-body">
+                        <header class="aae-card-header">
+                            <div class="aae-title-row">
+                                <h2 class="task-title aae-assessment-name" id="taskTitle">@Model.TaskTitle</h2>
+                                <span class="aae-status-badge aae-status-@taskStatusVariant" id="taskStatusBadge">@taskStatusLabel</span>
+                            </div>
+                        </header>
+
+                        <p class="task-description aae-description" id="taskDescription">@Model.Description</p>
+
+                        <div class="aae-divider soft" role="presentation"></div>
+
+                        <div id="dateInfo" class="aae-meta-row"
+                             data-posted="@postedDisplay"
+                             data-edited="@editedDisplay"
+                             data-deadline-display="@deadlineDisplay"
+                             data-deadline-iso="@deadlineIso">
+                            <div class="aae-meta-item">
+                                <span class="aae-meta-icon" aria-hidden="true"><i class="fa-regular fa-calendar"></i></span>
+                                <span class="aae-meta-label">Posted</span>
+                                <span class="aae-meta-value">@postedDisplay</span>
+                            </div>
+                            <div class="aae-meta-item">
+                                <span class="aae-meta-icon" aria-hidden="true"><i class="fa-regular fa-flag"></i></span>
+                                <span class="aae-meta-label">Deadline</span>
+                                <span class="aae-meta-value">@(deadlineDisplay == "N/A" ? "—" : deadlineDisplay)</span>
+                            </div>
+                        </div>
+
+                        <div class="aae-divider soft" role="presentation"></div>
+
+                        <section class="attachments-section aae-files-section">
+                            <h3 class="aae-section-heading"><i class="fa-regular fa-file-lines"></i> Attached files</h3>
+                            <div id="attachmentDropzone" class="aae-dropzone @(Model.Attachments != null && Model.Attachments.Count > 0 ? "has-files" : "")">
+                                <div class="attachments aae-attachments" id="serverAttachments">
+                                    @if (Model.Attachments != null)
+                                    {
+                                        foreach (var file in Model.Attachments)
+                                        {
+                                            <div class="attachment-box aae-file-chip" data-file-label="@file.FileName">
+                                                <span class="attachment-name">@file.FileName</span>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                                @if (Model.Attachments == null || Model.Attachments.Count == 0)
+                                {
+                                    <div class="aae-empty-files" id="attachmentEmptyState">
+                                        <div class="aae-empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></div>
+                                        <p class="aae-empty-title">No files yet</p>
+                                    </div>
+                                }
+                            </div>
+                        </section>
+                    </div>
+                </section>
+
+                <section class="public-comment-container" id="publicCommentContainer">
+                    <h3 class="public-comment-header">Class Comments</h3>
+                    <div class="public-comment-input">
+                        <textarea id="publicCommentText" placeholder="Add a class comment..."></textarea>
+                        <button id="postPublicCommentBtn" class="post-comment-btn">Post</button>
+                    </div>
+                    <div class="public-comment-list" id="publicCommentList"></div>
+                </section>
+            </div>
+        </section>
+
+        <!-- SUBMISSION CONFIRM MODAL -->
+        <div class="confirm-modal" id="submitConfirmModal" hidden aria-hidden="true">
+            <div class="confirm-box">
+                <p>Submit your work?</p>
+                <div class="confirm-actions">
+                    <button id="submitConfirmYes" class="btn yes">Yes</button>
+                    <button id="submitConfirmNo" class="btn no">No</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- UNSUBMIT CONFIRM MODAL -->
+        <div class="confirm-modal" id="unsubmitConfirmModal" hidden aria-hidden="true">
+            <div class="confirm-box">
+                <p>Are you sure you want to cancel submission?</p>
+                <div class="confirm-actions">
+                    <button id="unsubmitYes" class="btn yes">Yes</button>
+                    <button id="unsubmitNo" class="btn no">No</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirm-modal" id="confirmModal" aria-hidden="true">
+            <div class="confirm-box">
+                <p>Are you sure you want to mark this done without attaching your work?</p>
+                <div class="confirm-actions">
+                    <button id="confirmYes" class="btn yes">Yes</button>
+                    <button id="confirmNo" class="btn no">No</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<div id="toast" class="toast">@toastMessage</div>
+@section Scripts {
+    <script>
+        window.__submittedFileData = null;
+        @if (!string.IsNullOrWhiteSpace(Model.SubmittedFileName))
+        {
+            var sizeText = string.IsNullOrWhiteSpace(Model.SubmittedFileSize) ? "" : Model.SubmittedFileSize;
+            <text>window.__submittedFileData = { fileName: "@Model.SubmittedFileName", fileUrl: "@Model.SubmittedFileUrl", sizeText: "@sizeText" };</text>
+        }
+    </script>
+    <script src="~/js/StudentDb/StudentTask.js" asp-append-version="true"></script>
+}

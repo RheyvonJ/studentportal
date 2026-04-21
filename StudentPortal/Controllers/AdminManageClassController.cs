@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
 using StudentPortal.Models.AdminDb;
 using StudentPortal.Models;
@@ -8,6 +10,7 @@ using StudentPortal.Services;
 using StudentPortal.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading.Tasks;
 
 namespace StudentPortal.Controllers.AdminDb
@@ -19,13 +22,17 @@ namespace StudentPortal.Controllers.AdminDb
         private readonly EmailService _email;
         private readonly JitsiJwtService _jitsi;
         private readonly ILogger<AdminManageClassController> _logger;
+        private readonly IConfiguration _configuration;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public AdminManageClassController(MongoDbService mongoDb, EmailService email, JitsiJwtService jitsi, ILogger<AdminManageClassController> logger)
+        public AdminManageClassController(MongoDbService mongoDb, EmailService email, JitsiJwtService jitsi, ILogger<AdminManageClassController> logger, IConfiguration configuration, IServiceScopeFactory scopeFactory)
         {
             _mongoDb = mongoDb;
             _email = email;
             _jitsi = jitsi;
             _logger = logger;
+            _configuration = configuration;
+            _scopeFactory = scopeFactory;
         }
 
         // ---------------- PAGE ----------------
@@ -74,7 +81,8 @@ namespace StudentPortal.Controllers.AdminDb
             {
                 ClassId = classItem.Id,
                 SubjectName = classItem.SubjectName,
-                SectionName = classItem.SectionLabel,
+                SubjectCode = classItem.SubjectCode ?? string.Empty,
+                SectionName = !string.IsNullOrWhiteSpace(classItem.SectionLabel) ? classItem.SectionLabel : (classItem.Section ?? string.Empty),
                 ClassCode = classItem.ClassCode,
                 Students = students,
                 JoinRequests = joinRequests
@@ -139,6 +147,7 @@ namespace StudentPortal.Controllers.AdminDb
                     ViewBag.MeetingJoinUrl = latestMeeting.LinkUrl;
                 }
                 ViewBag.MeetingScheduledAt = scheduled?.ToLocalTime();
+                // Time-window join gate (e.g. for emails); Manage Class UI always shows Join when HasMeeting.
                 ViewBag.CanJoinMeeting = canJoin;
             }
             else
@@ -365,6 +374,39 @@ namespace StudentPortal.Controllers.AdminDb
             });
 
             return Ok(result);
+        }
+
+        [HttpPost("SaveSeatAssignments")]
+        public async Task<IActionResult> SaveSeatAssignments([FromBody] SaveSeatAssignmentsRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.ClassCode))
+                return BadRequest(new { success = false, message = "Class code is required." });
+
+            var classCode = request.ClassCode.Trim();
+            var classItem = await _mongoDb.GetClassByCodeAsync(classCode);
+            if (classItem == null)
+                return NotFound(new { success = false, message = "Class not found." });
+
+            var incoming = request.Assignments ?? new List<SeatAssignmentItem>();
+            var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var used = new HashSet<int>();
+
+            foreach (var a in incoming)
+            {
+                var key = (a.StudentKey ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                if (a.SeatIndex < 0)
+                    return BadRequest(new { success = false, message = "Invalid seat index." });
+                if (!used.Add(a.SeatIndex))
+                    return BadRequest(new { success = false, message = "Duplicate seat index in request." });
+                map[key] = a.SeatIndex;
+            }
+
+            var ok = await _mongoDb.UpdateClassSeatAssignmentsAsync(classCode, map);
+            if (!ok)
+                return StatusCode(500, new { success = false, message = "Failed to save seat assignments." });
+
+            return Ok(new { success = true, message = "Seat assignments saved." });
         }
 
         // ---------------- EXPORT DATA (JSON for Excel) ----------------
@@ -1408,12 +1450,15 @@ namespace StudentPortal.Controllers.AdminDb
                     ? $"Class meeting — {classItem.SubjectName}"
                     : request.Title.Trim();
 
+                // Prefer ISO-8601 from the browser (UTC Z) so the scheduled instant matches the teacher's local picker, not the server clock.
                 DateTime? scheduledAt = null;
                 if (!string.IsNullOrWhiteSpace(request.ScheduledAt) &&
-                    DateTime.TryParse(request.ScheduledAt, out var parsed))
+                    DateTimeOffset.TryParse(request.ScheduledAt.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dto))
                 {
-                    scheduledAt = parsed.ToUniversalTime();
+                    scheduledAt = dto.UtcDateTime;
                 }
+                if (!scheduledAt.HasValue)
+                    scheduledAt = DateTime.UtcNow;
 
                 var slug = $"{classItem.ClassCode}-{Guid.NewGuid().ToString("N")[..8]}";
                 var roomName = $"LMS-{slug}";
@@ -1485,70 +1530,59 @@ namespace StudentPortal.Controllers.AdminDb
                     .Where(e => !string.Equals(e, professorEmail, StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
-                int sent = 0;
-                int failed = 0;
-                var errors = new List<string>();
+                var joinAppPath = $"/AdminManageClass/JoinMeet?classCode={Uri.EscapeDataString(classItem.ClassCode)}&room={Uri.EscapeDataString(roomName)}";
+                var publicBase = (_configuration["Portal:PublicSiteUrl"] ?? string.Empty).Trim().TrimEnd('/');
+                string? portalJoinAbs = null;
+                if (!string.IsNullOrWhiteSpace(publicBase))
+                    portalJoinAbs = publicBase + joinAppPath;
+                else if (Request?.Host.HasValue == true)
+                    portalJoinAbs = $"{Request.Scheme}://{Request.Host}{joinAppPath}";
 
-                foreach (var r in distinctRecipients)
+                var schoolName = _configuration["Portal:SchoolName"] ?? "Sta. Lucia Senior High School";
+                var logoUrl = ResolveSchoolLogoAbsoluteUrl();
+                var scheduledDisplay = scheduledAt.HasValue
+                    ? scheduledAt.Value.ToLocalTime().ToString("MMM d, yyyy h:mm tt")
+                    : null;
+
+                // Emails + per-student DB work can take a long time — do not block the HTTP response or the UI spinner.
+                var recipientsCopy = distinctRecipients.ToList();
+                if (recipientsCopy.Count > 0)
                 {
-                    string displayName = "Student";
-                    try
+                    var subjectName = classItem.SubjectName ?? string.Empty;
+                    var classCodeForNotify = classItem.ClassCode ?? string.Empty;
+                    _ = Task.Run(async () =>
                     {
-                        var user = await _mongoDb.GetUserByEmailAsync(r);
-                        if (user != null && !string.IsNullOrWhiteSpace(user.FullName))
+                        try
                         {
-                            displayName = user.FullName;
+                            await SendMeetingInviteNotificationsAsync(
+                                recipientsCopy,
+                                professorEmail,
+                                subjectName,
+                                classCodeForNotify,
+                                title,
+                                scheduledDisplay,
+                                joinUrl,
+                                portalJoinAbs,
+                                schoolName,
+                                logoUrl);
                         }
-                    }
-                    catch { }
-
-                    var body =
-                        $"Greetings, {displayName}\n\n" +
-                        $"A new online class meeting has been created for \"{classItem.SubjectName}\" ({classItem.ClassCode}).\n\n" +
-                        $"Title: {title}\n" +
-                        (scheduledAt.HasValue ? $"Schedule: {scheduledAt.Value.ToLocalTime():MMM d, yyyy h:mm tt}\n\n" : "\n") +
-                        $"Join link:\n{joinUrl}\n\n" +
-                        $"You can also join this meeting from your student portal under the class \"{classItem.SubjectName}\" as a \"Join meet\" card.";
-
-                    var res = await _email.SendEmailAsync(r, $"Online meeting for {classItem.SubjectName}", body);
-                    if (res.ok)
-                    {
-                        sent++;
-                    }
-                    else
-                    {
-                        failed++;
-                        if (!string.IsNullOrWhiteSpace(res.error)) errors.Add(res.error);
-                    }
-
-                    try
-                    {
-                        await _mongoDb.AddNotificationAsync(new StudentPortal.Models.StudentDb.UserNotification
+                        catch (Exception ex)
                         {
-                            Email = r,
-                            Type = "meeting",
-                            Text = $"New online meeting posted for \"{classItem.SubjectName}\".",
-                            Code = classItem.ClassCode,
-                            CreatedAt = DateTime.UtcNow
-                        });
-                    }
-                    catch { }
+                            _logger.LogError(ex, "Background meeting invite notifications failed for class {ClassCode}", classCodeForNotify);
+                        }
+                    });
                 }
 
-                var message = sent > 0 && failed == 0
-                    ? $"Meeting created and emailed join link to {sent} student(s)."
-                    : sent > 0 && failed > 0
-                        ? $"Meeting created. Emailed {sent} student(s), {failed} failed."
-                        : "Meeting created, but no student email recipients were found.";
-
-                var joinAppUrl = $"/AdminManageClass/JoinMeet?classCode={Uri.EscapeDataString(classItem.ClassCode)}&room={Uri.EscapeDataString(roomName)}";
+                var message = recipientsCopy.Count > 0
+                    ? "Meeting created. You can join now; students are being emailed in the background."
+                    : "Meeting created. No student email addresses were found to notify.";
 
                 return Ok(new
                 {
                     success = true,
                     message,
                     joinUrl,
-                    joinAppUrl,
+                    joinAppUrl = joinAppPath,
                     title,
                     scheduledAt,
                     contentId = contentItem.Id,
@@ -1582,5 +1616,117 @@ namespace StudentPortal.Controllers.AdminDb
         {
             public string MeetingId { get; set; } = string.Empty;
         }
+
+        /// <summary>
+        /// Sends meeting emails and in-app notifications. Runs outside the CreateMeet request so the client returns immediately.
+        /// </summary>
+        private async Task SendMeetingInviteNotificationsAsync(
+            List<string> distinctRecipients,
+            string professorEmail,
+            string subjectName,
+            string classCode,
+            string title,
+            string? scheduledDisplay,
+            string joinUrl,
+            string? portalJoinAbs,
+            string schoolName,
+            string? logoUrl)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var mongo = scope.ServiceProvider.GetRequiredService<MongoDbService>();
+            var emailSvc = scope.ServiceProvider.GetRequiredService<EmailService>();
+
+            foreach (var r in distinctRecipients)
+            {
+                string displayName = "Student";
+                try
+                {
+                    var user = await mongo.GetUserByEmailAsync(r);
+                    if (user != null && !string.IsNullOrWhiteSpace(user.FullName))
+                        displayName = user.FullName;
+                    else
+                    {
+                        var xf = await mongo.GetStudentExtraFieldsByEmailAsync(r);
+                        if (xf != null)
+                        {
+                            xf.TryGetValue("Student.FirstName", out var fn);
+                            xf.TryGetValue("Student.MiddleName", out var mn);
+                            xf.TryGetValue("Student.LastName", out var ln);
+                            var parts = new List<string>();
+                            if (!string.IsNullOrWhiteSpace(fn)) parts.Add(fn);
+                            if (!string.IsNullOrWhiteSpace(mn)) parts.Add(mn);
+                            if (!string.IsNullOrWhiteSpace(ln)) parts.Add(ln);
+                            var built = string.Join(" ", parts);
+                            if (!string.IsNullOrWhiteSpace(built)) displayName = built;
+                        }
+                    }
+                }
+                catch { }
+
+                var bodyHtml = JoinClassEmailTemplate.BuildOnlineMeetingHtml(
+                    displayName,
+                    subjectName,
+                    classCode,
+                    title,
+                    scheduledDisplay,
+                    joinUrl,
+                    portalJoinAbs,
+                    schoolName,
+                    logoUrl);
+
+                var subj = $"{JoinClassEmailTemplate.OnlineMeetingDefaultSubjectPrefix}: {subjectName}";
+                try
+                {
+                    await emailSvc.SendEmailAsync(r, subj, bodyHtml, isHtml: true);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Meeting invite email failed for {Email}", r);
+                }
+
+                try
+                {
+                    await mongo.AddNotificationAsync(new StudentPortal.Models.StudentDb.UserNotification
+                    {
+                        Email = r,
+                        Type = "meeting",
+                        Text = $"New online meeting posted for \"{subjectName}\".",
+                        Code = classCode,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                catch { }
+            }
+        }
+
+        private string? ResolveSchoolLogoAbsoluteUrl()
+        {
+            // Prefer inline-embedded logo for email clients (cid:school-logo).
+            if (string.Equals(_configuration["Portal:EmailEmbedLogo"], "true", StringComparison.OrdinalIgnoreCase))
+                return "cid:school-logo";
+
+            var path = _configuration["Portal:SchoolLogo"] ?? "~/images/SLSHS.png";
+            var publicBase = (_configuration["Portal:PublicSiteUrl"] ?? string.Empty).Trim().TrimEnd('/');
+            var localPath = path.StartsWith("~/", StringComparison.Ordinal) ? path[1..]
+                : (path.StartsWith("/", StringComparison.Ordinal) ? path : "/" + path);
+            if (!string.IsNullOrWhiteSpace(publicBase))
+                return publicBase + localPath;
+            if (Request?.Host.HasValue == true)
+                return $"{Request.Scheme}://{Request.Host}{Url.Content(path)}";
+            return null;
+        }
+    }
+
+    public sealed class SaveSeatAssignmentsRequest
+    {
+        public string ClassCode { get; set; } = string.Empty;
+        public List<SeatAssignmentItem> Assignments { get; set; } = new List<SeatAssignmentItem>();
+    }
+
+    public sealed class SeatAssignmentItem
+    {
+        /// <summary>Portal user id preferred; email allowed as fallback.</summary>
+        public string StudentKey { get; set; } = string.Empty;
+        public int SeatIndex { get; set; }
     }
 }

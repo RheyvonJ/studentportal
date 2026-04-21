@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using StudentPortal.Models.ProfessorDb;
 using StudentPortal.Services;
 using System;
@@ -13,11 +14,46 @@ namespace StudentPortal.Controllers.TeacherDb
     {
         private readonly MongoDbService _mongo;
         private readonly EmailService _email;
+        private readonly IConfiguration _configuration;
 
-        public TeacherDbController(MongoDbService mongo, EmailService email)
+        public TeacherDbController(MongoDbService mongo, EmailService email, IConfiguration configuration)
         {
             _mongo = mongo;
             _email = email;
+            _configuration = configuration;
+        }
+
+        [HttpGet("Schedule")]
+        public IActionResult Schedule()
+        {
+            var professorEmail = HttpContext.Session.GetString("UserEmail") ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(professorEmail))
+            {
+                var returnUrl = $"{Request.Path}{Request.QueryString}";
+                return RedirectToAction("Login", "Account", new { returnUrl });
+            }
+
+            var professorName = HttpContext.Session.GetString("UserName") ?? "Professor";
+            var sessionRole = (HttpContext.Session.GetString("UserRole") ?? string.Empty).Trim();
+
+            string GetInitials(string fullName)
+            {
+                if (string.IsNullOrWhiteSpace(fullName)) return "PR";
+                var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                return string.Concat(parts.Select(p => p[0])).ToUpper();
+            }
+
+            var vm = new ProfessorDashboardViewModel
+            {
+                ProfessorName = professorName,
+                ProfessorInitials = GetInitials(professorName),
+                Classes = new List<StudentPortal.Models.AdminDb.ClassItem>()
+            };
+
+            ViewBag.Role = string.IsNullOrWhiteSpace(sessionRole) ? "Teacher" : sessionRole;
+            ViewBag.CurrentPage = "schedule";
+            ViewBag.HideHeader = true;
+            return View("~/Views/TeacherDb/TeacherDb/Schedule.cshtml", vm);
         }
 
         [HttpGet("")]
@@ -25,6 +61,11 @@ namespace StudentPortal.Controllers.TeacherDb
         {
             var professorName = HttpContext.Session.GetString("UserName") ?? "Professor";
             var professorEmail = HttpContext.Session.GetString("UserEmail") ?? "";
+            if (string.IsNullOrWhiteSpace(professorEmail))
+            {
+                var returnUrl = $"{Request.Path}{Request.QueryString}";
+                return RedirectToAction("Login", "Account", new { returnUrl });
+            }
 
             string GetInitials(string fullName)
             {
@@ -51,7 +92,7 @@ namespace StudentPortal.Controllers.TeacherDb
                 Classes = classes
             };
 
-            ViewBag.Role = "Professor";
+            ViewBag.Role = "Teacher";
             return View("~/Views/TeacherDb/TeacherDb/Index.cshtml", vm);
         }
 
@@ -90,8 +131,15 @@ namespace StudentPortal.Controllers.TeacherDb
                 var scheduleId = d.TryGetValue("scheduleId", out var sch) ? sch.ToString() : string.Empty;
                 var subjectName = d.TryGetValue("subjectName", out var n) ? n.ToString() : string.Empty;
                 var schoolYear = d.TryGetValue("schoolYear", out var sy) ? sy.ToString() : string.Empty;
+                var semester = d.TryGetValue("semester", out var sem) ? sem.ToString() : string.Empty;
+                if (string.IsNullOrWhiteSpace(semester) && d.TryGetValue("Semester", out var sem2)) semester = sem2.ToString();
+                if (string.IsNullOrWhiteSpace(semester) && d.TryGetValue("term", out var term)) semester = term.ToString();
+                if (string.IsNullOrWhiteSpace(semester) && d.TryGetValue("Term", out var term2)) semester = term2.ToString();
                 var timeSlotDisplay = d.TryGetValue("timeSlotDisplay", out var ts) ? ts.ToString() : string.Empty;
                 var roomName = d.TryGetValue("roomName", out var rn) ? rn.ToString() : string.Empty;
+                var sectionIdVal = d.Contains("sectionId") ? d["sectionId"]?.ToString() ?? string.Empty
+                    : (d.Contains("SectionId") ? d["SectionId"]?.ToString() ?? string.Empty
+                    : (d.Contains("SectionID") ? d["SectionID"]?.ToString() ?? string.Empty : string.Empty));
 
                 string classCode = string.Empty;
                 try
@@ -109,9 +157,11 @@ namespace StudentPortal.Controllers.TeacherDb
                     scheduleId,
                     subjectName,
                     schoolYear,
+                    semester,
                     timeSlotDisplay,
                     roomName,
-                    classCode
+                    classCode,
+                    sectionId = sectionIdVal
                 });
             }
 
@@ -120,7 +170,7 @@ namespace StudentPortal.Controllers.TeacherDb
 
         [HttpPost("CreateClass")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateClass(string subjectName, string subjectCode, string section, string? schoolYear, string scheduleId)
+        public async Task<IActionResult> CreateClass(string subjectName, string subjectCode, string section, string? schoolYear, string scheduleId, string? sectionId)
         {
             if (string.IsNullOrWhiteSpace(subjectName) ||
                 string.IsNullOrWhiteSpace(subjectCode) ||
@@ -147,6 +197,7 @@ namespace StudentPortal.Controllers.TeacherDb
                 SubjectName = subjectName,
                 SubjectCode = subjectCode,
                 ScheduleId = scheduleId ?? string.Empty,
+                EnrollmentSectionId = string.IsNullOrWhiteSpace(sectionId) ? string.Empty : sectionId.Trim(),
                 Section = section,
                 SchoolYear = schoolYear ?? string.Empty,
                 Course = string.Empty,
@@ -162,28 +213,45 @@ namespace StudentPortal.Controllers.TeacherDb
 
             await _mongo.CreateClassAsync(newClass);
 
-            if (!string.IsNullOrWhiteSpace(scheduleId))
+            // Resolve once on the request thread: Request/Url are not safe inside fire-and-forget Task.Run.
+            var inviteEmailLogoUrl = ResolveSchoolLogoAbsoluteUrl();
+            var inviteEmailClassUrl = ResolveClassAbsoluteUrl(newClass.ClassCode);
+
+            // Run auto-invite in background so the UI doesn't "spin" forever
+            _ = Task.Run(async () =>
             {
                 try
                 {
-                    var recipients = await _mongo.GetStudentEmailsByScheduleIdAsync(scheduleId) ?? new List<string>();
-                    if (recipients.Count == 0)
-                    {
-                        var sec = !string.IsNullOrWhiteSpace(newClass.SectionLabel) ? newClass.SectionLabel : newClass.Section;
-                        recipients = await _mongo.GetStudentEmailsBySectionAsync(sec) ?? new List<string>();
-                    }
+                    var recipients = await _mongo.GetStudentEmailsForClassAsync(newClass) ?? new List<string>();
+
                     var distinctRecipients = recipients
                         .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Select(e => (e ?? string.Empty).Trim())
+                        .Where(e => !string.IsNullOrWhiteSpace(e) && e.Contains("@"))
                         .Where(e => !string.Equals(e, professorEmail, StringComparison.OrdinalIgnoreCase))
                         .ToList();
+                    Console.WriteLine($"[CreateClass] Auto-invite recipients for {newClass.ClassCode}: {distinctRecipients.Count}");
 
-                    var subj = "Join Class Code";
+                    var subj = JoinClassEmailTemplate.DefaultSubject;
                     var courseOrSubject = !string.IsNullOrWhiteSpace(newClass.SubjectName) ? newClass.SubjectName : newClass.Course;
+                    var schoolName = _configuration["Portal:SchoolName"] ?? "Sta. Lucia Senior High School";
+                    var logoUrl = inviteEmailLogoUrl;
+                    var classUrl = inviteEmailClassUrl;
 
-                    int sent = 0;
-                    int failed = 0;
+                    // Also email the creator (teacher) with the class code + link.
+                    try
+                    {
+                        var me = (professorEmail ?? string.Empty).Trim();
+                        if (!string.IsNullOrWhiteSpace(me) && me.Contains("@"))
+                        {
+                            var meBody = JoinClassEmailTemplate.BuildHtml(professorName, courseOrSubject, newClass.ClassCode, schoolName, logoUrl, classUrl);
+                            var (okMe, errMe) = await _email.SendEmailAsync(me, subj, meBody, isHtml: true);
+                            if (!okMe)
+                                Console.WriteLine($"[CreateClass] Creator email failed to {me}: {errMe}");
+                        }
+                    }
+                    catch { }
 
-                    var errors = new List<string>();
                     foreach (var r in distinctRecipients)
                     {
                         string displayName = "Student";
@@ -192,37 +260,17 @@ namespace StudentPortal.Controllers.TeacherDb
                             var user = await _mongo.GetUserByEmailAsync(r);
                             if (user != null && !string.IsNullOrWhiteSpace(user.FullName))
                                 displayName = user.FullName;
-                            else
-                            {
-                                var xf = await _mongo.GetStudentExtraFieldsByEmailAsync(r);
-                                if (xf != null)
-                                {
-                                    xf.TryGetValue("Student.FirstName", out var fn);
-                                    xf.TryGetValue("Student.MiddleName", out var mn);
-                                    xf.TryGetValue("Student.LastName", out var ln);
-                                    var parts = new List<string>();
-                                    if (!string.IsNullOrWhiteSpace(fn)) parts.Add(fn);
-                                    if (!string.IsNullOrWhiteSpace(mn)) parts.Add(mn);
-                                    if (!string.IsNullOrWhiteSpace(ln)) parts.Add(ln);
-                                    var built = string.Join(" ", parts);
-                                    if (!string.IsNullOrWhiteSpace(built)) displayName = built;
-                                }
-                            }
                         }
                         catch { }
 
-                        var body = $"Greetings, {displayName}\n\nHere is the join class code for the course {courseOrSubject}:\n\n{newClass.ClassCode}\n\nPlease use this code to join the class in your student portal. If you encounter any issues, feel free to reach out for assistance. We look forward to your active participation in the course.";
-
-                        var res = await _email.SendEmailAsync(r, subj, body);
-                        if (res.ok)
+                        try
                         {
-                            sent++;
+                            var bodyHtml = JoinClassEmailTemplate.BuildHtml(displayName, courseOrSubject, newClass.ClassCode, schoolName, logoUrl, classUrl);
+                            var (ok, err) = await _email.SendEmailAsync(r, subj, bodyHtml, isHtml: true);
+                            if (!ok)
+                                Console.WriteLine($"[CreateClass] Invite email failed to {r}: {err}");
                         }
-                        else
-                        {
-                            failed++;
-                            if (!string.IsNullOrWhiteSpace(res.error)) errors.Add(res.error);
-                        }
+                        catch { }
 
                         try
                         {
@@ -246,25 +294,48 @@ namespace StudentPortal.Controllers.TeacherDb
                         }
                         catch { }
                     }
+                }
+                catch { }
+            });
 
-                    if (sent > 0 && failed == 0)
-                        TempData["ToastMessage"] = $"✅ Class \"{subjectName}\" created and emailed join code to {sent} student(s).";
-                    else if (sent > 0 && failed > 0)
-                        TempData["ToastMessage"] = $"⚠️ Class created and emailed {sent} student(s), {failed} failed. Last error: {(errors.Count > 0 ? errors[^1] : "unknown")}";
-                    else
-                        TempData["ToastMessage"] = $"⚠️ Class created but no enrolled students were emailed. Error: {(errors.Count > 0 ? errors[^1] : "none found")}";
-                }
-                catch
-                {
-                    TempData["ToastMessage"] = $"⚠️ Class \"{subjectName}\" created, but emailing students failed.";
-                }
-            }
-            else
-            {
-                TempData["ToastMessage"] = $"✅ Class \"{subjectName}\" created. No schedule selected, so no students were emailed.";
-            }
+            TempData["ToastMessage"] = $"✅ Class \"{subjectName}\" created (Code: {newClass.ClassCode}). Invites are sending in the background.";
 
             return RedirectToAction("Index");
+        }
+
+        private string? ResolveSchoolLogoAbsoluteUrl()
+        {
+            // Prefer inline-embedded logo for email clients (cid:school-logo).
+            if (string.Equals(_configuration["Portal:EmailEmbedLogo"], "true", StringComparison.OrdinalIgnoreCase))
+                return "cid:school-logo";
+
+            var path = _configuration["Portal:SchoolLogo"] ?? "~/images/SLSHS.png";
+            var publicBase = (_configuration["Portal:PublicSiteUrl"] ?? string.Empty).Trim().TrimEnd('/');
+            var localPath = path.StartsWith("~/", StringComparison.Ordinal) ? path[1..]
+                : (path.StartsWith("/", StringComparison.Ordinal) ? path : "/" + path);
+            if (!string.IsNullOrWhiteSpace(publicBase))
+                return publicBase + localPath;
+            if (Request?.Host.HasValue == true)
+                return $"{Request.Scheme}://{Request.Host}{Url.Content(path)}";
+            return null;
+        }
+
+        private string? ResolveClassAbsoluteUrl(string classCode)
+        {
+            if (string.IsNullOrWhiteSpace(classCode)) return null;
+
+            var relative = Url.Action("Index", "StudentClass", new { classCode });
+            if (string.IsNullOrWhiteSpace(relative))
+                relative = "/StudentClass/" + Uri.EscapeDataString(classCode.Trim());
+
+            var publicBase = (_configuration["Portal:PublicSiteUrl"] ?? string.Empty).Trim().TrimEnd('/');
+            if (!string.IsNullOrWhiteSpace(publicBase))
+                return publicBase + relative;
+
+            if (Request?.Host.HasValue == true)
+                return $"{Request.Scheme}://{Request.Host}{relative}";
+
+            return null;
         }
     }
 }

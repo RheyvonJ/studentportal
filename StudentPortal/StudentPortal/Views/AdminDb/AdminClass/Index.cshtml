@@ -1,0 +1,233 @@
+@model StudentPortal.Models.AdminClass.AdminClassViewModel
+@{
+    Layout = "_StudentLayout";
+    ViewData["Title"] = $"{Model.SubjectName} - Class";
+    var toastMessage = TempData["ToastMessage"] as string;
+    ViewBag.CurrentPage = "home";
+    ViewBag.EnableSidebarSlide = true;
+    ViewBag.HideSidebar = true;
+    ViewBag.HeaderTitle = "Class";
+    ViewBag.HeaderSubtext = $"{Model.SectionName} • {Model.SubjectName} • {Model.SubjectCode} • {Model.ClassCode}";
+    ViewBag.HeaderShowProfile = false;
+    ViewBag.AdminName = Model.AdminName;
+    ViewBag.AdminInitials = Model.AdminInitials;
+    ViewBag.ClassCode = Model.ClassCode;
+    ViewBag.Role = "Professor";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/StudentDb/StudentClass.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminClass.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminAssessment.theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminClass.theme.css" asp-append-version="true" />
+    <style>
+        .admin-class-confirm {
+            z-index: 15020;
+        }
+        .ac-upload-modal-overlay {
+            z-index: 15000;
+        }
+    </style>
+}
+
+<main class="student-class-shell admin-class-page" id="adminClassPage" data-class-code="@Model.ClassCode" data-dashboard-url="@Url.Content("~/professordb/ProfessorDb")">
+    <section class="class-container admin-class-view-container">
+        <div class="admin-class-topbar admin-class-topbar--breadcrumb-only">
+            <nav class="admin-class-topbar-right class-breadcrumb aae-breadcrumb slsp-crumb-tabs" aria-label="Breadcrumb">
+                <a class="slsp-crumb-tab" href="@Url.Content("~/professordb/ProfessorDb")" title="Dashboard">
+                    <i class="fa-solid fa-table-cells-large" aria-hidden="true"></i>
+                    <span>Dashboard</span>
+                </a>
+                <span class="slsp-crumb-divider" aria-hidden="true"></span>
+                <span class="slsp-crumb-tab is-active" aria-current="page" title="@Model.SubjectName">
+                    <i class="fa-solid fa-book" aria-hidden="true"></i>
+                    <span>@Model.SubjectCode</span>
+                </span>
+            </nav>
+        </div>
+        <!-- LEFT SECTION (matches AdminAssessment sidebar chrome) -->
+        <section class="class-info aae-profile-card">
+            <div class="aae-profile">
+                <div class="aae-profile-avatar" aria-hidden="true">@Model.AdminInitials</div>
+                <div class="aae-profile-text">
+                    <div class="aae-profile-name">@Model.AdminName</div>
+                    <div class="aae-profile-secondary">
+                        @Model.TeacherRole
+                        @if (!string.IsNullOrWhiteSpace(Model.TeacherDepartment))
+                        {
+                            <text> · @Model.TeacherDepartment</text>
+                        }
+                    </div>
+                    <div class="aae-profile-secondary aae-profile-muted">
+                        @Model.RoomName
+                        @if (!string.IsNullOrWhiteSpace(Model.FloorDisplay))
+                        {
+                            <text> · @Model.FloorDisplay</text>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="aae-subject-block">
+                <h2 class="aae-subject-title">@Model.SubjectName</h2>
+                <p class="aae-subject-line"><span class="aae-label">Subject code</span> <span class="aae-value">@Model.SubjectCode</span></p>
+                <p class="aae-subject-line"><span class="aae-label">Class code</span> <span class="aae-value">@Model.ClassCode</span></p>
+            </div>
+
+            <div class="aae-divider" role="presentation"></div>
+
+            <div class="class-info-middle">
+                <div class="recent-uploads">
+                    <h3 class="aae-aside-heading"><i class="fa-regular fa-clock"></i> Recent uploads</h3>
+                    <ul>
+                        @foreach (var u in Model.RecentUploads)
+                        {
+                            <li class="recent-upload-row" data-content-id="@(u.ContentId ?? "")">
+                                @if (!string.IsNullOrWhiteSpace(u.TargetUrl) && u.TargetUrl != "#")
+                                {
+                                    <a class="recent-upload-link" href="@u.TargetUrl">
+                                        <i class="@u.IconClass" aria-hidden="true"></i>
+                                        <span class="recent-title">@u.Title</span>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="recent-upload-static">
+                                        <i class="@u.IconClass" aria-hidden="true"></i>
+                                        <span class="recent-title">@u.Title</span>
+                                    </span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </div>
+
+                <div class="manage-buttons">
+                    <button type="button" class="manage-btn manage-class" data-target="@Url.Action("Index", "AdminManageClass", new { classCode = Model.ClassCode })">
+                        <i class="fa-solid fa-users"></i> Manage class
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT SECTION -->
+        <section class="class-content admin-class-right-column" id="classContent" data-class-id="@Model.ClassId">
+            <article class="content-card create-announcement" id="createAnnouncementCard" role="region" aria-label="Create announcement">
+                <div class="content-left">
+                    <div class="content-info">
+                        <textarea id="announcementInput" rows="2" placeholder="Create an announcement to your class" aria-label="Create announcement"></textarea>
+                    </div>
+                </div>
+                <div class="announcement-actions" hidden>
+                    <button type="button" class="btn announce" id="announceBtn">Announce</button>
+                </div>
+            </article>
+
+            <div class="admin-class-quick-actions" role="group" aria-label="Add or remove class content">
+                <button type="button" class="ac-quick-btn ac-quick-material" data-ac-action="material" title="Add material" aria-label="Add material">
+                    <span class="ac-quick-btn-icons" aria-hidden="true">
+                        <i class="fa-solid fa-plus ac-quick-plus"></i>
+                        <i class="fa-solid fa-book-open-reader"></i>
+                    </span>
+                    <span class="ac-quick-label">Material</span>
+                </button>
+                <button type="button" class="ac-quick-btn ac-quick-task" data-ac-action="task" title="Add task" aria-label="Add task">
+                    <span class="ac-quick-btn-icons" aria-hidden="true">
+                        <i class="fa-solid fa-plus ac-quick-plus"></i>
+                        <i class="fa-solid fa-file-pen"></i>
+                    </span>
+                    <span class="ac-quick-label">Task</span>
+                </button>
+                <button type="button" class="ac-quick-btn ac-quick-assessment" data-ac-action="assessment" title="Add assessment" aria-label="Add assessment">
+                    <span class="ac-quick-btn-icons" aria-hidden="true">
+                        <i class="fa-solid fa-plus ac-quick-plus"></i>
+                        <i class="fa-solid fa-circle-question"></i>
+                    </span>
+                    <span class="ac-quick-label">Assessment</span>
+                </button>
+                <button type="button" class="ac-quick-btn ac-quick-delete" data-ac-action="delete" title="Delete content" aria-label="Delete content">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                    <span class="ac-quick-label">Delete</span>
+                </button>
+            </div>
+
+            <div class="admin-class-delete-toolbar" id="adminClassDeleteToolbar" hidden aria-hidden="true">
+                <span class="ac-delete-hint" id="acDeleteHint">Select items below, then confirm.</span>
+                <div class="ac-delete-toolbar-actions">
+                    <button type="button" class="ac-toolbar-btn ac-toolbar-cancel" id="acDeleteCancelBtn">Cancel</button>
+                    <button type="button" class="ac-toolbar-btn ac-toolbar-confirm" id="acDeleteConfirmBtn">Delete selected</button>
+                </div>
+            </div>
+
+            @foreach (var c in Model.Contents)
+            {
+                <article class="content-card @c.Type" data-target="@c.TargetUrl" data-content-id="@c.ContentId">
+                    <div class="content-left">
+                        <i class="@c.IconClass"></i>
+                        <div class="content-info">
+                            <h4 class="content-title">@c.Title</h4>
+                            <p class="content-meta">@c.MetaText</p>
+                        </div>
+                    </div>
+                    @if ((c.Type == "task" || c.Type == "assessment") && c.HasUrgency)
+                    {
+                        <div class="content-right urgency @c.UrgencyColor"></div>
+                    }
+                </article>
+            }
+        </section>
+    </section>
+</main>
+
+<!-- Upload content — new modal shell (fields built in JS; same ids as before) -->
+<div class="ac-upload-modal-overlay" id="acUploadModalBackdrop" hidden aria-hidden="true">
+    <div class="ac-upload-modal-panel" id="acUploadModal" role="dialog" aria-modal="true" aria-labelledby="acModalTitle" tabindex="-1">
+        <button type="button" class="ac-upload-modal-x" id="acModalCloseX" aria-label="Close dialog">&times;</button>
+        <div class="ac-upload-modal-accent" aria-hidden="true"></div>
+        <div class="ac-upload-modal-inner">
+            <h2 class="ac-upload-modal-title" id="acModalTitle">Upload Material</h2>
+            <div class="ac-upload-modal-body" id="acModalBody"></div>
+            <div class="ac-upload-modal-foot">
+                <button type="button" class="ac-modal-btn ac-modal-btn-secondary" id="acModalCancel">Cancel</button>
+                <button type="button" class="ac-modal-btn ac-modal-btn-primary" id="acModalSubmit" data-type="">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="deleteContentConfirmBackdrop" class="slsp-confirm-backdrop admin-class-confirm" hidden aria-hidden="true"></div>
+<div id="deleteContentConfirmModal" class="slsp-confirm-modal admin-class-confirm" role="dialog" aria-modal="true" aria-labelledby="deleteContentConfirmTitle" hidden>
+    <div class="slsp-confirm-card">
+        <div class="slsp-confirm-header">
+            <div class="slsp-confirm-icon" aria-hidden="true"><i class="fa-solid fa-trash"></i></div>
+            <h2 id="deleteContentConfirmTitle" class="slsp-confirm-title">Delete content</h2>
+            <div id="deleteBody" class="slsp-confirm-desc" style="text-align:left"></div>
+        </div>
+        <div class="slsp-confirm-actions">
+            <button type="button" id="deleteCancel" class="slsp-confirm-btn slsp-confirm-cancel">Cancel</button>
+            <button type="button" id="deleteSubmit" class="slsp-confirm-btn slsp-confirm-primary">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Post announcement — same confirm UI pattern as sign out (slsp-confirm) -->
+<div id="announcePostConfirmBackdrop" class="slsp-confirm-backdrop" hidden aria-hidden="true"></div>
+<div id="announcePostConfirmModal" class="slsp-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="announcePostConfirmTitle" aria-describedby="announcePostConfirmDesc" hidden>
+    <div class="slsp-confirm-card">
+        <div class="slsp-confirm-header">
+            <div class="slsp-confirm-icon" aria-hidden="true"><i class="fa-solid fa-bullhorn"></i></div>
+            <h2 id="announcePostConfirmTitle" class="slsp-confirm-title">Post announcement</h2>
+            <p id="announcePostConfirmDesc" class="slsp-confirm-desc">Post this announcement for everyone in this class? Students will see it on this subject.</p>
+        </div>
+        <div class="slsp-confirm-actions">
+            <button type="button" id="announcePostConfirmCancel" class="slsp-confirm-btn slsp-confirm-cancel">Cancel</button>
+            <button type="button" id="announcePostConfirmOk" class="slsp-confirm-btn slsp-confirm-primary">Post announcement</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast">@toastMessage</div>
+
+@section Scripts {
+    <script src="~/js/AdminDb/AdminClass.js" asp-append-version="true"></script>
+}

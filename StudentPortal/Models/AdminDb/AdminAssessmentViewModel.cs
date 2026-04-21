@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using StudentPortal.Models.AdminDb;
 
 namespace SIA_IPT.Models.AdminAssessment
 {
@@ -10,6 +11,7 @@ namespace SIA_IPT.Models.AdminAssessment
 		public string AdminName { get; set; } = string.Empty;
 
 		public string SubjectName { get; set; } = string.Empty;
+		public string SectionName { get; set; } = string.Empty;
 		public string SubjectCode { get; set; } = string.Empty;
 		public string ClassCode { get; set; } = string.Empty;
 		public string InstructorName { get; set; } = string.Empty;
@@ -19,6 +21,14 @@ namespace SIA_IPT.Models.AdminAssessment
         public string RoomName { get; set; } = string.Empty;
         public string FloorDisplay { get; set; } = string.Empty;
 		public List<string> RecentMaterials { get; set; } = new();
+		/// <summary>Recent assessments in this class for sidebar navigation (title + id).</summary>
+		public List<RecentAssessmentNavItem> RecentAssessments { get; set; } = new();
+		/// <summary>Display label for status badge (Draft / Active / Closed).</summary>
+		public string StatusLabel { get; set; } = "Active";
+		/// <summary>CSS variant: draft | active | closed</summary>
+		public string StatusVariant { get; set; } = "active";
+		/// <summary>Deadline as yyyy-MM-dd for date input (empty if none).</summary>
+		public string DeadlineIso { get; set; } = string.Empty;
 		public string AssessmentTitle { get; set; } = string.Empty;
 		public string AssessmentDescription { get; set; } = string.Empty;
 		public List<string> Attachments { get; set; } = new();
@@ -27,6 +37,8 @@ namespace SIA_IPT.Models.AdminAssessment
         public string EditedDate { get; set; } = string.Empty;
         public List<StudentSubmission> Submissions { get; set; } = new();
         public string LinkUrl { get; set; } = string.Empty;
+        public bool AllowSubmissionsPastDeadline { get; set; }
+        public bool IsSubmissionLockedForStudents { get; set; }
 
         public int LogCopy { get; set; }
         public int LogPaste { get; set; }
@@ -34,11 +46,21 @@ namespace SIA_IPT.Models.AdminAssessment
         public int LogTabSwitch { get; set; }
         public int LogOpenPrograms { get; set; }
         public int LogScreenShare { get; set; }
+
+        /// <summary>Students at or above the integrity event threshold (may include those the teacher has already unlocked).</summary>
+        public List<CheatLockedStudentRow> IntegrityLockedStudents { get; set; } = new();
     }
 
 	public class StudentSubmission
 	{
 		public string StudentName { get; set; } = string.Empty;
 		public string Status { get; set; } = string.Empty;
+	}
+
+	public class RecentAssessmentNavItem
+	{
+		public string Title { get; set; } = string.Empty;
+		public string ContentId { get; set; } = string.Empty;
+		public bool IsCurrent { get; set; }
 	}
 }

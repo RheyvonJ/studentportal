@@ -1,0 +1,399 @@
+@model SIA_IPT.Models.AdminAssessment.AdminAssessmentViewModel
+@{
+    Layout = "_StudentLayout";
+    ViewData["Title"] = $"{Model.AssessmentTitle} - Assessment";
+    ViewBag.CurrentPage = "subjects";
+    ViewBag.EnableSidebarSlide = true;
+    ViewBag.HideSidebar = true;
+    ViewBag.HeaderTitle = "Assessment";
+    ViewBag.HeaderSubtext = $"{Model.SectionName} • {Model.SubjectName} • {Model.SubjectCode} • {Model.ClassCode}";
+    ViewBag.SuppressMobilePageContext = true;
+    ViewBag.HeaderShowProfile = false;
+    ViewBag.AdminName = Model.InstructorName;
+    ViewBag.AdminInitials = Model.InstructorInitials;
+    ViewBag.ClassCode = Model.ClassCode;
+    ViewBag.Role = "Professor";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/StudentDb/StudentClass.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminClass.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminAssessment.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminAssessment.theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminClass.theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Shared/PublicComments.css" asp-append-version="true" />
+    <style>
+        .slsp-confirm-backdrop, .slsp-confirm-modal { z-index: 13015; }
+        .make-changes-wrap { z-index: 12050; }
+        .link-modal { z-index: 13022; }
+        .loglist-modal { z-index: 13021; }
+    </style>
+}
+
+<main class="student-class-shell admin-class-page admin-assessment-page" id="adminAssessmentPage" data-class-code="@Model.ClassCode" data-dashboard-url="@Url.Content("~/professordb/ProfessorDb")">
+    <section class="class-container admin-assessment-view-container">
+        <div class="admin-class-topbar admin-class-topbar--breadcrumb-only">
+            <nav class="admin-class-topbar-right class-breadcrumb aae-breadcrumb slsp-crumb-tabs" aria-label="Breadcrumb">
+                <a class="slsp-crumb-tab" href="@Url.Content("~/professordb/ProfessorDb")" title="Dashboard">
+                    <i class="fa-solid fa-table-cells-large" aria-hidden="true"></i>
+                    <span>Dashboard</span>
+                </a>
+                <span class="slsp-crumb-divider" aria-hidden="true"></span>
+                <a class="slsp-crumb-tab" href="@Url.Action("Index", "AdminClass", new { id = Model.ClassCode })" title="@Model.SubjectName">
+                    <i class="fa-solid fa-book" aria-hidden="true"></i>
+                    <span>@Model.SubjectCode</span>
+                </a>
+                <span class="slsp-crumb-divider" aria-hidden="true"></span>
+                <span class="slsp-crumb-tab is-active" aria-current="page" title="@Model.AssessmentTitle">
+                    <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+                    <span>@Model.AssessmentTitle</span>
+                </span>
+            </nav>
+        </div>
+
+        <section class="class-info aae-profile-card">
+            <div class="aae-profile">
+                <div class="aae-profile-avatar" aria-hidden="true">@Model.InstructorInitials</div>
+                <div class="aae-profile-text">
+                    <div class="aae-profile-name">@Model.InstructorName</div>
+                    <div class="aae-profile-secondary">
+                        @Model.TeacherRole
+                        @if (!string.IsNullOrWhiteSpace(Model.TeacherDepartment))
+                        {
+                            <text> · @Model.TeacherDepartment</text>
+                        }
+                    </div>
+                    <div class="aae-profile-secondary aae-profile-muted">
+                        @Model.RoomName
+                        @if (!string.IsNullOrWhiteSpace(Model.FloorDisplay))
+                        {
+                            <text> · @Model.FloorDisplay</text>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="aae-subject-block">
+                <h2 class="aae-subject-title">@Model.SubjectName</h2>
+                <p class="aae-subject-line"><span class="aae-label">Subject code</span> <span class="aae-value">@Model.SubjectCode</span></p>
+                <p class="aae-subject-line"><span class="aae-label">Class code</span> <span class="aae-value">@Model.ClassCode</span></p>
+            </div>
+
+            <div class="aae-divider" role="presentation"></div>
+
+            <div class="aae-field">
+                <label class="aae-field-label" for="assessmentLinkInput"><i class="fa-solid fa-link"></i> Assessment link</label>
+                <input id="assessmentLinkInput" class="aae-input" type="text" value="@Model.LinkUrl" placeholder="https://..." autocomplete="off" />
+            </div>
+
+            @if (Model.RecentAssessments.Any())
+            {
+                <div class="class-info-middle">
+                    <div class="recent-uploads">
+                        <h3 class="aae-aside-heading"><i class="fa-regular fa-clock"></i> Recent assessments</h3>
+                        <ul>
+                            @foreach (var item in Model.RecentAssessments)
+                            {
+                                <li class="recent-upload-row @(item.IsCurrent ? "is-current" : "")" data-content-id="@item.ContentId">
+                                    @if (!string.IsNullOrWhiteSpace(item.ContentId))
+                                    {
+                                        <a class="recent-upload-link" href="@Url.Content($"~/AdminAssessment/{Model.ClassCode}/{item.ContentId}")" title="@item.Title">
+                                            <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+                                            <span class="recent-title">@item.Title</span>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="recent-upload-static">
+                                            <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+                                            <span class="recent-title">@item.Title</span>
+                                        </span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+        </section>
+
+        <section class="class-content admin-assessment-right-column" id="classContent">
+            <div class="admin-assessment-stack">
+                <section class="assessment-container aae-assessment-card" id="assessmentContainer" data-assessment-id="@Model.AssessmentId">
+                    <div class="assessment-scrollable aae-assessment-body">
+                        <header class="aae-card-header">
+                            <div class="aae-title-row">
+                                <h2 class="assessment-title aae-assessment-name" id="assessmentTitle" contenteditable="false">@Model.AssessmentTitle</h2>
+                                <span class="aae-status-badge aae-status-@Model.StatusVariant" id="assessmentStatusBadge">@Model.StatusLabel</span>
+                            </div>
+                        </header>
+
+                        <p class="assessment-description aae-description" id="assessmentDescription" contenteditable="false">@Model.AssessmentDescription</p>
+
+                        <div class="aae-divider soft" role="presentation"></div>
+
+                        <div id="dateInfo" class="aae-meta-row"
+                             data-posted="@Model.PostedDate"
+                             data-edited="@Model.EditedDate"
+                             data-deadline-iso="@Model.DeadlineIso"
+                             data-deadline-display="@Model.Deadline">
+                            <div class="aae-meta-item">
+                                <span class="aae-meta-icon" aria-hidden="true"><i class="fa-regular fa-calendar"></i></span>
+                                <span class="aae-meta-label">Posted</span>
+                                <span class="aae-meta-value">@Model.PostedDate</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(Model.EditedDate))
+                            {
+                                <div class="aae-meta-item">
+                                    <span class="aae-meta-icon" aria-hidden="true"><i class="fa-regular fa-pen-to-square"></i></span>
+                                    <span class="aae-meta-label">Edited</span>
+                                    <span class="aae-meta-value">@Model.EditedDate</span>
+                                </div>
+                            }
+                            <div class="aae-meta-item">
+                                <span class="aae-meta-icon" aria-hidden="true"><i class="fa-regular fa-flag"></i></span>
+                                <span class="aae-meta-label">Deadline</span>
+                                <span class="aae-meta-value">@(string.IsNullOrWhiteSpace(Model.Deadline) || Model.Deadline == "N/A" ? "—" : Model.Deadline)</span>
+                            </div>
+                        </div>
+
+                        <div class="aae-divider soft" role="presentation"></div>
+
+                        <section class="attachments-section aae-files-section">
+                            <h3 class="aae-section-heading"><i class="fa-regular fa-file-lines"></i> Attached files</h3>
+                            <div id="attachmentDropzone" class="aae-dropzone @(Model.Attachments.Any() ? "has-files" : "")">
+                                <div class="attachments aae-attachments" id="attachmentList">
+                                    @if (Model.Attachments.Any())
+                                    {
+                                        @foreach (var file in Model.Attachments)
+                                        {
+                                            <div class="attachment-box aae-file-chip" data-file-label="@file">
+                                                <span class="attachment-name" data-filename="@file" data-contentid="@Model.AssessmentId" title="Options for @file">@file</span>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                                @if (!Model.Attachments.Any())
+                                {
+                                    <div class="aae-empty-files" id="attachmentEmptyState">
+                                        <div class="aae-empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></div>
+                                        <p class="aae-empty-title">No files yet</p>
+                                        <p class="aae-empty-hint">Drag and drop a file here, or use <strong>Replace file</strong> while editing.</p>
+                                    </div>
+                                }
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="assessment-bottom aae-edit-dock" id="assessmentBottom">
+                        <div class="edit-controls aae-edit-controls" id="editControls" hidden>
+                            <input type="file" id="replaceFileInput" accept="*/*" hidden />
+                            <button type="button" class="aae-btn aae-btn-ghost" id="replaceFileBtn" title="Replace attached file"><i class="fa-solid fa-arrows-rotate"></i> Replace file</button>
+                            <div class="aae-edit-actions">
+                                <button type="button" class="aae-btn aae-btn-secondary" id="cancelEditBtn">Cancel</button>
+                                <button type="button" class="aae-btn aae-btn-primary" id="saveEditBtn">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="anti-cheat-container aae-logs-card" id="anti-cheat-container">
+                    <h3 class="aae-logs-heading"><i class="fa-solid fa-shield-halved"></i> Activity insights</h3>
+                    <div class="logs-top">
+                        <div class="logs-category">
+                            <h4 class="category-header">Interaction</h4>
+                            <div class="log-boxes">
+                                <div class="log-box" data-log-type="copy">
+                                    <span class="log-type">Copy</span>
+                                    <span class="log-count" id="logCopy">@Model.LogCopy</span>
+                                </div>
+                                <div class="log-box" data-log-type="paste">
+                                    <span class="log-type">Paste</span>
+                                    <span class="log-count" id="logPaste">@Model.LogPaste</span>
+                                </div>
+                                <div class="log-box" data-log-type="inspect">
+                                    <span class="log-type">Inspect</span>
+                                    <span class="log-count" id="logInspect">@Model.LogInspect</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="logs-category">
+                            <h4 class="category-header">Omni-Focus</h4>
+                            <div class="log-boxes">
+                                <div class="log-box" data-log-type="tabswitch">
+                                    <span class="log-type">Tab Switch</span>
+                                    <span class="log-count" id="logTabSwitch">@Model.LogTabSwitch</span>
+                                </div>
+                                <div class="log-box" data-log-type="openprograms">
+                                    <span class="log-type">Open Programs</span>
+                                    <span class="log-count" id="logOpenPrograms">@Model.LogOpenPrograms</span>
+                                </div>
+                                <div class="log-box" data-log-type="screenshare">
+                                    <span class="log-type">Screen Share</span>
+                                    <span class="log-count" id="logScreenShare">@Model.LogScreenShare</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="public-comment-container" id="adminCommentContainer">
+                    <h3 class="public-comment-header">Class Comments</h3>
+                    <form id="adminCommentForm">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="contentId" value="@Model.AssessmentId" />
+                        <input type="hidden" name="classCode" value="@Model.ClassCode" />
+                    </form>
+                    <div class="public-comment-input">
+                        <textarea id="adminCommentText" placeholder="Add a class comment..."></textarea>
+                        <button type="button" id="postAdminCommentBtn" class="post-comment-btn">Post</button>
+                    </div>
+                    <div class="public-comment-list" id="adminCommentList"></div>
+                </section>
+
+                @foreach (var modal in new[] { "copy", "paste", "inspect", "tabswitch", "openprograms", "screenshare" })
+                {
+                    <div id="modal-@modal" class="loglist-modal">
+                        <div class="loglist-modal-content">
+                            <span class="loglist-modal-close" data-close="@modal">&times;</span>
+                            <h2 class="loglist-title" id="title-@modal"></h2>
+                            <div class="loglist-body" id="list-@modal"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    </section>
+</main>
+
+<div class="make-changes-wrap">
+    <div class="make-changes-button" id="makeChangesButton" title="Make Changes">
+        <i class="fa-solid fa-pen-to-square"></i>
+    </div>
+
+    <div class="admin-actions" id="adminActions" aria-hidden="true">
+        <div class="admin-action" data-action="edit">
+            <span class="label">Edit</span>
+            <button type="button"><i class="fa-solid fa-pen"></i></button>
+        </div>
+        <div class="admin-action" data-action="delete">
+            <span class="label">Delete</span>
+            <button type="button"><i class="fa-solid fa-trash"></i></button>
+        </div>
+    </div>
+</div>
+
+<div id="deleteAssessmentConfirmBackdrop" class="slsp-confirm-backdrop" hidden aria-hidden="true"></div>
+<div id="deleteAssessmentConfirmModal" class="slsp-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="deleteAssessmentConfirmTitle" hidden>
+    <div class="slsp-confirm-card">
+        <div class="slsp-confirm-header">
+            <div class="slsp-confirm-icon" aria-hidden="true"><i class="fa-solid fa-trash"></i></div>
+            <h2 id="deleteAssessmentConfirmTitle" class="slsp-confirm-title">Delete assessment</h2>
+            <p id="deleteAssessmentConfirmDesc" class="slsp-confirm-desc">This action cannot be undone.</p>
+        </div>
+        <div class="slsp-confirm-actions">
+            <button type="button" class="slsp-confirm-btn slsp-confirm-cancel" id="cancelDelete">Cancel</button>
+            <button type="button" class="slsp-confirm-btn slsp-confirm-primary" id="confirmDelete">Delete</button>
+        </div>
+    </div>
+</div>
+
+<div id="saveAssessmentConfirmBackdrop" class="slsp-confirm-backdrop" hidden aria-hidden="true"></div>
+<div id="saveAssessmentConfirmModal" class="slsp-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="saveAssessmentConfirmTitle" hidden>
+    <div class="slsp-confirm-card">
+        <div class="slsp-confirm-header">
+            <div class="slsp-confirm-icon" aria-hidden="true"><i class="fa-solid fa-floppy-disk"></i></div>
+            <h2 id="saveAssessmentConfirmTitle" class="slsp-confirm-title">Save changes</h2>
+            <p class="slsp-confirm-desc">Update this assessment for the class?</p>
+        </div>
+        <div class="slsp-confirm-actions">
+            <button type="button" class="slsp-confirm-btn slsp-confirm-cancel" id="saveAssessmentConfirmCancel">Cancel</button>
+            <button type="button" class="slsp-confirm-btn slsp-confirm-primary" id="saveAssessmentConfirmOk">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast" aria-live="polite" role="status"></div>
+
+<div class="link-modal" id="linkModal" aria-hidden="true">
+    <div class="link-modal-content aae-link-modal">
+        <h3 class="link-modal-title">Edit Assessment Link</h3>
+        <input id="linkModalInput" type="text" value="@Model.LinkUrl" placeholder="https://..." />
+        <div class="link-modal-buttons">
+            <button type="button" class="aae-btn aae-btn-secondary" id="linkModalCancel">Cancel</button>
+            <button type="button" class="aae-btn aae-btn-primary" id="linkModalSave">Save</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.assessmentData = {
+            title: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AssessmentTitle)),
+            description: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AssessmentDescription))
+        };
+    </script>
+    <script>
+        (function () {
+            let attachmentMenuEl = null;
+            function ensureMenu() {
+                if (!attachmentMenuEl) {
+                    attachmentMenuEl = document.createElement('div');
+                    attachmentMenuEl.className = 'attachment-menu';
+                    attachmentMenuEl.style.display = 'none';
+                    document.body.appendChild(attachmentMenuEl);
+                }
+            }
+            function closeMenu() {
+                if (attachmentMenuEl) attachmentMenuEl.style.display = 'none';
+            }
+            function openAttachmentMenu(target) {
+                ensureMenu();
+                const fileName = target.getAttribute('data-filename') || '';
+                const contentId = target.getAttribute('data-contentid') || '';
+                const viewUrl = '/AdminAssessment/ViewFile/' + encodeURIComponent(fileName) + '?contentId=' + encodeURIComponent(contentId);
+                const downloadUrl = '/AdminAssessment/DownloadFile/' + encodeURIComponent(fileName) + '?contentId=' + encodeURIComponent(contentId);
+                const box = target.closest('.attachment-box') || target;
+                const r = box.getBoundingClientRect();
+                attachmentMenuEl.innerHTML =
+                    '<div class="menu-item open-new">Open in new tab</div>' +
+                    '<div class="menu-divider"></div>' +
+                    '<div class="menu-item download">Download</div>';
+                attachmentMenuEl.style.left = Math.min(r.right + 18, window.innerWidth - 220) + 'px';
+                attachmentMenuEl.style.top = Math.max(10, r.top - 4) + 'px';
+                attachmentMenuEl.style.display = 'block';
+                const openEl = attachmentMenuEl.querySelector('.open-new');
+                const dlEl = attachmentMenuEl.querySelector('.download');
+                openEl?.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.open(viewUrl, '_blank', 'noopener');
+                    closeMenu();
+                });
+                dlEl?.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.location.href = downloadUrl;
+                    closeMenu();
+                });
+            }
+            document.addEventListener('click', function (ev) {
+                const t = ev.target;
+                if (t && t.classList && t.classList.contains('attachment-name')) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    openAttachmentMenu(t);
+                    return;
+                }
+                if (attachmentMenuEl && attachmentMenuEl.style.display === 'block' && !attachmentMenuEl.contains(t)) {
+                    closeMenu();
+                }
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeMenu();
+            });
+        })();
+    </script>
+    <script src="~/js/AdminDb/AdminAssessment.js" asp-append-version="true"></script>
+}

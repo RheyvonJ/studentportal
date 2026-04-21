@@ -5,10 +5,19 @@ using System.Collections.Generic;
 
 namespace StudentPortal.Models.AdminTask
 {
+    public class AdminTaskRecentNavItem
+    {
+        public string Title { get; set; } = "";
+        public string ContentId { get; set; } = "";
+        public bool IsCurrent { get; set; }
+    }
+
     public class AdminTaskViewModel
     {
         public string TaskId { get; set; } = "";
+        public string ClassId { get; set; } = "";
         public string SubjectName { get; set; } = "";
+        public string SectionName { get; set; } = "";
         public string SubjectCode { get; set; } = "";
         public string ClassCode { get; set; } = "";
         public string InstructorName { get; set; } = "";
@@ -22,10 +31,15 @@ namespace StudentPortal.Models.AdminTask
         public List<string> Attachments { get; set; } = new();
         public DateTime PostedDate { get; set; } = DateTime.UtcNow;
         public DateTime? Deadline { get; set; }
+        /// <summary>Teacher allowed late submissions without moving the deadline.</summary>
+        public bool AllowSubmissionsPastDeadline { get; set; }
+        /// <summary>True when past deadline and late submissions are not allowed (students cannot submit).</summary>
+        public bool IsSubmissionLockedForStudents { get; set; }
         public DateTime? EditedDate { get; set; }
         public List<TaskSubmission> Submissions { get; set; } = new();
         public int TaskMaxGrade { get; set; } = 100;
-        public List<string> RecentMaterials { get; set; } = new();
+        /// <summary>Recent tasks in this class (for sidebar nav).</summary>
+        public List<AdminTaskRecentNavItem> RecentTasks { get; set; } = new();
     }
 
     public class TaskSubmission

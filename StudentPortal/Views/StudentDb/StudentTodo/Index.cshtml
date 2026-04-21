@@ -3,6 +3,8 @@
     Layout = "_StudentLayout";
     ViewData["Title"] = "To-Do";
     ViewBag.CurrentPage = "todo";
+    ViewBag.HeaderTitle = "To-Do";
+    ViewBag.HeaderSubtext = "Track your tasks";
 }
 
 @section Styles {
@@ -10,46 +12,65 @@
 }
 
 <main class="student-todo-shell">
-    <header class="student-todo-top">
-        <div class="student-todo-heading">
-            <h1 class="student-todo-title"><i class="fa-solid fa-list-check" aria-hidden="true"></i> To-Do</h1>
-            <p class="student-todo-sub">Tasks across your classes</p>
+    <div class="student-todo-head-row">
+        <div class="student-todo-tabs-wrap">
+            <div class="toggle-button" id="toggleButton" role="tablist" aria-label="Filter tasks by status">
+                <span class="option active" role="tab" aria-selected="true" data-view="todo" tabindex="0">To-Do</span>
+                <span class="option" role="tab" aria-selected="false" data-view="pastdue" tabindex="0">Past due</span>
+            </div>
         </div>
-        <div class="toggle-button" id="toggleButton" role="tablist" aria-label="Filter tasks by status">
-            <span class="option active" role="tab" aria-selected="true" data-view="todo" tabindex="0">To-Do</span>
-            <span class="option" role="tab" aria-selected="false" data-view="pastdue" tabindex="0">Past due</span>
-        </div>
-    </header>
 
-    @if (Model.Subjects == null || !Model.Subjects.Any())
-    {
-        <div class="student-todo-empty">
-            <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>
-            <p>No open tasks right now.</p>
+        <div class="student-todo-subject-filter">
+            <label class="student-todo-subject-label" for="subjectFilter">Subject</label>
+            <select id="subjectFilter" class="student-todo-subject-select" aria-label="Filter tasks by subject">
+                <option value="">All subjects</option>
+                @if (Model.Subjects != null)
+                {
+                    foreach (var s in Model.Subjects.Select(x => x.Title).Where(t => !string.IsNullOrWhiteSpace(t)).Distinct().OrderBy(t => t))
+                    {
+                        var selected = !string.IsNullOrWhiteSpace(Model.SelectedSubject)
+                                       && string.Equals(Model.SelectedSubject.Trim(), s, StringComparison.OrdinalIgnoreCase);
+                        <option value="@s" selected="@(selected ? "selected" : null)">@s</option>
+                    }
+                }
+            </select>
         </div>
-    }
-    else
-    {
-        <div class="column-container">
-            @foreach (var subj in Model.Subjects)
-            {
-                <div class="subject-column">
-                    <h2 class="subject-name">@subj.Title</h2>
-                    <div class="tasks-vertical">
-                        @foreach (var t in subj.Tasks)
-                        {
-                            <a class="task-card @t.ColorClass" data-status="@t.Status" href="@t.TargetUrl">
-                                <div class="task-content">
-                                    <h3 class="task-name">@t.Name</h3>
-                                    <p class="deadline">Deadline: @t.Deadline</p>
-                                </div>
-                            </a>
-                        }
-                    </div>
+    </div>
+
+    <div class="student-todo-body-panel">
+        @if (Model.Subjects == null || !Model.Subjects.Any())
+        {
+            <div class="student-todo-empty">
+                <div class="student-todo-empty-icon" aria-hidden="true">
+                    <i class="fa-solid fa-clipboard-check"></i>
                 </div>
-            }
-        </div>
-    }
+                <p class="student-todo-empty-title">No open tasks right now.</p>
+                <p class="student-todo-empty-hint">Check back when your instructors post new work.</p>
+            </div>
+        }
+        else
+        {
+            <div class="column-container">
+                @foreach (var subj in Model.Subjects)
+                {
+                    <div class="subject-column">
+                        <h2 class="subject-name">@subj.Title</h2>
+                        <div class="tasks-vertical">
+                            @foreach (var t in subj.Tasks)
+                            {
+                                <a class="task-card @t.ColorClass" data-status="@t.Status" href="@t.TargetUrl">
+                                    <div class="task-content">
+                                        <h3 class="task-name">@t.Name</h3>
+                                        <p class="deadline">Deadline: @t.Deadline</p>
+                                    </div>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
 </main>
 
 <div id="toast" class="toast"></div>

@@ -28,7 +28,10 @@ namespace StudentPortal.Controllers.Studentdb
         {
             var email = HttpContext.Session.GetString("UserEmail");
             if (string.IsNullOrEmpty(email))
-                return Content("User is not logged in. Please log in first.");
+            {
+                var returnUrl = $"{Request.Path}{Request.QueryString}";
+                return RedirectToAction("Login", "Account", new { returnUrl });
+            }
 
             var user = await _mongoDb.GetUserByEmailAsync(email);
             if (user == null)
@@ -230,6 +233,7 @@ namespace StudentPortal.Controllers.Studentdb
             var unenrolled = prevJoinedCodes.Except(joinedCodes).ToList();
 
             int assessments = 0, tasks = 0, materials = 0, announcements = 0;
+            DateTime? latestAssessmentAt = null, latestTaskAt = null, latestMaterialAt = null, latestAnnouncementAt = null;
             foreach (var classCode in joinedCodes)
             {
                 var classItem = await _mongoDb.GetClassByCodeAsync(classCode);
@@ -239,27 +243,43 @@ namespace StudentPortal.Controllers.Studentdb
                 {
                     if (c.CreatedAt <= lastCheckedUtc) continue;
                     var t = (c.Type ?? string.Empty).ToLowerInvariant();
-                    if (t == "assessment") assessments++;
-                    else if (t == "task") tasks++;
-                    else if (t == "material") materials++;
-                    else if (t == "announcement") announcements++;
+                    if (t == "assessment")
+                    {
+                        assessments++;
+                        if (!latestAssessmentAt.HasValue || c.CreatedAt > latestAssessmentAt) latestAssessmentAt = c.CreatedAt;
+                    }
+                    else if (t == "task")
+                    {
+                        tasks++;
+                        if (!latestTaskAt.HasValue || c.CreatedAt > latestTaskAt) latestTaskAt = c.CreatedAt;
+                    }
+                    else if (t == "material")
+                    {
+                        materials++;
+                        if (!latestMaterialAt.HasValue || c.CreatedAt > latestMaterialAt) latestMaterialAt = c.CreatedAt;
+                    }
+                    else if (t == "announcement")
+                    {
+                        announcements++;
+                        if (!latestAnnouncementAt.HasValue || c.CreatedAt > latestAnnouncementAt) latestAnnouncementAt = c.CreatedAt;
+                    }
 
                     var title = string.IsNullOrWhiteSpace(c.Title) ? (t == "assessment" ? "Assessment" : t == "task" ? "Task" : t == "material" ? "Material" : "Content") : c.Title;
                     if (t == "assessment")
                     {
-                        await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "content-assessment-new", Text = $"New assessment posted: {title}", Code = classItem.ClassCode, CreatedAt = DateTime.UtcNow });
+                        await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "content-assessment-new", Text = $"New assessment posted: {title}", Code = classItem.ClassCode, CreatedAt = c.CreatedAt });
                     }
                     else if (t == "task")
                     {
-                        await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "content-task-new", Text = $"New task posted: {title}", Code = classItem.ClassCode, CreatedAt = DateTime.UtcNow });
+                        await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "content-task-new", Text = $"New task posted: {title}", Code = classItem.ClassCode, CreatedAt = c.CreatedAt });
                     }
                     else if (t == "material")
                     {
-                        await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "content-material-new", Text = $"New material uploaded: {title}", Code = classItem.ClassCode, CreatedAt = DateTime.UtcNow });
+                        await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "content-material-new", Text = $"New material uploaded: {title}", Code = classItem.ClassCode, CreatedAt = c.CreatedAt });
                     }
                     else if (t == "meeting")
                     {
-                        await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "meeting", Text = $"New online meeting posted: {title}", Code = classItem.ClassCode, CreatedAt = DateTime.UtcNow });
+                        await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "meeting", Text = $"New online meeting posted: {title}", Code = classItem.ClassCode, CreatedAt = c.CreatedAt });
                     }
                 }
             }
@@ -268,13 +288,19 @@ namespace StudentPortal.Controllers.Studentdb
             var libPenalties = await _libraryService.GetRecentPenaltiesAsync(email, lastCheckedUtc);
             var libDueSoon = await _libraryService.GetDueSoonReservationsAsync(email, nowUtc, TimeSpan.FromHours(24));
 
-            foreach (var code in approved)
+            foreach (var r in approvedReqs)
             {
-                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "class-approved", Text = $"Your request to join the class \"{code}\" has been approved.", Code = code, CreatedAt = DateTime.UtcNow });
+                var code = r.ClassCode;
+                if (string.IsNullOrWhiteSpace(code)) continue;
+                var at = r.ApprovedAt ?? nowUtc;
+                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "class-approved", Text = $"Your request to join the class \"{code}\" has been approved.", Code = code, CreatedAt = at });
             }
-            foreach (var code in rejected)
+            foreach (var r in rejectedReqs)
             {
-                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "class-rejected", Text = $"Your request to join class \"{code}\" was rejected.", Code = code, CreatedAt = DateTime.UtcNow });
+                var code = r.ClassCode;
+                if (string.IsNullOrWhiteSpace(code)) continue;
+                var at = r.RejectedAt ?? nowUtc;
+                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "class-rejected", Text = $"Your request to join class \"{code}\" was rejected.", Code = code, CreatedAt = at });
             }
             foreach (var code in unenrolled)
             {
@@ -282,19 +308,19 @@ namespace StudentPortal.Controllers.Studentdb
             }
             if (assessments > 0)
             {
-                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "assessment", Text = $"{assessments} new assessment(s) posted", CreatedAt = DateTime.UtcNow });
+                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "assessment", Text = $"{assessments} new assessment(s) posted", CreatedAt = latestAssessmentAt ?? nowUtc });
             }
             if (tasks > 0)
             {
-                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "task", Text = $"{tasks} new task(s) posted", CreatedAt = DateTime.UtcNow });
+                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "task", Text = $"{tasks} new task(s) posted", CreatedAt = latestTaskAt ?? nowUtc });
             }
             if (materials > 0)
             {
-                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "material", Text = $"{materials} new material(s) posted", CreatedAt = DateTime.UtcNow });
+                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "material", Text = $"{materials} new material(s) posted", CreatedAt = latestMaterialAt ?? nowUtc });
             }
             if (announcements > 0)
             {
-                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "announcement", Text = $"{announcements} new announcement(s)", CreatedAt = DateTime.UtcNow });
+                await _mongoDb.AddNotificationAsync(new UserNotification { Email = email, Type = "announcement", Text = $"{announcements} new announcement(s)", CreatedAt = latestAnnouncementAt ?? nowUtc });
             }
             foreach (var title in libChanges.approvedTitles)
             {

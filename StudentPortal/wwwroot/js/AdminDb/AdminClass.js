@@ -6,34 +6,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuCircle = document.getElementById('menuCircle');
     const radialActions = document.getElementById('radialActions');
     const actions = radialActions ? radialActions.querySelectorAll('.action') : [];
-    const addContentBtn = document.getElementById('addContentBtn');
-    const contentRadial = document.getElementById('contentRadial');
-    const contentActions = contentRadial ? Array.from(contentRadial.querySelectorAll('.content-action')) : [];
-    const contentTooltip = contentRadial ? contentRadial.querySelector('.content-tooltip') : null;
-    const modalBackdrop = document.getElementById('modalBackdrop');
-    const contentModal = document.getElementById('contentModal');
-    const modalBody = document.getElementById('modalBody');
-    const modalSubmit = document.getElementById('modalSubmit');
-    const modalCancel = document.getElementById('modalCancel');
-    const deleteBackdrop = document.getElementById('deleteBackdrop');
-    const deleteModal = document.getElementById('deleteModal');
+    const acUploadModalBackdrop = document.getElementById('acUploadModalBackdrop');
+    const acUploadModal = document.getElementById('acUploadModal');
+    const acModalBody = document.getElementById('acModalBody');
+    const acModalTitle = document.getElementById('acModalTitle');
+    const acModalSubmit = document.getElementById('acModalSubmit');
+    const acModalCancel = document.getElementById('acModalCancel');
+    const acModalCloseX = document.getElementById('acModalCloseX');
+    const adminClassDeleteToolbar = document.getElementById('adminClassDeleteToolbar');
+    const acDeleteCancelBtn = document.getElementById('acDeleteCancelBtn');
+    const acDeleteConfirmBtn = document.getElementById('acDeleteConfirmBtn');
+    const deleteQuickBtn = document.querySelector('.ac-quick-btn[data-ac-action="delete"]');
+    const deleteBackdrop = document.getElementById('deleteContentConfirmBackdrop');
+    const deleteModal = document.getElementById('deleteContentConfirmModal');
     const deleteBody = document.getElementById('deleteBody');
     const deleteSubmit = document.getElementById('deleteSubmit');
     const deleteCancel = document.getElementById('deleteCancel');
-    const sideModal = document.getElementById('contentSideModal');
-    const sideModalTitle = document.getElementById('sideModalTitle');
-    const sideModalBody = document.getElementById('sideModalBody');
-    const sideModalSubmit = document.getElementById('sideModalSubmit');
-    const sideModalCancel = document.getElementById('sideModalCancel');
     const classContent = document.getElementById('classContent');
     const toast = document.getElementById('toast');
     const announcementCard = document.getElementById('createAnnouncementCard');
     const announcementInput = document.getElementById('announcementInput');
     const announceBtn = document.getElementById('announceBtn');
+    const announcePostConfirmBackdrop = document.getElementById('announcePostConfirmBackdrop');
+    const announcePostConfirmModal = document.getElementById('announcePostConfirmModal');
+    const announcePostConfirmCancel = document.getElementById('announcePostConfirmCancel');
+    const announcePostConfirmOk = document.getElementById('announcePostConfirmOk');
     const backButton = document.querySelector('.back-button');
     const manageButtons = document.querySelectorAll('.manage-btn');
     const mobileToggleBtn = document.getElementById('mobileToggleBtn');
     const classInfo = document.querySelector('.class-info');
+
+    if (toast && toast.textContent && toast.textContent.trim()) {
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2800);
+    }
 
     // ------------------ MOBILE TOGGLE ------------------------
     if (mobileToggleBtn && classInfo && classContent) {
@@ -97,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 (icon.classList.contains('fa-clipboard-question') && currentPage === 'assessment')
             ) {
                 showToast("🏠 You're already here.");
-                radialActions.classList.remove('show');
+                radialActions?.classList.remove('show');
                 menuOpen = false;
                 return;
             }
@@ -105,165 +111,190 @@ document.addEventListener('DOMContentLoaded', () => {
             setActivePage(page);
 
             if (icon.classList.contains('fa-house')) {
-                navigateWithAnimation('/AdminDb', 'Going to dashboard...');
+                const dash = typeof window.resolveInstructorDashboardUrl === 'function' ? window.resolveInstructorDashboardUrl() : '/professordb/ProfessorDb';
+                navigateWithAnimation(dash, 'Redirecting to Dashboard');
             }
             else if (icon.classList.contains('fa-book')) {
-                navigateWithAnimation('/AdminSubject', 'Opening subjects...');
+                navigateWithAnimation('/AdminSubject', 'Opening subjects');
             }
             else if (icon.classList.contains('fa-clipboard-question')) {
-                navigateWithAnimation('/AdminAssessmentList', 'Opening assessments...');
+                navigateWithAnimation('/AdminAssessmentList', 'Opening assessments');
             }
         });
     });
 
     function navigateWithAnimation(url, message) {
-        showToast(message);
         radialActions?.classList.remove('show');
         menuOpen = false;
-        setTimeout(() => { window.location.href = url; }, 600);
+        if (typeof window.navigateWithProfessorLoading === 'function') {
+            window.navigateWithProfessorLoading(url, message, 600);
+        } else {
+            showToast(message);
+            if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(true);
+            setTimeout(() => { window.location.href = url; }, 600);
+        }
     }
 
-    // ------------------ CONTENT RADIAL -----------------------
-    let contentRadialOpen = false;
-    let radialMode = 'base'; // base | upload | delete
-    let isAction2Active = false; // delete mode gate for outside-click collapse
-    const uploadTrigger = contentRadial ? contentRadial.querySelector('.content-radial-btn.upload') : null;
-    const deleteTrigger = contentRadial ? contentRadial.querySelector('.content-radial-btn.delete') : null;
-    const confirmBtn = contentRadial ? contentRadial.querySelector('.content-action.confirm') : null;
-    const cancelBtn = contentRadial ? contentRadial.querySelector('.content-action.cancel') : null;
-    const materialBtn = contentRadial ? contentRadial.querySelector('.content-action.material') : null;
-    const taskBtn = contentRadial ? contentRadial.querySelector('.content-action.task') : null;
-    const assessmentBtn = contentRadial ? contentRadial.querySelector('.content-action.assessment') : null;
-    addContentBtn?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Always dismiss upload modal when clicking add-content-button
-        const modalOpen = modalBackdrop && modalBackdrop.getAttribute('aria-hidden') === 'false';
-        if (modalOpen) {
-            closeModal();
-            setBaseState();
-            contentRadialOpen = true;
-            contentRadial?.classList.add('show');
-            addContentBtn?.classList.add('selected');
-            return;
-        }
-        // Default toggle behavior
-        contentRadialOpen = !contentRadialOpen;
-        contentRadial?.classList.toggle('show', contentRadialOpen);
-        addContentBtn?.classList.toggle('selected', contentRadialOpen);
-        if (!contentRadialOpen) {
-            closeModal();
-            setBaseState();
-        } else {
-            // Entering base open state; user can then choose upload or delete
-            setBaseState();
-        }
-    });
-    document.addEventListener('click', (e) => {
-        const modalOpen = modalBackdrop && modalBackdrop.getAttribute('aria-hidden') === 'false';
-        const deleteOpen = deleteBackdrop && deleteBackdrop.getAttribute('aria-hidden') === 'false';
-        const sideOpen = sideModal && sideModal.getAttribute('aria-hidden') === 'false';
-        const clickedInsideRadial = contentRadial && contentRadial.contains(e.target);
-        const clickedAddButton = e.target === addContentBtn;
-        const clickedInsideModal = (contentModal && contentModal.contains(e.target)) || (deleteModal && deleteModal.contains(e.target));
-        // suspend outside-click collapse while in delete (Action 2)
-        if (isAction2Active) return;
-        if (!clickedInsideRadial && !clickedAddButton && !clickedInsideModal && !modalOpen && !deleteOpen && !sideOpen) {
-            contentRadialOpen = false;
-            contentRadial?.classList.remove('show');
-            addContentBtn?.classList.remove('selected');
-        }
-    });
+    // ------------------ QUICK ACTIONS + DELETE MODE ----------
+    let radialMode = 'base'; // base | delete (kept for content-card click behavior)
+    let isAction2Active = false;
 
-    contentActions.forEach(btn => {
+    document.querySelectorAll('.ac-quick-btn[data-ac-action]').forEach((btn) => {
+        const action = btn.getAttribute('data-ac-action');
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (btn.dataset.type) {
-                openContentModal(btn.dataset.type);
+            if (action === 'delete') {
+                if (radialMode === 'delete') {
+                    setBaseState();
+                } else {
+                    closeModal();
+                    setDeleteState();
+                }
                 return;
             }
-            if (btn.dataset.action === 'confirm-delete') {
-                openDeleteConfirmModal();
-                return;
-            }
-            if (btn.dataset.action === 'cancel-delete') {
-                setBaseState();
-                return;
-            }
-        });
-        btn.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                btn.click();
-            }
+            setBaseState();
+            openContentModal(action);
         });
     });
 
-    uploadTrigger?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (radialMode === 'upload') {
-            setBaseState();
-        } else {
-            setUploadState();
-        }
-    });
-    deleteTrigger?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        setDeleteState();
-    });
+    acDeleteCancelBtn?.addEventListener('click', () => setBaseState());
+    acDeleteConfirmBtn?.addEventListener('click', () => openDeleteConfirmModal());
 
     function setBaseState() {
         radialMode = 'base';
         isAction2Active = false;
-        contentTooltip && (contentTooltip.textContent = 'what would you like to do?');
-        uploadTrigger?.classList.remove('selected');
-        deleteTrigger?.classList.remove('selected');
-        toggleElement(confirmBtn, false);
-        toggleElement(cancelBtn, false);
-        toggleElement(materialBtn, false);
-        toggleElement(taskBtn, false);
-        toggleElement(assessmentBtn, false);
-        toggleElement(uploadTrigger, true);
-        toggleElement(deleteTrigger, true);
+        deleteQuickBtn?.classList.remove('is-mode-active');
+        adminClassDeleteToolbar?.setAttribute('hidden', '');
+        adminClassDeleteToolbar?.setAttribute('aria-hidden', 'true');
         clearDeleteSelection();
-    }
-    function setUploadState() {
-        radialMode = 'upload';
-        isAction2Active = false;
-        contentTooltip && (contentTooltip.textContent = 'what would you like to upload?');
-        uploadTrigger?.classList.add('selected');
-        deleteTrigger?.classList.remove('selected');
-        toggleElement(confirmBtn, false);
-        toggleElement(cancelBtn, false);
-        toggleElement(materialBtn, true);
-        toggleElement(taskBtn, true);
-        toggleElement(assessmentBtn, true);
-        toggleElement(uploadTrigger, true);
-        toggleElement(deleteTrigger, false);
     }
     function setDeleteState() {
         radialMode = 'delete';
         isAction2Active = true;
-        contentTooltip && (contentTooltip.textContent = 'delete content?');
-        deleteTrigger?.classList.add('selected');
-        uploadTrigger?.classList.remove('selected');
-        toggleElement(confirmBtn, true);
-        toggleElement(cancelBtn, true);
-        toggleElement(materialBtn, false);
-        toggleElement(taskBtn, false);
-        toggleElement(assessmentBtn, false);
-        toggleElement(uploadTrigger, true);
-        toggleElement(deleteTrigger, true);
+        deleteQuickBtn?.classList.add('is-mode-active');
+        adminClassDeleteToolbar?.removeAttribute('hidden');
+        adminClassDeleteToolbar?.setAttribute('aria-hidden', 'false');
         enableDeleteSelection();
-    }
-    function toggleElement(el, show) {
-        if (!el) return;
-        el.style.display = show ? 'flex' : 'none';
     }
 
     // ------------------ MODAL HANDLING -----------------------
     let currentCreateType = null;
     let currentSelectedFiles = [];
     let currentFileInput = null;
+    let currentSelectedEbook = null; // { id, title, author, subject }
+    let renderSelectedEbookFn = null;
+
+    // ------------------ EBOOK PICKER POPUP -------------------
+    const acEbookBackdrop = document.getElementById('acEbookBackdrop');
+    const acEbookModal = document.getElementById('acEbookModal');
+    const acEbookSearch = document.getElementById('acEbookSearch');
+    const acEbookSearchBtn = document.getElementById('acEbookSearchBtn');
+    const acEbookCancel = document.getElementById('acEbookCancel');
+    const acEbookResults = document.getElementById('acEbookResults');
+    let acEbookModalWired = false;
+
+    const escapeHtml = (s) => {
+        const d = document.createElement('div');
+        d.textContent = String(s ?? '');
+        return d.innerHTML;
+    };
+
+    function openSlspModal(backdrop, modal) {
+        if (backdrop) {
+            backdrop.removeAttribute('hidden');
+            backdrop.setAttribute('aria-hidden', 'false');
+        }
+        if (modal) {
+            modal.removeAttribute('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeSlspModal(backdrop, modal) {
+        if (backdrop) {
+            backdrop.setAttribute('hidden', '');
+            backdrop.setAttribute('aria-hidden', 'true');
+        }
+        if (modal) {
+            modal.setAttribute('hidden', '');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+        document.body.style.overflow = '';
+        // If the create-content modal is still open, keep scroll locked.
+        if (acUploadModalBackdrop && !acUploadModalBackdrop.hasAttribute('hidden')) {
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    async function runAcEbookSearch(loadAll = false) {
+        if (!acEbookResults) return;
+        const q = (acEbookSearch?.value || '').trim();
+        const effective = loadAll ? '' : q;
+        acEbookResults.innerHTML = `<div class="ac-ebook-empty">${effective ? 'Searching…' : 'Loading all available eBooks…'}</div>`;
+        try {
+            const res = await fetch(`/Library/ApiSearch?q=${encodeURIComponent(effective)}&ebooksOnly=true`, { method: 'GET' });
+            const data = await res.json();
+            const books = (data && data.success && Array.isArray(data.books)) ? data.books : [];
+            if (!books || books.length === 0) {
+                acEbookResults.innerHTML = '<div class="ac-ebook-empty">No eBooks found.</div>';
+                return;
+            }
+
+            acEbookResults.innerHTML = books.map(b => {
+                const title = escapeHtml(b.title || '(Untitled)');
+                const author = escapeHtml(b.author || '');
+                const subject = escapeHtml(b.subject || '');
+                const desc = escapeHtml(b.description || '');
+                const id = escapeHtml(b.id || '');
+                const meta = [author, subject, desc].filter(Boolean).join(' · ');
+                return `
+                    <div class="ac-ebook-row">
+                        <div class="ac-ebook-row-main">
+                            <div class="ac-ebook-row-title" title="${title}">${title}</div>
+                            <div class="ac-ebook-row-meta" title="${meta}">${meta || '&nbsp;'}</div>
+                        </div>
+                        <button type="button" class="ac-ebook-btn ac-ebook-btn-primary ac-ebook-pick" data-bookid="${id}" data-title="${title}" data-author="${author}" data-subject="${subject}">Select</button>
+                    </div>`;
+            }).join('');
+
+            acEbookResults.querySelectorAll('.ac-ebook-pick').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.getAttribute('data-bookid') || '';
+                    if (!id) return;
+                    currentSelectedEbook = {
+                        id,
+                        title: btn.getAttribute('data-title') || '',
+                        author: btn.getAttribute('data-author') || '',
+                        subject: btn.getAttribute('data-subject') || ''
+                    };
+                    try { renderSelectedEbookFn?.(); } catch { }
+                    closeSlspModal(acEbookBackdrop, acEbookModal);
+                });
+            });
+        } catch (err) {
+            console.error(err);
+            acEbookResults.innerHTML = '<div class="ac-ebook-empty">Failed to load eBooks.</div>';
+        }
+    }
+
+    function ensureAcEbookModalWired() {
+        if (acEbookModalWired) return;
+        acEbookModalWired = true;
+        acEbookCancel?.addEventListener('click', () => closeSlspModal(acEbookBackdrop, acEbookModal));
+        acEbookBackdrop?.addEventListener('click', (e) => {
+            if (e.target === acEbookBackdrop) closeSlspModal(acEbookBackdrop, acEbookModal);
+        });
+        acEbookSearchBtn?.addEventListener('click', () => { void runAcEbookSearch(false); });
+        acEbookSearch?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                void runAcEbookSearch(false);
+            } else if (e.key === 'Escape') {
+                closeSlspModal(acEbookBackdrop, acEbookModal);
+            }
+        });
+    }
 
     function renderSelectedFiles() {
         const list = document.getElementById('c_file_list');
@@ -298,21 +329,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function wrapLabeledField(labelText, el) {
+        const wrap = document.createElement('div');
+        wrap.className = 'ac-field-wrap';
+        if (labelText) {
+            const lab = document.createElement('label');
+            lab.className = 'ac-field-label';
+            lab.textContent = labelText;
+            if (el.id) lab.setAttribute('for', el.id);
+            wrap.appendChild(lab);
+        }
+        wrap.appendChild(el);
+        return wrap;
+    }
+
     function openContentModal(type) {
-        // keep radial open and in upload mode while switching types
-        radialMode = 'upload';
-        contentRadialOpen = true;
-        contentRadial?.classList.add('show');
-        addContentBtn?.classList.add('selected');
-        const wasOpen = (modalBackdrop && modalBackdrop.getAttribute('aria-hidden') === 'false');
+        const wasOpen = acUploadModalBackdrop && !acUploadModalBackdrop.hasAttribute('hidden');
         currentCreateType = type;
-        const mt = document.getElementById('modalTitle');
-        mt.style.display = '';
-        mt.textContent = {
-            material: 'Upload Material',
-            task: 'Upload Task',
-            assessment: 'Upload Assessment'
-        }[type] || 'Upload';
+        if (acModalTitle) {
+            acModalTitle.textContent = {
+                material: 'Upload material',
+                task: 'Upload task',
+                assessment: 'Upload assessment'
+            }[type] || 'Upload';
+        }
 
         // preserve existing input values when switching type
         const prevTitle = (document.getElementById('c_title') || {}).value || '';
@@ -320,16 +360,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const prevDeadline = (document.getElementById('c_deadline') || {}).value || '';
         const prevLink = (document.getElementById('c_link') || {}).value || '';
         const prevMax = (document.getElementById('c_maxgrade') || {}).value || '';
-        modalBody.innerHTML = '';
+        const prevEbookId = (document.getElementById('c_ebook_id') || {}).value || (currentSelectedEbook?.id || '');
+        if (acModalBody) acModalBody.innerHTML = '';
         const titleInput = createElement('input', { type: 'text', id: 'c_title', placeholder: 'Content title' });
-        const desc = createElement('textarea', { id: 'c_desc', placeholder: 'Content description (optional)' });
+        const desc = createElement('textarea', { id: 'c_desc', placeholder: 'Description (optional)' });
         const file = createElement('input', { type: 'file', id: 'c_file', multiple: true });
         const fileList = createElement('div', { id: 'c_file_list', className: 'file-list' });
-        modalBody.append(titleInput, desc, file, fileList);
+        if (acModalBody) {
+            acModalBody.append(
+                wrapLabeledField('Content title', titleInput),
+                wrapLabeledField('Content description', desc),
+                wrapLabeledField('Files', file),
+                fileList
+            );
+        }
         currentFileInput = file;
         // do not reset selected files if already open; re-bind into new input
         if (!wasOpen) {
             currentSelectedFiles = [];
+            currentSelectedEbook = null;
         }
         file.addEventListener('change', () => {
             const newFiles = Array.from(file.files || []);
@@ -354,33 +403,102 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderSelectedFiles();
 
+        // eBook picker — only for learning materials, always rendered BELOW Files list
+        if (type === 'material') {
+            const ebookHidden = createElement('input', { type: 'hidden', id: 'c_ebook_id', value: '' });
+            const ebookWrap = createElement('div', { className: 'ac-field-wrap ac-ebook-picker' });
+            const ebookLabel = createElement('label', { className: 'ac-field-label' });
+            ebookLabel.textContent = 'Attached eBook (SLSHS Library)';
+            const hint = createElement('div', { className: 'file-empty ac-ebook-hint' });
+            hint.textContent = 'Select an eBook from the library catalog. Physical books are not allowed.';
+
+            const row = createElement('div', { className: 'ac-ebook-toolbar' });
+            const browseBtn = createElement('button', { type: 'button', id: 'c_ebook_browse_btn' });
+            browseBtn.className = 'ac-ebook-btn ac-ebook-btn-secondary';
+            browseBtn.textContent = 'Browse eBooks';
+            row.append(browseBtn);
+
+            const selectedBox = createElement('div', { id: 'c_ebook_selected', className: 'ac-ebook-selected' });
+            ebookWrap.append(ebookLabel, hint, ebookHidden, row, selectedBox);
+            acModalBody?.appendChild(ebookWrap);
+
+            const renderSelectedEbook = () => {
+                selectedBox.innerHTML = '';
+                if (!currentSelectedEbook || !currentSelectedEbook.id) {
+                    selectedBox.innerHTML = '<div class="ac-ebook-empty">No eBook selected</div>';
+                    ebookHidden.value = '';
+                    return;
+                }
+                ebookHidden.value = currentSelectedEbook.id;
+                const card = document.createElement('div');
+                card.className = 'ac-ebook-selected-card';
+                const meta = document.createElement('div');
+                meta.className = 'ac-ebook-selected-meta';
+                const title = document.createElement('div');
+                title.className = 'ac-ebook-selected-title';
+                title.textContent = currentSelectedEbook.title || 'eBook';
+                const sub = document.createElement('div');
+                sub.className = 'ac-ebook-selected-sub';
+                sub.textContent = `${currentSelectedEbook.author || ''}${currentSelectedEbook.subject ? (currentSelectedEbook.author ? ' · ' : '') + currentSelectedEbook.subject : ''}`.trim();
+                meta.append(title, sub);
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'ac-ebook-btn ac-ebook-btn-danger';
+                removeBtn.textContent = 'Remove';
+                removeBtn.addEventListener('click', () => {
+                    currentSelectedEbook = null;
+                    renderSelectedEbook();
+                });
+                card.append(meta, removeBtn);
+                selectedBox.appendChild(card);
+            };
+            renderSelectedEbookFn = renderSelectedEbook;
+
+            browseBtn.addEventListener('click', () => {
+                ensureAcEbookModalWired();
+                openSlspModal(acEbookBackdrop, acEbookModal);
+                try { acEbookSearch?.focus(); } catch { }
+                // Load all on open to show full list inside the popup
+                void runAcEbookSearch(true);
+            });
+
+            // restore selection if switching type while modal open
+            if (prevEbookId && (!currentSelectedEbook || currentSelectedEbook.id !== prevEbookId)) {
+                currentSelectedEbook = { id: prevEbookId, title: 'Selected eBook', author: '', subject: '' };
+            }
+            renderSelectedEbook();
+        }
+
         if (type === 'task' || type === 'assessment') {
             const deadline = createElement('input', { type: 'date', id: 'c_deadline' });
-            modalBody.appendChild(deadline);
+            acModalBody?.appendChild(wrapLabeledField('Deadline', deadline));
         }
 
         if (type === 'task') {
-            const maxGradeLabel = createElement('label', { htmlFor: 'c_maxgrade' });
-            maxGradeLabel.textContent = 'Maximum grade';
-            const maxGradeInput = createElement('input', { type: 'text', id: 'c_maxgrade', placeholder: 'Enter max grade (e.g., 10 or 10/10)' });
-            modalBody.append(maxGradeLabel, maxGradeInput);
+            const maxGradeInput = createElement('input', { type: 'text', id: 'c_maxgrade', placeholder: 'e.g. 10 or 10/10' });
+            acModalBody?.appendChild(wrapLabeledField('Maximum grade', maxGradeInput));
         }
 
         if (type === 'assessment') {
-            const link = createElement('input', { type: 'url', id: 'c_link', placeholder: 'Link to assessment (optional)' });
-            modalBody.appendChild(link);
+            const link = createElement('input', {
+                type: 'url',
+                id: 'c_link',
+                placeholder: 'https://… (required)',
+                required: true,
+                'aria-required': 'true'
+            });
+            acModalBody?.appendChild(wrapLabeledField('Google Forms link (required)', link));
         }
 
-        // Show legacy upload modal near radial; use transparent backdrop
-        if (!wasOpen) {
-            modalBackdrop.hidden = false;
-            modalBackdrop.style.display = 'flex';
-            modalBackdrop.classList.add('transparent');
-            modalBackdrop.setAttribute('aria-hidden', 'false');
-            contentModal.classList.add('create-content');
+        if (!wasOpen && acUploadModalBackdrop) {
+            acUploadModalBackdrop.removeAttribute('hidden');
+            acUploadModalBackdrop.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
         }
-        modalSubmit.textContent = 'Upload';
-        modalSubmit.dataset.type = type;
+        if (acModalSubmit) {
+            acModalSubmit.textContent = 'Upload';
+            acModalSubmit.dataset.type = type;
+        }
         // restore previous values
         try { titleInput.value = prevTitle; } catch {}
         try { desc.value = prevDesc; } catch {}
@@ -399,36 +517,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function closeModal() {
-        modalBackdrop.hidden = true;
-        modalBackdrop.style.display = 'none';
-        modalBackdrop.setAttribute('aria-hidden', 'true');
-        modalBackdrop.classList.remove('transparent');
-        modalBody.innerHTML = '';
+        if (acUploadModalBackdrop) {
+            acUploadModalBackdrop.setAttribute('hidden', '');
+            acUploadModalBackdrop.setAttribute('aria-hidden', 'true');
+        }
+        if (acModalBody) acModalBody.innerHTML = '';
         currentCreateType = null;
-        contentModal.classList.remove('create-content');
+        document.body.style.overflow = '';
     }
-    function closeSideModal() { /* no-op (legacy modal in use) */ }
     function closeDeleteModal() {
-        deleteBackdrop.hidden = true;
-        deleteBackdrop.style.display = 'none';
-        deleteBackdrop.setAttribute('aria-hidden', 'true');
-        deleteBody.innerHTML = '';
+        if (deleteBackdrop) {
+            deleteBackdrop.setAttribute('hidden', '');
+            deleteBackdrop.setAttribute('aria-hidden', 'true');
+        }
+        if (deleteModal) {
+            deleteModal.setAttribute('hidden', '');
+            deleteModal.setAttribute('aria-hidden', 'true');
+        }
+        if (deleteBody) deleteBody.innerHTML = '';
+        document.body.style.overflow = '';
     }
 
-    modalBackdrop?.addEventListener('click', (ev) => {
-        if (ev.target === modalBackdrop) closeModal();
+    function removeRecentUploadRow(contentId) {
+        if (!contentId) return;
+        document.querySelectorAll('.recent-upload-row').forEach((row) => {
+            if (row.getAttribute('data-content-id') === contentId) row.remove();
+        });
+    }
+
+    acUploadModalBackdrop?.addEventListener('click', (ev) => {
+        if (ev.target === acUploadModalBackdrop) closeModal();
     });
+    acModalCloseX?.addEventListener('click', closeModal);
     deleteBackdrop?.addEventListener('click', (ev) => {
         if (ev.target === deleteBackdrop) closeDeleteModal();
     });
 
-    modalCancel?.addEventListener('click', closeModal);
-    sideModalCancel?.addEventListener('click', closeSideModal);
+    acModalCancel?.addEventListener('click', closeModal);
     deleteCancel?.addEventListener('click', closeDeleteModal);
 
     // ------------------ CREATE / UPLOAD CONTENT -------------
-    modalSubmit?.addEventListener('click', async () => {
-        const t = (modalSubmit.dataset.type || '').toString();
+    acModalSubmit?.addEventListener('click', async () => {
+        const t = (acModalSubmit.dataset.type || '').toString();
         const title = (document.getElementById('c_title') || {}).value || '';
         const desc = (document.getElementById('c_desc') || {}).value || '';
         const deadlineVal = (document.getElementById('c_deadline') || {}).value || '';
@@ -438,6 +568,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!title.trim()) {
             showToast('⚠️ Please add a title.', 'warning');
             return;
+        }
+
+        if (t === 'assessment') {
+            const linkInput = document.getElementById('c_link');
+            const raw = (linkVal || '').trim();
+            if (!raw) {
+                showToast('⚠️ Please add a link for the assessment.', 'warning');
+                linkInput?.focus();
+                return;
+            }
+            try {
+                void new URL(raw);
+            } catch {
+                showToast('⚠️ Enter a valid assessment link (e.g. https://…).', 'warning');
+                linkInput?.focus();
+                return;
+            }
         }
 
         try {
@@ -464,7 +611,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error creating content:', error);
             showToast('❌ Failed to save content to database: ' + error.message, 'error');
         }
-        closeModal();
     });
     deleteSubmit?.addEventListener('click', async () => {
         const selected = Array.from(document.querySelectorAll('.content-card.selected-for-delete'));
@@ -474,7 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const results = await Promise.all(selected.map(async (card) => {
-            const type = Array.from(card.classList).find(c => ['material', 'task', 'assessment', 'meeting'].includes(c)) || '';
+            const type = Array.from(card.classList).find(c => ['material', 'task', 'assessment', 'meeting', 'announcement'].includes(c)) || '';
             const contentId = card.getAttribute('data-content-id') || '';
             if (!contentId) return { ok: false };
             try {
@@ -492,6 +638,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (type === 'meeting') {
                     url = '/AdminManageClass/DeleteMeeting';
                     payload = { MeetingId: contentId };
+                } else if (type === 'announcement') {
+                    url = '/AdminClass/DeleteAnnouncement';
+                    payload = { ContentId: contentId };
                 } else {
                     return { ok: false };
                 }
@@ -503,6 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) return { ok: false };
                 const data = await res.json();
                 if (data && (data.success === true || data.success === 'true')) {
+                    removeRecentUploadRow(contentId);
                     card.remove();
                     return { ok: true };
                 }
@@ -548,6 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
             deadline: deadlineVal,
             link: linkVal,
             classId: classCode,
+            ebookId: (document.getElementById('c_ebook_id') || {}).value || (currentSelectedEbook?.id || ''),
             fileNames: uploadedNames,
             maxGrade: type === 'task' ? (function(){
                 const raw = ((document.getElementById('c_maxgrade') || {}).value || '100').trim();
@@ -567,6 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
             deadline: deadlineVal,
             link: linkVal,
             classId: classCode,
+            ebookId: (document.getElementById('c_ebook_id') || {}).value || (currentSelectedEbook?.id || ''),
             maxGrade: type === 'task' ? (function(){
                 const raw = ((document.getElementById('c_maxgrade') || {}).value || '100').trim();
                 const num = (raw.includes('/') ? raw.split('/')[0].trim() : raw);
@@ -609,50 +761,96 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1000);
     }
 
-    // ------------------ ANNOUNCEMENTS ------------------------
-    announceBtn?.addEventListener('click', async () => {
+    // ------------------ ANNOUNCEMENTS (slsp-confirm UI, same pattern as sign out) ------------------------
+    function openAnnouncePostConfirm() {
+        if (announcePostConfirmBackdrop) {
+            announcePostConfirmBackdrop.removeAttribute('hidden');
+            announcePostConfirmBackdrop.setAttribute('aria-hidden', 'false');
+        }
+        if (announcePostConfirmModal) {
+            announcePostConfirmModal.removeAttribute('hidden');
+            announcePostConfirmModal.setAttribute('aria-hidden', 'false');
+        }
+        document.body.style.overflow = 'hidden';
+        announcePostConfirmCancel?.focus();
+    }
+
+    function closeAnnouncePostConfirm() {
+        if (announcePostConfirmBackdrop) {
+            announcePostConfirmBackdrop.setAttribute('hidden', '');
+            announcePostConfirmBackdrop.setAttribute('aria-hidden', 'true');
+        }
+        if (announcePostConfirmModal) {
+            announcePostConfirmModal.setAttribute('hidden', '');
+            announcePostConfirmModal.setAttribute('aria-hidden', 'true');
+        }
+        document.body.style.overflow = '';
+    }
+
+    function isAnnouncePostConfirmOpen() {
+        return announcePostConfirmModal && !announcePostConfirmModal.hasAttribute('hidden');
+    }
+
+    async function submitAnnouncementPost() {
         const txt = announcementInput.value.trim();
-        if (!txt) { showToast('⚠️ Please type an announcement.', 'warning'); return; }
+        if (!txt) {
+            showToast('⚠️ Please type an announcement.', 'warning');
+            return;
+        }
 
+        const pathParts = window.location.pathname.split('/').filter(part => part);
+        const classCode = pathParts[pathParts.length - 1];
+
+        if (!classCode) {
+            showToast('❌ Cannot find class code for announcement.', 'error');
+            return;
+        }
+
+        const res = await fetch('/AdminClass/AddAnnouncement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                classId: classCode,
+                text: txt
+            })
+        });
+
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Failed to save announcement: ${res.status} ${errorText}`);
+        }
+
+        await res.json();
+
+        showToast('📢 Announcement posted.', 'success');
+        collapseAnnouncement();
+
+        setTimeout(() => {
+            window.location.reload();
+        }, 600);
+    }
+
+    announceBtn?.addEventListener('click', () => {
+        const txt = announcementInput.value.trim();
+        if (!txt) {
+            showToast('⚠️ Please type an announcement.', 'warning');
+            return;
+        }
+        if (!announcePostConfirmModal) {
+            void submitAnnouncementPost();
+            return;
+        }
+        openAnnouncePostConfirm();
+    });
+
+    announcePostConfirmCancel?.addEventListener('click', closeAnnouncePostConfirm);
+    announcePostConfirmBackdrop?.addEventListener('click', (e) => {
+        if (e.target === announcePostConfirmBackdrop) closeAnnouncePostConfirm();
+    });
+    announcePostConfirmOk?.addEventListener('click', async () => {
+        closeAnnouncePostConfirm();
         try {
-            // FIX: Get class code from URL (same method as above)
-            const pathParts = window.location.pathname.split('/').filter(part => part);
-            const classCode = pathParts[pathParts.length - 1];
-
-            console.log('Creating announcement for class:', classCode);
-
-            if (!classCode) {
-                showToast('❌ Cannot find class code for announcement.', 'error');
-                return;
-            }
-
-            const res = await fetch('/AdminClass/AddAnnouncement', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    classId: classCode,  // Send Class Code, not Class ID
-                    text: txt
-                })
-            });
-
-            console.log('Announcement response status:', res.status);
-
-            if (!res.ok) {
-                const errorText = await res.text();
-                throw new Error(`Failed to save announcement: ${res.status} ${errorText}`);
-            }
-
-            const data = await res.json();
-            console.log('Announcement saved:', data);
-
-            showToast('📢 Announcement posted.', 'success');
-            collapseAnnouncement();
-
-            // Refresh to show the new announcement
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-
+            await submitAnnouncementPost();
         } catch (err) {
             console.error(err);
             showToast('❌ Could not save announcement: ' + err.message, 'error');
@@ -666,8 +864,9 @@ document.addEventListener('DOMContentLoaded', () => {
             className: {
                 material: 'fa-solid fa-book-open-reader',
                 task: 'fa-solid fa-file-pen',
-                assessment: 'fa-solid fa-circle-question'
-            }[type]
+                assessment: 'fa-solid fa-circle-question',
+                meeting: 'fa-solid fa-chalkboard-user'
+            }[type] || 'fa-solid fa-file'
         });
         left.appendChild(icon);
 
@@ -691,8 +890,18 @@ document.addEventListener('DOMContentLoaded', () => {
         card.addEventListener('click', () => {
             const targetPage = card.dataset.target;
             if (!targetPage) return;
-            showToast('Opening...');
-            navigateWithDelay(targetPage);
+            if (String(type).toLowerCase() === 'meeting') {
+                openMeetingInNewTab(targetPage);
+                return;
+            }
+            const msg = openingMessageForContentType(type);
+            if (typeof window.navigateWithProfessorLoading === 'function') {
+                window.navigateWithProfessorLoading(targetPage, msg, 600);
+            } else {
+                showToast(msg);
+                if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(true);
+                setTimeout(() => { window.location.href = targetPage; }, 600);
+            }
         });
 
         return card;
@@ -710,19 +919,101 @@ document.addEventListener('DOMContentLoaded', () => {
         else classContent.prepend(card);
     }
 
+    function openingMessageForContentType(type) {
+        const map = {
+            material: 'Opening Material',
+            task: 'Opening Task',
+            assessment: 'Opening Assessment',
+            meeting: 'Opening Meeting'
+        };
+        return map[type] || 'Opening...';
+    }
+
+    function openMeetingInNewTab(url) {
+        if (!url) return;
+        const w = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!w) showToast('Allow pop-ups to open the meeting.', 'warning');
+    }
+
+    function isExternalHttpUrl(url) {
+        if (!url || typeof url !== 'string') return false;
+        try {
+            const u = new URL(url, window.location.href);
+            if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+            return u.origin !== window.location.origin;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function openingMessageForContentCard(card) {
+        if (card.classList.contains('material')) return 'Opening Material';
+        if (card.classList.contains('task')) return 'Opening Task';
+        if (card.classList.contains('assessment')) return 'Opening Assessment';
+        if (card.classList.contains('meeting')) return 'Opening Meeting';
+        const t = card.dataset.target;
+        if (typeof window.resolveAdminNavToastMessage === 'function' && t) {
+            return window.resolveAdminNavToastMessage(t);
+        }
+        return 'Opening...';
+    }
+
     // ------------------ CONTENT-CARD NAVIGATION --------------
-    const contentCards = document.querySelectorAll('.content-card');
+    const contentCards = document.querySelectorAll('.content-card:not(.create-announcement)');
     contentCards.forEach(card => {
-        card.style.cursor = 'pointer';
+        const isAnnouncement = card.classList.contains('announcement');
+        card.style.cursor = isAnnouncement ? 'default' : 'pointer';
         card.addEventListener('click', () => {
             if (radialMode === 'delete') {
                 card.classList.toggle('selected-for-delete');
                 return;
             }
+            if (isAnnouncement) return;
             const targetPage = card.dataset.target;
             if (!targetPage) return;
-            showToast('Opening...');
-            navigateWithDelay(targetPage);
+            const typeClass = Array.from(card.classList).find((c) =>
+                ['material', 'task', 'assessment', 'meeting', 'announcement'].includes(c.toLowerCase())
+            );
+            if (typeClass && typeClass.toLowerCase() === 'meeting') {
+                openMeetingInNewTab(targetPage);
+                return;
+            }
+            const msg = openingMessageForContentCard(card);
+            if (typeof window.navigateWithProfessorLoading === 'function') {
+                window.navigateWithProfessorLoading(targetPage, msg, 600);
+            } else {
+                showToast(msg);
+                if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(true);
+                setTimeout(() => { window.location.href = targetPage; }, 600);
+            }
+        });
+    });
+
+    // ------------------ RECENT UPLOADS NAVIGATION -------------
+    // Convert default anchor navigation into "loading overlay + delayed navigate" so it matches ProfessorDb UX.
+    document.querySelectorAll('.recent-uploads a.recent-upload-link').forEach((a) => {
+        a.addEventListener('click', (e) => {
+            if (radialMode === 'delete') return; // keep delete mode behavior consistent
+            const href = a.getAttribute('href');
+            if (!href || href === '#') return;
+            if (isExternalHttpUrl(href)) {
+                e.preventDefault();
+                e.stopPropagation();
+                openMeetingInNewTab(href);
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            const msg = typeof window.resolveAdminNavToastMessage === 'function'
+                ? window.resolveAdminNavToastMessage(href)
+                : 'Opening...';
+            if (typeof window.navigateWithProfessorLoading === 'function') {
+                window.navigateWithProfessorLoading(href, msg, 600);
+            } else {
+                showToast(msg);
+                if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(true);
+                setTimeout(() => { window.location.href = href; }, 600);
+            }
         });
     });
 
@@ -740,6 +1031,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         deleteBody.innerHTML = '';
+        const summary = document.createElement('div');
+        summary.className = 'modal-delete-summary';
+        summary.textContent = `You are about to delete ${selected.length} item${selected.length > 1 ? 's' : ''}. This cannot be undone.`;
+        deleteBody.append(summary);
+
         const table = document.createElement('table');
         table.className = 'modal-delete-table';
         const thead = document.createElement('thead');
@@ -762,22 +1058,31 @@ document.addEventListener('DOMContentLoaded', () => {
             nameCell.appendChild(nameSpan);
             const typeCell = document.createElement('td');
             const type = Array.from(card.classList).find(c => ['material', 'task', 'assessment', 'meeting', 'announcement'].includes(c)) || 'content';
-            typeCell.textContent = type.toUpperCase();
+            const typeBadge = document.createElement('span');
+            typeBadge.className = `delete-type-badge type-${String(type).toLowerCase()}`;
+            typeBadge.textContent = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+            typeCell.appendChild(typeBadge);
             row.append(numCell, nameCell, typeCell);
             tbody.appendChild(row);
         });
         table.append(thead, tbody);
         deleteBody.append(table);
-        deleteBackdrop.hidden = false;
-        deleteBackdrop.style.display = 'flex';
-        deleteBackdrop.setAttribute('aria-hidden', 'false');
-        // keep radial visible during Action 2 operations
-        contentRadialOpen = true;
-        contentRadial?.classList.add('show');
-        addContentBtn?.classList.add('selected');
+        if (deleteBackdrop) {
+            deleteBackdrop.removeAttribute('hidden');
+            deleteBackdrop.setAttribute('aria-hidden', 'false');
+        }
+        if (deleteModal) {
+            deleteModal.removeAttribute('hidden');
+            deleteModal.setAttribute('aria-hidden', 'false');
+        }
+        document.body.style.overflow = 'hidden';
     }
     // ------------------ ANNOUNCEMENTS ------------------------
-    function autoResize(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; }
+    const ANNOUNCEMENT_TEXTAREA_MIN_PX = 40;
+    function autoResize(el) {
+        el.style.height = 'auto';
+        el.style.height = Math.max(ANNOUNCEMENT_TEXTAREA_MIN_PX, el.scrollHeight) + 'px';
+    }
     function expandAnnouncement() {
         announcementCard.classList.add('active');
         announcementCard.querySelector('.announcement-actions').hidden = false;
@@ -795,85 +1100,26 @@ document.addEventListener('DOMContentLoaded', () => {
     announcementInput?.addEventListener('click', expandAnnouncement);
     announcementInput?.addEventListener('input', () => autoResize(announcementInput));
 
-    announceBtn?.addEventListener('click', async () => {
-        const txt = announcementInput.value.trim();
-        if (!txt) { showToast('⚠️ Please type an announcement.', 'warning'); return; }
-
-        try {
-            // FIX: Use the same method to get classId
-            let classId = null;
-            const hiddenClassId = document.querySelector('input[name="classId"], input[id="classId"]');
-            if (hiddenClassId) {
-                classId = hiddenClassId.value;
-            }
-            if (!classId && document.body.dataset.classId) {
-                classId = document.body.dataset.classId;
-            }
-            if (!classId) {
-                const classContentElement = document.getElementById('classContent');
-                classId = classContentElement?.dataset.classId;
-            }
-
-            console.log('Creating announcement for class:', classId);
-
-            if (!classId) {
-                showToast('❌ Cannot find class ID for announcement.', 'error');
-                return;
-            }
-
-            const res = await fetch('/AdminClass/AddAnnouncement', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ classId, text: txt })
-            });
-
-            console.log('Announcement response status:', res.status);
-
-            if (!res.ok) {
-                const errorText = await res.text();
-                throw new Error(`Failed to save announcement: ${res.status} ${errorText}`);
-            }
-
-            const data = await res.json();
-            console.log('Announcement saved:', data);
-
-            // Safely get values
-            const description = data.Description || txt;
-            const uploadedBy = data.UploadedBy || 'Admin';
-            const createdAt = data.CreatedAt ? new Date(data.CreatedAt) : new Date();
-
-            const card = document.createElement('article');
-            card.className = 'content-card announcement';
-            card.innerHTML = `
-    <div class="content-left">
-        <i class="fa-solid fa-bullhorn"></i>
-        <div class="content-info">
-            <h4 class="content-title">Announcement</h4>
-            <p class="content-meta">${description}</p>
-            <p class="content-meta-small">By ${uploadedBy} | ${createdAt.toLocaleString()}</p>
-        </div>
-    </div>`;
-
-            insertCard(card);
-
-            showToast('📢 Announcement posted.', 'success');
-            collapseAnnouncement();
-        } catch (err) {
-            console.error(err);
-            showToast('❌ Could not save announcement: ' + err.message, 'error');
-        }
-    });
-
     // ------------------ GLOBAL ESC HANDLING ------------------
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            closeModal();
-            radialActions?.classList.remove('show');
-            if (!isAction2Active) {
-                contentRadial?.classList.remove('show');
-                addContentBtn?.classList.remove('selected');
-                contentRadialOpen = false;
+            if (deleteModal && !deleteModal.hasAttribute('hidden')) {
+                closeDeleteModal();
+                return;
             }
+            if (acEbookModal && !acEbookModal.hasAttribute('hidden')) {
+                closeSlspModal(acEbookBackdrop, acEbookModal);
+                return;
+            }
+            if (acUploadModalBackdrop && !acUploadModalBackdrop.hasAttribute('hidden')) {
+                closeModal();
+                return;
+            }
+            if (isAnnouncePostConfirmOpen()) {
+                closeAnnouncePostConfirm();
+                return;
+            }
+            radialActions?.classList.remove('show');
             menuOpen = false;
             setBaseState();
         }
@@ -883,16 +1129,24 @@ document.addEventListener('DOMContentLoaded', () => {
     window.__AdminClassAPI = {
         setBaseState,
         setDeleteState,
-        getState: () => ({ radialMode, isAction2Active, contentRadialOpen }),
-        contentRadial,
-        addContentBtn
+        getState: () => ({ radialMode, isAction2Active }),
+        openContentModal,
+        closeModal
     };
 
     // ------------------ BACK BUTTON ---------------------------
     backButton?.addEventListener('click', () => {
-        window.showToast ? window.showToast('Returning...') : null;
-        const target = '/professordb/ProfessorDb';
-        setTimeout(() => { window.location.href = target; }, 600);
+        const dash = typeof window.resolveInstructorDashboardUrl === 'function' ? window.resolveInstructorDashboardUrl() : '/professordb/ProfessorDb';
+        const msg = typeof window.resolveAdminNavToastMessage === 'function'
+            ? window.resolveAdminNavToastMessage(dash)
+            : 'Redirecting to Dashboard';
+        if (typeof window.navigateWithProfessorLoading === 'function') {
+            window.navigateWithProfessorLoading(dash, msg, 600);
+        } else {
+            if (window.showToast) window.showToast(msg);
+            if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(true);
+            setTimeout(() => { window.location.href = dash; }, 600);
+        }
     });
 
     // ------------------ MANAGE BUTTONS -------------------------
@@ -900,16 +1154,16 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             const targetPage = btn.getAttribute('data-target');
             if (!targetPage) return;
-
-            if (btn.classList.contains('manage-class')) {
-                showToast('🧑‍🏫 Opening Manage Class...');
+            const msg = btn.classList.contains('manage-class')
+                ? 'Opening Class Management'
+                : 'Opening page...';
+            if (typeof window.navigateWithProfessorLoading === 'function') {
+                window.navigateWithProfessorLoading(targetPage, msg, 600);
             } else {
-                showToast('Opening page...');
+                showToast(msg);
+                if (typeof window.setProfessorDbShellLoading === 'function') window.setProfessorDbShellLoading(true);
+                setTimeout(() => { window.location.href = targetPage; }, 600);
             }
-
-            setTimeout(() => {
-                window.location.href = targetPage;
-            }, 600);
         });
     });
 
@@ -927,9 +1181,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return Math.round((+d2 - +d1) / one);
     }
 
-    function navigateWithDelay(url, delay = 600) {
-        setTimeout(() => window.location.href = url, delay);
-    }
-
 });
+
 

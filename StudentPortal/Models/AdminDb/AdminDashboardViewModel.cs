@@ -5,6 +5,7 @@ using StudentPortal.Utilities;
 
 namespace StudentPortal.Models.AdminDb
 {
+    [BsonIgnoreExtraElements]
     public class AdminDashboardViewModel
     {
         public string AdminName { get; set; } = "Admin";
@@ -13,18 +14,30 @@ namespace StudentPortal.Models.AdminDb
 
     }
 
+    [BsonIgnoreExtraElements]
     public class ClassItem
     {
         public string Id { get; set; } = ObjectId.GenerateNewId().ToString(); // ✅ Automatically generate a new ObjectId
         public string SubjectName { get; set; } = "";
         public string SubjectCode { get; set; } = "";
         public string ScheduleId { get; set; } = "";
+
+        /// <summary>Enrollment DB section document id (e.g. SHSSections._id). Used for roster and invite recipient resolution.</summary>
+        public string EnrollmentSectionId { get; set; } = "";
+
         public string Section { get; set; } = "";
         public string SchoolYear { get; set; } = "";
         public string Course { get; set; } = "";
         public string Year { get; set; } = "";
         public string Semester { get; set; } = "";
         public string ClassCode { get; set; } = "";
+
+        /// <summary>
+        /// Optional seating chart ordering for Manage Class.
+        /// Keys are typically portal user ids (preferred) with email fallback for roster rows without a portal id.
+        /// Values are 0-based seat indices in row-major order for the configured rows×cols grid.
+        /// </summary>
+        public Dictionary<string, int> SeatAssignmentsByStudentKey { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         public string BackgroundImageUrl { get; set; } = "";
         public string InstructorName { get; set; } = string.Empty;
 

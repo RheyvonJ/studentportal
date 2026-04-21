@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using StudentPortal.Models.AdminDb;
+using StudentPortal.Models.StudentDb;
 using StudentPortal.Services;
+using StudentPortal.Utilities;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -11,10 +15,14 @@ namespace StudentPortal.Controllers.AdminDb
     public class AdminDbController : Controller
     {
         private readonly MongoDbService _mongo;
+        private readonly EmailService _email;
+        private readonly IConfiguration _configuration;
 
-        public AdminDbController(MongoDbService mongo)
+        public AdminDbController(MongoDbService mongo, EmailService email, IConfiguration configuration)
         {
             _mongo = mongo;
+            _email = email;
+            _configuration = configuration;
         }
 
         // GET: /admindb/admindb
@@ -90,6 +98,26 @@ namespace StudentPortal.Controllers.AdminDb
             public string? ClassCode { get; set; }
         }
 
+        // GET: /admindb/admindb/CheckClassExists — used before create confirmation (same rules as CreateClass)
+        [HttpGet("CheckClassExists")]
+        public async Task<IActionResult> CheckClassExists(
+            string subjectName,
+            string section,
+            string? year,
+            string? course,
+            string? semester)
+        {
+            if (string.IsNullOrWhiteSpace(subjectName) || string.IsNullOrWhiteSpace(section))
+                return Json(new { success = false, exists = false });
+
+            year = string.IsNullOrWhiteSpace(year) ? "N/A" : year.Trim();
+            course = string.IsNullOrWhiteSpace(course) ? "N/A" : course.Trim();
+            semester = string.IsNullOrWhiteSpace(semester) ? "N/A" : semester.Trim();
+
+            var exists = await _mongo.ClassExistsAsync(subjectName, section, year, course, semester);
+            return Json(new { success = true, exists });
+        }
+
         // POST: /admindb/admindb/CreateClass
         [HttpPost("CreateClass")]
         [ValidateAntiForgeryToken]
@@ -99,9 +127,12 @@ namespace StudentPortal.Controllers.AdminDb
             string section,
             string? professorId,
             string? scheduleId,
+            string? sectionId,
+            string? profEmail,
             string? year,
             string? course,
-            string? semester)
+            string? semester,
+            bool allowDuplicate = false)
         {
             if (string.IsNullOrWhiteSpace(subjectName) ||
                 string.IsNullOrWhiteSpace(subjectCode) ||
@@ -116,10 +147,10 @@ namespace StudentPortal.Controllers.AdminDb
             course = string.IsNullOrWhiteSpace(course) ? "N/A" : course.Trim();
             semester = string.IsNullOrWhiteSpace(semester) ? "N/A" : semester.Trim();
 
-            // Check if class with same section exists
-            if (await _mongo.ClassExistsAsync(subjectName, section, year, course, semester))
+            // Duplicate classes require explicit confirmation (allowDuplicate) from the create dialog
+            if (await _mongo.ClassExistsAsync(subjectName, section, year, course, semester) && !allowDuplicate)
             {
-                TempData["ToastMessage"] = $"⚠️ Class \"{subjectName}\" ({course} {year} {section}) already exists for {semester} semester.";
+                TempData["ToastMessage"] = $"⚠️ Class \"{subjectName}\" ({course} {year} {section}) already exists for {semester} semester. Open Create class again and confirm to add another.";
                 return RedirectToAction("Index");
             }
 
@@ -139,6 +170,7 @@ namespace StudentPortal.Controllers.AdminDb
                 Year = year,
                 Semester = semester,
                 ScheduleId = string.IsNullOrWhiteSpace(scheduleId) ? string.Empty : scheduleId.Trim(),
+                EnrollmentSectionId = string.IsNullOrWhiteSpace(sectionId) ? string.Empty : sectionId.Trim(),
                 CreatorName = creatorName,
                 CreatorInitials = creatorInitials,
                 CreatorRole = "Creator",
@@ -148,8 +180,118 @@ namespace StudentPortal.Controllers.AdminDb
 
             await _mongo.CreateClassAsync(newClass);
 
-            TempData["ToastMessage"] = $"✅ Class \"{subjectName}\" (Section: {newClass.SectionLabel}, Code: {newClass.ClassCode}) created successfully!";
+            var adminEmail = HttpContext.Session.GetString("UserEmail") ?? string.Empty;
+            var inviteEmailLogoUrl = ResolveSchoolLogoAbsoluteUrl();
+            var inviteEmailClassUrl = ResolveClassAbsoluteUrl(newClass.ClassCode);
+            // Run auto-invite in background so the UI doesn't "spin" forever
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var recipients = await _mongo.GetStudentEmailsForClassAsync(newClass) ?? new List<string>();
+
+                    var distinctRecipients = recipients
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Where(e =>
+                        {
+                            if (string.Equals(e, adminEmail, StringComparison.OrdinalIgnoreCase)) return false;
+                            if (!string.IsNullOrWhiteSpace(profEmail) &&
+                                string.Equals(e, profEmail.Trim(), StringComparison.OrdinalIgnoreCase)) return false;
+                            return true;
+                        })
+                        .ToList();
+                    Console.WriteLine($"[CreateClass] Auto-invite recipients for {newClass.ClassCode}: {distinctRecipients.Count}");
+
+                    var subj = JoinClassEmailTemplate.DefaultSubject;
+                    var courseOrSubject = !string.IsNullOrWhiteSpace(newClass.SubjectName) ? newClass.SubjectName : newClass.Course;
+                    var schoolName = _configuration["Portal:SchoolName"] ?? "Sta. Lucia Senior High School";
+                    var logoUrl = inviteEmailLogoUrl;
+                    var classUrl = inviteEmailClassUrl;
+
+                    foreach (var r in distinctRecipients)
+                    {
+                        string displayName = "Student";
+                        try
+                        {
+                            var user = await _mongo.GetUserByEmailAsync(r);
+                            if (user != null && !string.IsNullOrWhiteSpace(user.FullName))
+                                displayName = user.FullName;
+                        }
+                        catch { }
+
+                        try
+                        {
+                            var bodyHtml = JoinClassEmailTemplate.BuildHtml(displayName, courseOrSubject, newClass.ClassCode, schoolName, logoUrl, classUrl);
+                            var (ok, err) = await _email.SendEmailAsync(r, subj, bodyHtml, isHtml: true);
+                            if (!ok)
+                                Console.WriteLine($"[CreateClass] Invite email failed to {r}: {err}");
+                        }
+                        catch { }
+
+                        try
+                        {
+                            var existing = await _mongo.GetUserByEmailAsync(r);
+                            if (existing == null)
+                            {
+                                var enrollmentStudent = await _mongo.GetEnrollmentStudentByEmailAsync(r);
+                                if (enrollmentStudent != null)
+                                    await _mongo.CreateUserFromEnrollmentStudentAsync(enrollmentStudent);
+                            }
+                            await _mongo.AddStudentToClass(r, newClass.ClassCode);
+                            await _mongo.ApproveJoinRequestsByEmailAndClassCodeAsync(r, newClass.ClassCode);
+                            await _mongo.AddNotificationAsync(new UserNotification
+                            {
+                                Email = r,
+                                Type = "class-auto-joined",
+                                Text = $"You have been auto-joined to \"{newClass.SubjectName}\" ({newClass.ClassCode})",
+                                Code = newClass.ClassCode,
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
+            });
+
+            TempData["ToastMessage"] = $"✅ Class \"{subjectName}\" created (Code: {newClass.ClassCode}). Invites are sending in the background.";
+
             return RedirectToAction("Index");
+        }
+
+        private string? ResolveSchoolLogoAbsoluteUrl()
+        {
+            // Prefer inline-embedded logo for email clients (cid:school-logo).
+            if (string.Equals(_configuration["Portal:EmailEmbedLogo"], "true", StringComparison.OrdinalIgnoreCase))
+                return "cid:school-logo";
+
+            var path = _configuration["Portal:SchoolLogo"] ?? "~/images/SLSHS.png";
+            var publicBase = (_configuration["Portal:PublicSiteUrl"] ?? string.Empty).Trim().TrimEnd('/');
+            var localPath = path.StartsWith("~/", StringComparison.Ordinal) ? path[1..]
+                : (path.StartsWith("/", StringComparison.Ordinal) ? path : "/" + path);
+            if (!string.IsNullOrWhiteSpace(publicBase))
+                return publicBase + localPath;
+            if (Request?.Host.HasValue == true)
+                return $"{Request.Scheme}://{Request.Host}{Url.Content(path)}";
+            return null;
+        }
+
+        private string? ResolveClassAbsoluteUrl(string classCode)
+        {
+            if (string.IsNullOrWhiteSpace(classCode)) return null;
+
+            var relative = Url.Action("Index", "StudentClass", new { classCode });
+            if (string.IsNullOrWhiteSpace(relative))
+                relative = "/StudentClass/" + Uri.EscapeDataString(classCode.Trim());
+
+            var publicBase = (_configuration["Portal:PublicSiteUrl"] ?? string.Empty).Trim().TrimEnd('/');
+            if (!string.IsNullOrWhiteSpace(publicBase))
+                return publicBase + relative;
+
+            if (Request?.Host.HasValue == true)
+                return $"{Request.Scheme}://{Request.Host}{relative}";
+
+            return null;
         }
 
         [HttpGet("GetProfessorSubjects")]
@@ -175,14 +317,31 @@ namespace StudentPortal.Controllers.AdminDb
                 return Json(new { success = false, message = "Missing professorId", subjects = Array.Empty<object>() });
 
             var items = await _mongo.GetProfessorAssignedSubjectsAsync(professorId);
-            var subjects = items.Select(d => new
+            var subjects = new List<object>();
+            foreach (var d in items)
             {
-                section = d.TryGetValue("section", out var s) ? s.ToString() : string.Empty,
-                subjectCode = d.TryGetValue("subjectCode", out var c) ? c.ToString() : string.Empty,
-                units = d.TryGetValue("units", out var u) ? u.ToString() : string.Empty,
-                scheduleId = d.TryGetValue("scheduleId", out var sch) ? sch.ToString() : string.Empty,
-                subjectName = d.TryGetValue("subjectName", out var n) ? n.ToString() : string.Empty
-            }).ToList();
+                var section = d.TryGetValue("section", out var s) ? s.ToString() : string.Empty;
+                var subjectCode = d.TryGetValue("subjectCode", out var c) ? c.ToString() : string.Empty;
+                var units = d.TryGetValue("units", out var u) ? u.ToString() : string.Empty;
+                var scheduleId = d.TryGetValue("scheduleId", out var sch) ? sch.ToString() : string.Empty;
+                var subjectName = d.TryGetValue("subjectName", out var n) ? n.ToString() : string.Empty;
+                var schoolYear = d.TryGetValue("schoolYear", out var sy) ? sy.ToString() : string.Empty;
+                var sectionIdVal = d.Contains("sectionId") ? d["sectionId"]?.ToString() ?? string.Empty
+                    : (d.Contains("SectionId") ? d["SectionId"]?.ToString() ?? string.Empty
+                    : (d.Contains("SectionID") ? d["SectionID"]?.ToString() ?? string.Empty : string.Empty));
+
+                subjects.Add(new
+                {
+                    section,
+                    subjectCode,
+                    units,
+                    scheduleId,
+                    subjectName,
+                    schoolYear,
+                    classCode = "",
+                    sectionId = sectionIdVal
+                });
+            }
 
             return Json(new { success = true, subjects });
         }

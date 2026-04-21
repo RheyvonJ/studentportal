@@ -1,6 +1,52 @@
 // wwwroot/js/studentanswerassessment.js
 // UI logic for StudentAnswerAssessment page + submission to server
 
+(function wireAssessmentFormIframeToAnticheat() {
+    const path = (window.location.pathname || '').toLowerCase();
+    if (!path.includes('studentanswerassessment')) return;
+    const frame = document.getElementById('googleFormFrame');
+    if (!frame) return;
+
+    function emit(kind) {
+        document.dispatchEvent(new CustomEvent('ac-assessment-embed', { bubbles: true, detail: { kind } }));
+    }
+
+    function attachToDoc(doc) {
+        if (!doc || !doc.documentElement) return false;
+        if (doc.documentElement.getAttribute('data-ac-iframe-wired') === '1') return true;
+        doc.documentElement.setAttribute('data-ac-iframe-wired', '1');
+        doc.addEventListener('copy', () => emit('copy'), true);
+        doc.addEventListener('paste', () => emit('paste'), true);
+        doc.addEventListener('cut', () => emit('copy'), true);
+        doc.addEventListener('contextmenu', () => emit('contextmenu'), true);
+        doc.addEventListener('keydown', (e) => {
+            if (e.key === 'PrintScreen' || e.code === 'PrintScreen') {
+                emit('print_screen');
+                return;
+            }
+            const k = (e.key || '').toLowerCase();
+            if (k === 'f12' || (e.ctrlKey && e.shiftKey && k === 'i') || (e.metaKey && e.shiftKey && k === 'i') || (e.metaKey && e.altKey && k === 'i')) {
+                emit('inspect_key');
+            }
+        }, true);
+        return true;
+    }
+
+    function tryWire() {
+        try {
+            const doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+            return attachToDoc(doc);
+        } catch (_) {
+            return false;
+        }
+    }
+
+    frame.addEventListener('load', () => { tryWire(); });
+    if (frame.contentDocument && frame.contentDocument.readyState === 'complete') {
+        tryWire();
+    }
+})();
+
 const userProfile = document.getElementById('userProfile');
 const userPopup = document.getElementById('userPopup');
 const menuCircle = document.getElementById('menuCircle');
@@ -8,6 +54,17 @@ const radialActions = document.getElementById('radialActions');
 const actions = radialActions?.querySelectorAll('.action') || [];
 const submitBtn = document.getElementById('submitAssessment');
 const toast = document.getElementById('toast');
+
+function getStudentAnswerAssessmentRouteIds() {
+    try {
+        const parts = (window.location.pathname || '').split('/').filter(Boolean);
+        const idx = parts.findIndex(p => p.toLowerCase() === 'studentanswerassessment');
+        if (idx < 0 || parts.length < idx + 3) return { classCode: '', contentId: '' };
+        return { classCode: parts[idx + 1] || '', contentId: parts[idx + 2] || '' };
+    } catch {
+        return { classCode: '', contentId: '' };
+    }
+}
 
 
 
@@ -114,9 +171,12 @@ submitBtn?.addEventListener('click', async (e) => {
 
     const answers = collectAnswers();
     const antiSummary = await gatherAntiCheatSummary();
+    const ids = getStudentAnswerAssessmentRouteIds();
 
     const payload = {
         StudentId: null, // set if you have current user id
+        classCode: ids.classCode,
+        contentId: ids.contentId,
         Answers: answers,
         AntiCheatSummary: antiSummary
     };
@@ -127,6 +187,16 @@ submitBtn?.addEventListener('click', async (e) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+
+        if (resp.status === 403) {
+            let msg = 'Assessment locked — submission not allowed.';
+            try {
+                const j = await resp.json();
+                if (j && j.message) msg = j.message;
+            } catch { /* ignore */ }
+            showToast(msg);
+            return;
+        }
 
         if (!resp.ok) {
             const text = await resp.text();

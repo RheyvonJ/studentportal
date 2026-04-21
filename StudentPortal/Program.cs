@@ -13,6 +13,12 @@ var options = new WebApplicationOptions
 };
 var builder = WebApplication.CreateBuilder(options);
 
+// Load local-only overrides (secrets) if present.
+// These files are gitignored via appsettings.*.local.json.
+builder.Configuration
+    .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.local.json", optional: true, reloadOnChange: true);
+
 
 
 
@@ -52,10 +58,10 @@ builder.Services.AddSession(options =>
 // ✅ Add MVC
 builder.Services.AddControllersWithViews();
 
-var app = builder.Build();
-
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-app.Urls.Add($"http://0.0.0.0:{port}");
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
+var app = builder.Build();
 
 // ✅ Seed default admin user
 using (var scope = app.Services.CreateScope())

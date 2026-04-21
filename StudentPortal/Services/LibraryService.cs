@@ -5,6 +5,8 @@ using StudentPortal.Models.Library;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace StudentPortal.Services
@@ -748,6 +750,148 @@ namespace StudentPortal.Services
 
             return notifications;
         }
+
+        /// <summary>
+        /// Active catalog entries marked as eBooks in the library database.
+        /// </summary>
+        public async Task<List<Book>> GetEbooksAsync(int maxResults = 2000)
+        {
+            try
+            {
+                // is_ebook OR legacy rows that have a file path under uploads/ebooks (flag sometimes missing in older data)
+                var explicitEbook = Builders<Book>.Filter.Eq(b => b.IsEBook, true);
+                var hasPath = Builders<Book>.Filter.And(
+                    Builders<Book>.Filter.Exists(b => b.EBookFilePath, true),
+                    Builders<Book>.Filter.Ne(b => b.EBookFilePath, string.Empty));
+                var pathLooksEbook = Builders<Book>.Filter.Regex(b => b.EBookFilePath, new BsonRegularExpression("uploads[/\\\\]ebooks", "i"));
+                var legacyEbook = Builders<Book>.Filter.And(hasPath, pathLooksEbook);
+                var filter = Builders<Book>.Filter.Or(explicitEbook, legacyEbook);
+
+                var withActive = Builders<Book>.Filter.And(filter, Builders<Book>.Filter.Eq(b => b.IsActive, true));
+                var list = await _books.Find(withActive).Limit(maxResults).ToListAsync();
+                if (list is { Count: > 0 })
+                    return list;
+                return await _books.Find(filter).Limit(maxResults).ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[LibraryService.GetEbooksAsync] Error: {ex.Message}");
+                return new List<Book>();
+            }
+        }
+
+        /// <summary>
+        /// Resolves linked eBook ids to display rows (skips missing or non-eBook ids).
+        /// </summary>
+        public async Task<List<MaterialLinkedEbookDisplay>> GetLinkedEbookDisplaysAsync(IEnumerable<string> bookIds)
+        {
+            var result = new List<MaterialLinkedEbookDisplay>();
+            if (bookIds == null) return result;
+
+            foreach (var id in bookIds.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var book = await GetBookByIdAsync(id);
+                if (book == null || !book.EffectiveIsEBook)
+                    continue;
+                result.Add(new MaterialLinkedEbookDisplay
+                {
+                    BookId = id,
+                    Title = book.Title ?? "",
+                    Author = book.Author ?? "",
+                    Subject = book.Subject ?? ""
+                });
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Suggests SLSHS Library eBook ids that correspond to this class material using subject, code, and title keywords.
+        /// </summary>
+        public async Task<IReadOnlyList<string>> DiscoverEbookIdsForMaterialAsync(string? subjectName, string? subjectCode, string? materialTitle, int maxResults = 8)
+        {
+            var ebooks = await GetEbooksAsync(5000);
+            if (ebooks == null || ebooks.Count == 0)
+                return Array.Empty<string>();
+
+            var tokens = BuildMaterialMatchTokens(subjectName, subjectCode, materialTitle);
+            if (tokens.Count == 0)
+                return Array.Empty<string>();
+
+            string code = (subjectCode ?? string.Empty).Trim();
+            var scored = new List<(Book Book, int Score)>();
+
+            foreach (var b in ebooks)
+            {
+                int score = ScoreEbookAgainstTokens(b, tokens, code);
+                if (score > 0)
+                    scored.Add((b, score));
+            }
+
+            return scored
+                .OrderByDescending(x => x.Score)
+                .ThenBy(x => x.Book.Title, StringComparer.OrdinalIgnoreCase)
+                .Select(x => x.Book._id.ToString())
+                .Distinct()
+                .Take(maxResults)
+                .ToList();
+        }
+
+        private static List<string> BuildMaterialMatchTokens(string? subjectName, string? subjectCode, string? materialTitle)
+        {
+            var raw = new StringBuilder();
+            if (!string.IsNullOrWhiteSpace(subjectName)) raw.Append(' ').Append(subjectName);
+            if (!string.IsNullOrWhiteSpace(subjectCode)) raw.Append(' ').Append(subjectCode);
+            if (!string.IsNullOrWhiteSpace(materialTitle)) raw.Append(' ').Append(materialTitle);
+
+            var text = raw.ToString();
+            if (string.IsNullOrWhiteSpace(text))
+                return new List<string>();
+
+            var words = Regex.Split(text.ToLowerInvariant(), @"[^\p{L}\p{Nd}]+")
+                .Where(w => w.Length >= 3)
+                .Where(w => !StopWords.Contains(w))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var code = (subjectCode ?? string.Empty).Trim();
+            if (code.Length >= 2 && !words.Contains(code, StringComparer.OrdinalIgnoreCase))
+                words.Insert(0, code.ToLowerInvariant());
+
+            return words;
+        }
+
+        private static int ScoreEbookAgainstTokens(Book b, List<string> tokens, string subjectCode)
+        {
+            if (tokens == null || tokens.Count == 0) return 0;
+
+            var title = (b.Title ?? string.Empty).ToLowerInvariant();
+            var author = (b.Author ?? string.Empty).ToLowerInvariant();
+            var subject = (b.Subject ?? string.Empty).ToLowerInvariant();
+            int score = 0;
+
+            if (!string.IsNullOrWhiteSpace(subjectCode) && subjectCode.Length >= 2)
+            {
+                var c = subjectCode.ToLowerInvariant();
+                if (title.Contains(c, StringComparison.Ordinal) || subject.Contains(c, StringComparison.Ordinal) || author.Contains(c, StringComparison.Ordinal))
+                    score += 12;
+            }
+
+            foreach (var t in tokens)
+            {
+                if (string.IsNullOrWhiteSpace(t) || t.Length < 2) continue;
+                if (title.Contains(t, StringComparison.Ordinal)) score += 4;
+                if (subject.Contains(t, StringComparison.Ordinal)) score += 3;
+                if (author.Contains(t, StringComparison.Ordinal)) score += 2;
+            }
+
+            return score;
+        }
+
+        private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "the","and","for","with","from","this","that","your","our","are","was","but","not","you","any","per","its","amp"
+        };
     }
 }
 

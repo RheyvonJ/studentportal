@@ -1,0 +1,264 @@
+using Microsoft.AspNetCore.Mvc;
+using StudentPortal.Models.StudentDb;
+using StudentPortal.Services;
+using StudentPortal.Utilities;
+using StudentPortal.Models.AdminDb;
+using System.Threading.Tasks;
+using System.Linq;
+using System.Collections.Generic;
+
+namespace StudentPortal.Controllers
+{
+    public class StudentAssessmentController : Controller
+    {
+        private readonly MongoDbService _mongoDb;
+
+        public StudentAssessmentController(MongoDbService mongoDb)
+        {
+            _mongoDb = mongoDb;
+        }
+
+        [HttpGet("/StudentAssessment/{classCode}/{contentId}")]
+        public async Task<IActionResult> Index(string classCode, string contentId)
+        {
+            if (string.IsNullOrEmpty(classCode) || string.IsNullOrEmpty(contentId))
+                return NotFound("Class code or Content ID not provided.");
+
+            var email = HttpContext.Session.GetString("UserEmail");
+            if (string.IsNullOrEmpty(email))
+                return RedirectToAction("Index", "StudentDb");
+
+            var classItem = await _mongoDb.GetClassByCodeAsync(classCode);
+            if (classItem == null)
+                return NotFound("Class not found.");
+
+            var contentItem = await _mongoDb.GetContentByIdAsync(contentId);
+            if (contentItem == null || contentItem.Type != "assessment")
+                return NotFound("Assessment not found.");
+
+            if (contentItem.ClassId != classItem.Id)
+                return NotFound("Assessment not found in this class.");
+
+            var user = await _mongoDb.GetUserByEmailAsync(email);
+            var files = await _mongoDb.GetUploadsByContentIdAsync(contentId);
+            var instructorName = !string.IsNullOrWhiteSpace(classItem.InstructorName)
+                ? classItem.InstructorName
+                : (!string.IsNullOrWhiteSpace(classItem.CreatorName)
+                    ? classItem.CreatorName
+                    : "Instructor");
+            var instructorInitials = !string.IsNullOrWhiteSpace(classItem.CreatorInitials)
+                ? classItem.CreatorInitials
+                : GetInitials(instructorName);
+            var roleLabel = "Teacher";
+            string teacherDepartment = string.Empty;
+            string roomName = string.Empty;
+            string floorDisplay = string.Empty;
+            if (!string.IsNullOrWhiteSpace(classItem.OwnerEmail))
+            {
+                try
+                {
+                    teacherDepartment = await _mongoDb.GetProfessorDepartmentByEmailAsync(classItem.OwnerEmail) ?? string.Empty;
+                    var prof = await _mongoDb.GetProfessorByEmailAsync(classItem.OwnerEmail);
+                    if (string.IsNullOrWhiteSpace(teacherDepartment) && prof?.Programs != null && prof.Programs.Count > 0)
+                        teacherDepartment = prof.Programs[0];
+                }
+                catch { /* optional */ }
+            }
+            if (!string.IsNullOrWhiteSpace(classItem.ScheduleId))
+            {
+                try
+                {
+                    var (schedRoom, schedFloor) = await _mongoDb.GetRoomAndFloorByScheduleIdAsync(classItem.ScheduleId);
+                    if (!string.IsNullOrWhiteSpace(schedRoom)) roomName = schedRoom;
+                    if (!string.IsNullOrWhiteSpace(schedFloor)) floorDisplay = schedFloor;
+                }
+                catch { /* optional */ }
+            }
+
+            var model = new StudentAssessmentViewModel
+            {
+                AssessmentTitle = contentItem.Title ?? "Assessment",
+                Description = contentItem.Description ?? string.Empty,
+                PostedDate = contentItem.CreatedAt.ToLocalTime().ToString("MMM d, yyyy"),
+                Deadline = contentItem.Deadline?.ToLocalTime().ToString("MMM d, yyyy") ?? string.Empty,
+                StudentName = user?.FullName ?? "Student",
+                StudentInitials = GetInitials(user?.FullName ?? "ST"),
+                InstructorName = instructorName,
+                InstructorInitials = string.IsNullOrWhiteSpace(instructorInitials) ? "IN" : instructorInitials,
+                InstructorRole = roleLabel,
+                TeacherDepartment = teacherDepartment,
+                RoomName = roomName,
+                FloorDisplay = floorDisplay,
+                Attachments = (files ?? new List<StudentPortal.Models.AdminMaterial.UploadItem>())
+                    .Select(f => new StudentPortal.Models.StudentDb.TaskAttachment
+                    {
+                        FileName = f.FileName,
+                        FileUrl = f.FileUrl
+                    })
+                    .ToList(),
+                ClassCode = classItem.ClassCode ?? classCode,
+                SectionName = !string.IsNullOrWhiteSpace(classItem.SectionLabel) ? classItem.SectionLabel : (classItem.Section ?? string.Empty),
+                SubjectName = classItem.SubjectName ?? string.Empty,
+                SubjectCode = classItem.SubjectCode ?? string.Empty,
+                ContentId = contentItem.Id ?? contentId,
+                IsSubmissionLocked = ContentSubmissionRules.IsSubmissionLocked(contentItem, System.DateTime.UtcNow)
+            };
+
+            // Fallback for legacy records where uploads collection may be empty.
+            if ((model.Attachments == null || model.Attachments.Count == 0) && contentItem.Attachments != null && contentItem.Attachments.Count > 0)
+            {
+                model.Attachments = contentItem.Attachments
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => new StudentPortal.Models.StudentDb.TaskAttachment
+                    {
+                        FileName = x,
+                        FileUrl = $"/uploads/{x}"
+                    })
+                    .ToList();
+            }
+
+            bool isDone = false;
+            if (user != null)
+            {
+                var result = await _mongoDb.GetAssessmentResultAsync(classItem.Id, contentItem.Id, user.Id ?? string.Empty);
+                if (result != null)
+                {
+                    model.IsAnswered = result.SubmittedAt.HasValue;
+                    model.Score = result.Score;
+                    model.MaxScore = result.MaxScore;
+                    isDone = string.Equals(result.Status, "done", System.StringComparison.OrdinalIgnoreCase);
+                }
+            }
+
+            try
+            {
+                var logs = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, contentItem.Id);
+                var relevant = logs ?? new System.Collections.Generic.List<AntiCheatLog>();
+                var unlock = !string.IsNullOrEmpty(user?.Id)
+                    ? await _mongoDb.GetAssessmentUnlockAsync(classItem.Id, contentItem.Id!, user.Id)
+                    : null;
+                var studentTotalForLock = AssessmentAntiCheatRules.SumIntegrityEventsForLock(relevant, user?.Id, user?.Email, unlock);
+                var isVoidForStudent = AssessmentAntiCheatRules.IsIntegrityLockActive(studentTotalForLock);
+                var deadlineLocked = ContentSubmissionRules.IsSubmissionLocked(contentItem, System.DateTime.UtcNow);
+                ViewBag.IsAssessmentVoid = isVoidForStudent;
+                ViewBag.IsOpenQuizLocked = isVoidForStudent || isDone || deadlineLocked;
+            }
+            catch
+            {
+                ViewBag.IsAssessmentVoid = false;
+                ViewBag.IsOpenQuizLocked = isDone || ContentSubmissionRules.IsSubmissionLocked(contentItem, System.DateTime.UtcNow);
+            }
+
+            ViewBag.InstructorName = instructorName;
+            ViewBag.InstructorInitials = model.InstructorInitials;
+            ViewBag.SubjectCode = classItem.SubjectCode ?? string.Empty;
+            ViewBag.SubjectName = classItem.SubjectName ?? string.Empty;
+
+            return View("~/Views/StudentDb/StudentAssessment/Index.cshtml", model);
+        }
+
+        [HttpGet("/StudentAssessment/GetComments")]
+        public async Task<IActionResult> GetComments([FromQuery] string contentId)
+        {
+            if (string.IsNullOrEmpty(contentId)) return BadRequest(new { success = false, message = "Missing contentId" });
+            var items = await _mongoDb.GetTaskCommentsAsync(contentId);
+            var comments = items.Select(c => new
+            {
+                id = c.Id,
+                authorName = c.AuthorName,
+                role = NormalizeCommentRole(c.Role),
+                text = c.Text,
+                createdAt = c.CreatedAt,
+                replies = c.Replies.Select(r => new { authorName = r.AuthorName, role = NormalizeCommentRole(r.Role), text = r.Text, createdAt = r.CreatedAt }).ToList()
+            }).ToList();
+            return Json(new { success = true, comments });
+        }
+
+        [HttpPost("/StudentAssessment/PostComment")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PostComment(string contentId, string classCode, string text)
+        {
+            var email = HttpContext.Session.GetString("UserEmail");
+            var user = !string.IsNullOrEmpty(email) ? await _mongoDb.GetUserByEmailAsync(email) : null;
+            var authorName = user?.FullName ?? (User?.Identity?.Name ?? "Student");
+            var authorEmail = user?.Email ?? (email ?? "student@local");
+            var role = NormalizeCommentRole(user?.Role ?? "Student");
+            var classItem = await _mongoDb.GetClassByCodeAsync(classCode);
+            if (classItem == null) return Json(new { success = false, message = "Class not found" });
+            var item = await _mongoDb.AddTaskCommentAsync(contentId, classItem.Id, authorEmail, authorName, role, text ?? string.Empty);
+            if (item == null) return Json(new { success = false, message = "Failed to add comment" });
+            return Json(new
+            {
+                success = true,
+                comment = new
+                {
+                    id = item.Id,
+                    authorName = item.AuthorName,
+                    role = NormalizeCommentRole(item.Role),
+                    text = item.Text,
+                    createdAt = item.CreatedAt,
+                    replies = item.Replies.Select(r => new { authorName = r.AuthorName, role = NormalizeCommentRole(r.Role), text = r.Text, createdAt = r.CreatedAt }).ToList()
+                }
+            });
+        }
+
+        [HttpPost("/StudentAssessment/PostReply")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PostReply(string commentId, string text)
+        {
+            var email = HttpContext.Session.GetString("UserEmail");
+            var user = !string.IsNullOrEmpty(email) ? await _mongoDb.GetUserByEmailAsync(email) : null;
+            var authorName = user?.FullName ?? (User?.Identity?.Name ?? "Student");
+            var authorEmail = user?.Email ?? (email ?? "student@local");
+            var role = NormalizeCommentRole(user?.Role ?? "Student");
+            var updated = await _mongoDb.AddTaskReplyAsync(commentId, authorEmail, authorName, role, text ?? string.Empty);
+            if (updated == null) return Json(new { success = false, message = "Failed to add reply" });
+            var last = updated.Replies.LastOrDefault();
+            return Json(new { success = true, reply = last != null ? new { authorName = last.AuthorName, role = NormalizeCommentRole(last.Role), text = last.Text, createdAt = last.CreatedAt } : null });
+        }
+
+        private string GetInitials(string name)
+        {
+            var parts = (name ?? string.Empty).Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2) return ($"{parts[0][0]}{parts[^1][0]}").ToUpper();
+            if (parts.Length == 1) return parts[0].Substring(0, System.Math.Min(2, parts[0].Length)).ToUpper();
+            return "ST";
+        }
+
+        private static string NormalizeCommentRole(string? role)
+        {
+            if (string.IsNullOrWhiteSpace(role)) return "Student";
+            return string.Equals(role.Trim(), "Professor", System.StringComparison.OrdinalIgnoreCase)
+                ? "Teacher"
+                : role.Trim();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> MarkAsDone(string classCode, string contentId)
+        {
+            var email = HttpContext.Session.GetString("UserEmail");
+            if (string.IsNullOrEmpty(email)) return RedirectToAction("Index", "StudentDb");
+            var classItem = await _mongoDb.GetClassByCodeAsync(classCode);
+            var contentItem = await _mongoDb.GetContentByIdAsync(contentId);
+            var user = await _mongoDb.GetUserByEmailAsync(email);
+            if (classItem == null || contentItem == null || user == null) return RedirectToAction("Index", new { classCode, contentId });
+            if (ContentSubmissionRules.IsSubmissionLocked(contentItem, System.DateTime.UtcNow))
+            {
+                TempData["ToastMessage"] = "The deadline has passed. Submissions are closed.";
+                return RedirectToAction("Index", new { classCode, contentId });
+            }
+            var logsMd = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, contentItem.Id!);
+            var relevantMd = logsMd ?? new System.Collections.Generic.List<AntiCheatLog>();
+            var unlockMd = await _mongoDb.GetAssessmentUnlockAsync(classItem.Id, contentItem.Id!, user.Id ?? string.Empty);
+            var totalMdForLock = AssessmentAntiCheatRules.SumIntegrityEventsForLock(relevantMd, user.Id, user.Email, unlockMd);
+            if (AssessmentAntiCheatRules.IsIntegrityLockActive(totalMdForLock))
+            {
+                TempData["ToastMessage"] = "This assessment is locked due to integrity alerts. Contact your instructor.";
+                return RedirectToAction("Index", new { classCode, contentId });
+            }
+            await _mongoDb.MarkAssessmentDoneAsync(classItem.Id, classItem.ClassCode, contentItem.Id, user.Id ?? string.Empty, user.Email ?? string.Empty);
+            TempData["ToastMessage"] = "✅ Assessment marked as done!";
+            return RedirectToAction("Index", new { classCode, contentId });
+        }
+    }
+}

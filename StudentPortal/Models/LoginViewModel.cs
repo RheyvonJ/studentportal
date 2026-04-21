@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace StudentPortal.Models
 {
@@ -11,5 +11,8 @@ namespace StudentPortal.Models
         [Required]
         [DataType(DataType.Password)]
         public string Password { get; set; } = string.Empty;
+
+        // Optional: used to redirect back to a deep-link after login (e.g. /StudentClass/{classCode})
+        public string? ReturnUrl { get; set; }
     }
 }

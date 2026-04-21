@@ -4,6 +4,7 @@ using StudentPortal.Models;
 using StudentPortal.Services;
 using BCrypt.Net;
 using System;
+using System.Reflection;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -22,7 +23,39 @@ namespace StudentPortal.Controllers
 
         // --- LOGIN ---
         [HttpGet]
-        public IActionResult Login() => View();
+        public IActionResult Login(string? returnUrl = null)
+        {
+            try
+            {
+                // Best-effort "last updated" timestamp for the running deployment.
+                // On Railway/Linux containers this typically reflects the deployed build output.
+                var asm = Assembly.GetExecutingAssembly();
+                var path = asm.Location;
+                if (!string.IsNullOrWhiteSpace(path) && System.IO.File.Exists(path))
+                {
+                    var lastWriteUtc = System.IO.File.GetLastWriteTimeUtc(path);
+                    ViewBag.LastUpdatedUtc = lastWriteUtc.ToString("yyyy-MM-dd HH:mm:ss") + " UTC";
+                }
+                else
+                {
+                    ViewBag.LastUpdatedUtc = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") + " UTC";
+                }
+            }
+            catch
+            {
+                ViewBag.LastUpdatedUtc = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") + " UTC";
+            }
+
+            // Preserve deep-link so after login we can redirect back.
+            ViewBag.ReturnUrl = returnUrl;
+
+            // Pre-fill model with returnUrl for hidden field binding.
+            if (!string.IsNullOrWhiteSpace(returnUrl))
+            {
+                return View(new LoginViewModel { ReturnUrl = returnUrl });
+            }
+            return View();
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -32,6 +65,15 @@ namespace StudentPortal.Controllers
             {
                 ViewBag.Error = "Please enter both email and password.";
                 return View(model);
+            }
+
+            static bool IsSafeLocalReturnUrl(string? url)
+            {
+                if (string.IsNullOrWhiteSpace(url)) return false;
+                // Only allow local paths (prevent open redirects)
+                return Uri.TryCreate(url, UriKind.Relative, out _)
+                       && url.StartsWith("/", StringComparison.Ordinal)
+                       && !url.StartsWith("//", StringComparison.Ordinal);
             }
 
             // Normalize email for consistent lookup
@@ -57,6 +99,67 @@ namespace StudentPortal.Controllers
             
             if (enrollmentStudent != null)
             {
+                // EnrollmentSystem is the source of truth for whether a student is allowed to log in.
+                // IMPORTANT: `deactivatedAt` / `InactivatedAt` may remain set as *historical* fields after reactivation.
+                // If `IsActive` is explicitly true, trust that over timestamps.
+                var activePascal = enrollmentStudent.IsActive;
+                var activeCamel = enrollmentStudent.IsActiveCamel;
+
+                // If both flags exist and disagree, treat "true" as authoritative (reactivated accounts).
+                bool? activeResolved = null;
+                if (activePascal.HasValue && activeCamel.HasValue && activePascal.Value != activeCamel.Value)
+                    activeResolved = activePascal.Value || activeCamel.Value;
+                else if (activePascal.HasValue) activeResolved = activePascal.Value;
+                else if (activeCamel.HasValue) activeResolved = activeCamel.Value;
+
+                var isActiveTrue = activeResolved == true;
+                var isActiveFalse = activeResolved == false;
+
+                var isExplicitlyInactive =
+                    isActiveFalse
+                    || (
+                        !isActiveTrue
+                        && (
+                            enrollmentStudent.DeactivatedAt.HasValue
+                            || enrollmentStudent.InactivatedAt.HasValue
+                        )
+                    );
+
+                if (isExplicitlyInactive)
+                {
+                    var reason = (enrollmentStudent.DeactivationReason ?? enrollmentStudent.InactiveReason ?? string.Empty).Trim();
+                    if (string.IsNullOrWhiteSpace(reason))
+                    {
+                        ViewBag.Error = "Your account has been deactivated. Please contact the administrator.";
+                    }
+                    else
+                    {
+                        ViewBag.Error = $"Your account has been deactivated. Reason: {reason}";
+                    }
+                    return View(model);
+                }
+
+                // Some EnrollmentSystem records expose a status string separate from AccountStatus (e.g., enrollmentStatus).
+                // Treat any non-enrolled/non-active status as blocked.
+                if (!string.IsNullOrWhiteSpace(enrollmentStudent.EnrollmentStatus))
+                {
+                    var es = enrollmentStudent.EnrollmentStatus.Trim();
+                    var esLower = es.ToLowerInvariant();
+                    if (esLower is "inactive" or "deactivated" or "blocked" or "suspended")
+                    {
+                        // Same rationale as AccountStatus: if the account is explicitly active again,
+                        // don't let a stale enrollmentStatus string block login after reactivation/re-enrollment.
+                        if (!isActiveTrue)
+                        {
+                            var reason = (enrollmentStudent.DeactivationReason ?? enrollmentStudent.InactiveReason ?? string.Empty).Trim();
+                            ViewBag.Error = string.IsNullOrWhiteSpace(reason)
+                                ? $"Your account is {es}. Please contact the administrator."
+                                : $"Your account is {es}. Reason: {reason}";
+                            return View(model);
+                        }
+                    }
+                }
+
                 // Check account status (if it exists in the database)
                 // Allow both Active and Pending to log in (for students and teachers),
                 // block any other explicit status (e.g., Inactive, Blocked, etc.).
@@ -66,8 +169,12 @@ namespace StudentPortal.Controllers
                     var statusLower = status.ToLowerInvariant();
                     if (statusLower != "active" && statusLower != "pending")
                     {
-                        ViewBag.Error = $"Your account is {status}. Please contact the administrator.";
-                        return View(model);
+                        // If EnrollmentSystem explicitly marks the account active, don't let a stale AccountStatus block login.
+                        if (!isActiveTrue)
+                        {
+                            ViewBag.Error = $"Your account is {status}. Please contact the administrator.";
+                            return View(model);
+                        }
                     }
                 }
 
@@ -165,6 +272,17 @@ namespace StudentPortal.Controllers
                     {
                         displayName = portalUser.FullName;
                     }
+                    else
+                    {
+                        // Fallback directly from EnrollmentSystem record (SHSStudents)
+                        var enParts = new List<string>();
+                        if (!string.IsNullOrWhiteSpace(enrollmentStudent.FirstName)) enParts.Add(enrollmentStudent.FirstName);
+                        if (!string.IsNullOrWhiteSpace(enrollmentStudent.MiddleName) && !string.Equals(enrollmentStudent.MiddleName.Trim(), "NA", StringComparison.OrdinalIgnoreCase))
+                            enParts.Add(enrollmentStudent.MiddleName);
+                        if (!string.IsNullOrWhiteSpace(enrollmentStudent.LastName)) enParts.Add(enrollmentStudent.LastName);
+                        var built = string.Join(" ", enParts);
+                        if (!string.IsNullOrWhiteSpace(built)) displayName = built;
+                    }
                 }
                 
                 // Save session data
@@ -174,7 +292,10 @@ namespace StudentPortal.Controllers
                 HttpContext.Session.SetString("UserId", portalUser.Id ?? enrollmentStudent.Id);
                 HttpContext.Session.SetString("UserType", enrollmentStudent.Type);
 
-                // Redirect to student dashboard
+                // Redirect back to deep link if provided
+                if (IsSafeLocalReturnUrl(model.ReturnUrl))
+                    return LocalRedirect(model.ReturnUrl!);
+
                 return RedirectToAction("Index", "StudentDb");
             }
 
@@ -344,7 +465,9 @@ namespace StudentPortal.Controllers
                 HttpContext.Session.SetString("UserRole", "Professor"); // Set role as Professor
                 HttpContext.Session.SetString("UserId", portalUser.Id ?? professor.Id);
 
-                // Redirect to professor dashboard
+                if (IsSafeLocalReturnUrl(model.ReturnUrl))
+                    return LocalRedirect(model.ReturnUrl!);
+
                 return RedirectToAction("Index", "ProfessorDb");
             }
 
@@ -447,6 +570,8 @@ namespace StudentPortal.Controllers
                 case "professor":
                     return RedirectToAction("Index", "ProfessorDb");
                 default:
+                    if (IsSafeLocalReturnUrl(model.ReturnUrl))
+                        return LocalRedirect(model.ReturnUrl!);
                     return RedirectToAction("Index", "StudentDb");
             }
         }

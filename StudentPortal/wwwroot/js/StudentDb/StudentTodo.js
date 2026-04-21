@@ -9,6 +9,14 @@ function applyFilter(view) {
     });
 }
 
+function setQueryParam(key, value) {
+    const url = new URL(window.location.href);
+    if (value == null || value === '') url.searchParams.delete(key);
+    else url.searchParams.set(key, value);
+    // Keep the same path, just update query string
+    window.location.href = url.toString();
+}
+
 toggleOptions.forEach((option) => {
     option.addEventListener('click', () => {
         toggleOptions.forEach((opt) => {
@@ -29,4 +37,11 @@ toggleOptions.forEach((option) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     applyFilter('todo');
+
+    const subjectFilter = document.getElementById('subjectFilter');
+    if (subjectFilter) {
+        subjectFilter.addEventListener('change', () => {
+            setQueryParam('subject', subjectFilter.value || '');
+        });
+    }
 });

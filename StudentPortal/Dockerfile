@@ -1,12 +1,26 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Build context is usually this folder (Railway "Root Directory" = StudentPortal).
+# Also works if context is the parent repo with ./StudentPortal/StudentPortal.csproj.
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+COPY . .
+
+# Prefer monorepo path when present; otherwise flat app root (StudentPortal.csproj next to this file).
+RUN if [ -f "./StudentPortal/StudentPortal.csproj" ]; then \
+      export CSPROJ="./StudentPortal/StudentPortal.csproj"; \
+    else \
+      export CSPROJ="./StudentPortal.csproj"; \
+    fi && \
+    echo "Using project: $CSPROJ" && \
+    dotnet restore "$CSPROJ" && \
+    dotnet publish "$CSPROJ" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
+COPY --from=build /app/publish .
 
-COPY . ./
-RUN dotnet restore
-RUN dotnet publish -c Release -o out
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
+EXPOSE 8080
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
-WORKDIR /app
-COPY --from=build /app/out .
-
-CMD ["dotnet", "StudentPortal.dll"]
+ENTRYPOINT ["dotnet", "StudentPortal.dll"]

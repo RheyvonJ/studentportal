@@ -1,10 +1,13 @@
 // ==========================================================
 // studenttask.js — Cleaned & Optimized
 // Handles: Submit / Mark Done / Unsubmit flows,
-// Attachment List Modal, Reply Boxes, Library Modal
+// Attachment List Modal, Reply Boxes
 // ==========================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    const studentTaskPageEl = document.getElementById('studentTaskPage');
+    const submissionLocked = studentTaskPageEl?.dataset?.submissionLocked === 'true';
 
     // --- GLOBAL ELEMENTS ---
     const userProfile = document.getElementById('userProfile');
@@ -45,25 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const submittedFileData = window.__submittedFileData || null;
     let clientObjectUrls = [];
 
-    // Library modal elements (kept)
-    const libraryBtn = document.getElementById('libraryBtn');
-    const libraryBackdrop = document.getElementById('libraryBackdrop');
-    const closeLibraryBtn = document.getElementById('closeLibraryBtn');
-    const librarySearch = document.getElementById('librarySearch');
-    const libraryListEl = document.getElementById('libraryList');
-    const bookInfoDefault = document.getElementById('bookInfoDefault');
-    const bookDetail = document.getElementById('bookDetail');
-    const detailTitle = document.getElementById('detailTitle');
-    const detailAuthor = document.getElementById('detailAuthor');
-    const detailCategory = document.getElementById('detailCategory');
-    const detailDescription = document.getElementById('detailDescription');
-    const reserveBtn = document.getElementById('reserveBtn');
-
-    const reserveBackdrop = document.getElementById('reserveBackdrop');
-    const reserveYesBtn = document.getElementById('reserveYesBtn');
-    const reserveNoBtn = document.getElementById('reserveNoBtn');
-
-
     // --- VARIABLES ---
     let uploadedFiles = [];
     let originalSubmitHTML = submitContainer ? submitContainer.innerHTML : null;
@@ -97,8 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================
     backButton?.addEventListener('click', () => {
         const code = getClassCode();
+        const dash = typeof window.resolveStudentDashboardUrl === 'function' ? window.resolveStudentDashboardUrl() : '/StudentDb/StudentDb';
         showToast('Returning to class...');
-        setTimeout(() => (window.location.href = code ? `/StudentClass/${encodeURIComponent(code)}` : '/StudentClass'), 800);
+        setTimeout(() => (window.location.href = code ? `/StudentClass/${encodeURIComponent(code)}` : dash), 800);
     });
 
     // ===== SHOW / HIDE REPLY BOX =====
@@ -176,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const div = document.createElement('div');
             div.className = 'attachment-box';
             const name = submittedFileData.fileName || '';
+            div.dataset.fileLabel = name;
             const url = submittedFileData.fileUrl || '';
             const sizeText = submittedFileData.sizeText || '';
             div.innerHTML = `<i class="fa-solid fa-file"></i> ${escapeHtml(name)}${url ? ` <a href="${escapeHtml(url)}" class="download-link" style="margin-left:auto" download title="Download"><i class="fa-solid fa-download"></i></a>` : ''}${sizeText ? ` <span class="file-size" style="margin-left:8px; color:#64748b;">${escapeHtml(sizeText)}</span>` : ''}`;
@@ -188,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadedFiles.forEach(f => {
             const div = document.createElement('div');
             div.className = 'attachment-box';
+            div.dataset.fileLabel = f.name;
             const sizeText = typeof f.size === 'number' ? formatSize(f.size) : '';
             const url = URL.createObjectURL(f);
             clientObjectUrls.push(url);
@@ -256,6 +243,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================
     markDoneBtn?.addEventListener('click', (e) => {
         e.preventDefault();
+        if (submissionLocked) {
+            showToast('The deadline has passed. Submissions are closed.');
+            return;
+        }
         if (!fileInput.files.length) {
             if (confirmModal) {
                 confirmModal.removeAttribute('hidden');
@@ -286,6 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function submitMarkAsDone() {
         if (!formEl) return;
+        if (submissionLocked) {
+            showToast('The deadline has passed. Submissions are closed.');
+            return;
+        }
         const fd = new FormData(formEl);
         const token = getAntiForgeryToken();
         try {
@@ -313,6 +308,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================
     submitBtn?.addEventListener('click', (e) => {
         e.preventDefault();
+        if (submissionLocked) {
+            showToast('The deadline has passed. Submissions are closed.');
+            return;
+        }
         submitConfirmModal.hidden = false;
     });
 
@@ -327,6 +326,10 @@ document.addEventListener('DOMContentLoaded', () => {
     submitConfirmYes?.addEventListener('click', async () => {
         submitConfirmModal.hidden = true;
         if (!formEl) return;
+        if (submissionLocked) {
+            showToast('The deadline has passed. Submissions are closed.');
+            return;
+        }
         const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
         if (!hasFile) { showToast('Please attach a file to submit'); return; }
         const fd = new FormData(formEl);
@@ -388,171 +391,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
-    // ==========================================================
-    // Library Modal - now backed by Library System via /Library/ApiSearch and /Library/ReserveBook
-    // ==========================================================
-    (function libraryModule() {
-
-        let books = [];
-        let filtered = [];
-        let selectedId = null;
-
-        function renderList() {
-            libraryListEl.innerHTML = '';
-            if (!filtered.length) {
-                const li = document.createElement('li');
-                li.textContent = 'No books found.';
-                li.className = 'empty';
-                libraryListEl.appendChild(li);
-                return;
-            }
-
-            filtered.forEach(book => {
-                const li = document.createElement('li');
-                li.dataset.id = book.id;
-                li.setAttribute('role', 'option');
-                li.className = selectedId === book.id ? 'selected' : '';
-                li.innerHTML = `
-                    <div class="book-title">${escapeHtml(book.title)}</div>
-                    <div class="book-category">Category: ${escapeHtml(book.category)}</div>
-                `;
-                li.addEventListener('click', () => selectBook(book.id));
-                libraryListEl.appendChild(li);
-            });
-        }
-
-        function selectBook(id) {
-            const book = books.find(b => b.id === id);
-            if (!book) return;
-
-            selectedId = id;
-
-            libraryListEl.querySelectorAll('li').forEach(it => {
-                it.classList.toggle('selected', Number(it.dataset.id) === id);
-            });
-
-            bookInfoDefault.hidden = true;
-            bookDetail.hidden = false;
-
-            detailTitle.textContent = book.title;
-            detailAuthor.textContent = `Author: ${book.author}`;
-            detailCategory.textContent = book.category;
-            detailDescription.value = book.description;
-
-            reserveBtn.disabled = false;
-        }
-
-        async function loadBooks(query) {
-            try {
-                const url = '/Library/ApiSearch?q=' + encodeURIComponent(query || '');
-                console.log('[StudentTask] Loading books from:', url);
-                const res = await fetch(url, { credentials: 'same-origin' });
-                const data = await res.json();
-                console.log('[StudentTask] API response:', data);
-                
-                if (!data || !data.success) {
-                    console.warn('[StudentTask] API returned error:', data?.message || 'Unknown error');
-                    books = [];
-                    filtered = [];
-                    renderList();
-                    return;
-                }
-                books = data.books || [];
-                filtered = [...books];
-                console.log(`[StudentTask] Loaded ${books.length} books`);
-
-                if (selectedId && !filtered.find(b => String(b.id) === String(selectedId))) {
-                    selectedId = null;
-                    bookInfoDefault.hidden = false;
-                    bookDetail.hidden = true;
-                    reserveBtn.disabled = true;
-                }
-
-                renderList();
-            } catch (err) {
-                console.error('[StudentTask] Error loading books:', err);
-                books = [];
-                filtered = [];
-                renderList();
-            }
-        }
-
-        function filterBooks(query) {
-            loadBooks(query || '');
-        }
-
-        function openLibrary() {
-            showToast("Opening Library…", 900);
-            setTimeout(() => {
-                libraryBackdrop.hidden = false;
-                loadBooks('');
-                librarySearch && librarySearch.focus();
-            }, 700);
-        }
-
-        function closeLibrary() {
-            libraryBackdrop.hidden = true;
-        }
-
-
-        libraryBtn?.addEventListener('click', (e) => {
-            e.preventDefault();
-            openLibrary();
-        });
-
-        closeLibraryBtn?.addEventListener('click', closeLibrary);
-        libraryBackdrop?.addEventListener('click', (e) => {
-            if (e.target === libraryBackdrop) closeLibrary();
-        });
-
-        librarySearch?.addEventListener('input', (e) => filterBooks(e.target.value));
-
-
-        // Reserve modal
-        reserveBtn?.addEventListener('click', () => {
-            if (!selectedId) return;
-            reserveBackdrop.hidden = false;
-        });
-
-        reserveYesBtn?.addEventListener('click', async () => {
-            reserveBackdrop.hidden = true;
-            if (!selectedId) return;
-            try {
-                const res = await fetch('/Library/ReserveBook', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'bookId=' + encodeURIComponent(selectedId),
-                    credentials: 'same-origin'
-                });
-                const data = await res.json();
-                showToast((data && data.message) || 'Reservation request sent.', 1500);
-                if (data && data.success) {
-                    reserveBtn.disabled = true;
-                }
-            } catch {
-                showToast('Error reserving book. Please try again.', 1500);
-            }
-        });
-
-        reserveNoBtn?.addEventListener('click', () => {
-            reserveBackdrop.hidden = true;
-        });
-
-        reserveBackdrop?.addEventListener('click', (e) => {
-            if (e.target === reserveBackdrop) reserveBackdrop.hidden = true;
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if (!libraryBackdrop.hidden) closeLibrary();
-                if (!reserveBackdrop.hidden) reserveBackdrop.hidden = true;
-            }
-        });
-
-    })();
-
-
     // ==========================================================
     // Escape HTML
     // ==========================================================
@@ -574,22 +412,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const confirmYes = document.getElementById('confirmYes');
   const confirmNo = document.getElementById('confirmNo');
   const fileInput = document.getElementById('fileInput');
-  const fileNameSpan = document.getElementById('fileName');
-  const filePreview = document.getElementById('filePreview');
-  const privateComment = document.getElementById('privateComment');
-  const commentPopup = document.getElementById('commentPopup');
-  const commentInput = document.getElementById('commentInput');
-  const addComment = document.getElementById('addComment');
-  const cancelComment = document.getElementById('cancelComment');
-  const hiddenComment = document.getElementById('hiddenComment');
   const toast = document.getElementById('toast');
-  const libraryBtn = document.getElementById('libraryBtn');
   const publicCommentText = document.getElementById('publicCommentText');
   const postPublicCommentBtn = document.getElementById('postPublicCommentBtn');
   const publicCommentList = document.getElementById('publicCommentList');
   const taskIdInput = document.querySelector('#taskForm input[name="taskId"]');
   const classCodeInput = document.querySelector('#taskForm input[name="classCode"]');
   const serverAttachments = document.getElementById('serverAttachments');
+  const attachmentArea = document.querySelector('.attachment-area');
+  const selectedFileList = document.getElementById('selectedFileList');
+  let selectedFiles = [];
 
   let toastTimeout2 = null;
   function showToast2(message, duration = 1500) {
@@ -619,14 +451,49 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (confirmModal) confirmModal.style.display = 'none';
-  if (commentPopup) commentPopup.style.display = 'none';
+  const studentTaskPageEl2 = document.getElementById('studentTaskPage');
+  const submissionLocked2 = studentTaskPageEl2?.dataset?.submissionLocked === 'true';
+  function fileKey(f) {
+    return `${f.name}__${f.size}__${f.lastModified}`;
+  }
 
-  if (submitBtn) {
+  function syncInputWithSelectedFiles() {
+    if (!fileInput) return;
+    const dt = new DataTransfer();
+    selectedFiles.forEach(f => dt.items.add(f));
+    fileInput.files = dt.files;
+  }
+
+  function renderSelectedFiles() {
+    if (!selectedFileList) return;
+    if (!selectedFiles.length) {
+      selectedFileList.innerHTML = '';
+      selectedFileList.style.display = 'none';
+      return;
+    }
+    selectedFileList.style.display = 'flex';
+    selectedFileList.innerHTML = selectedFiles.map((f, idx) => `
+      <div class="st-file-row" data-index="${idx}" data-file-label="${escapeHtml(f.name)}">
+        <i class="fa-solid fa-file"></i>
+        <span class="st-file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span>
+        <span class="st-file-size">${formatSize(f.size)}</span>
+        <button type="button" class="st-file-remove" aria-label="Remove ${escapeHtml(f.name)}" title="Remove file">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  if (submitBtn && !submissionLocked2) {
     const newSubmit = submitBtn.cloneNode(true);
     submitBtn.parentNode.replaceChild(newSubmit, submitBtn);
     newSubmit.addEventListener('click', async (e) => {
       e.preventDefault();
       if (!form) return;
+      if (submissionLocked2) {
+        showToast2('The deadline has passed. Submissions are closed.');
+        return;
+      }
       const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
       if (!hasFile) { showToast2('Please attach a file to submit'); return; }
       const fd = new FormData(form);
@@ -651,11 +518,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (markDoneBtn) {
+  if (markDoneBtn && !submissionLocked2) {
     const newMark = markDoneBtn.cloneNode(true);
     markDoneBtn.parentNode.replaceChild(newMark, markDoneBtn);
     newMark.addEventListener('click', (e) => {
       e.preventDefault();
+      if (submissionLocked2) {
+        showToast2('The deadline has passed. Submissions are closed.');
+        return;
+      }
       const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
       if (!hasFile) {
         if (confirmModal) {
@@ -679,6 +550,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function postMarkAsDone2() {
     if (!form) return;
+    if (submissionLocked2) {
+      showToast2('The deadline has passed. Submissions are closed.');
+      return;
+    }
     const fd = new FormData(form);
     const token = getAntiForgeryToken();
     try {
@@ -701,49 +576,47 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   fileInput?.addEventListener('change', () => {
-    const f = fileInput.files && fileInput.files[0];
-    if (!f) {
-      if (fileNameSpan) fileNameSpan.textContent = 'Attach File';
-      if (filePreview) filePreview.innerHTML = '';
-      return;
-    }
-    if (fileNameSpan) fileNameSpan.textContent = f.name;
-    if (filePreview) filePreview.innerHTML = `<div class="preview-row"><i class="fa-solid fa-file"></i> <span>${escapeHtml(f.name)}</span> <span class="size">${formatSize(f.size)}</span></div>`;
+    const incoming = Array.from(fileInput.files || []);
+    if (!incoming.length) return;
+    const existing = new Set(selectedFiles.map(fileKey));
+    incoming.forEach(f => {
+      const key = fileKey(f);
+      if (!existing.has(key)) {
+        selectedFiles.push(f);
+        existing.add(key);
+      }
+    });
+    syncInputWithSelectedFiles();
+    renderSelectedFiles();
   });
 
-  privateComment?.addEventListener('click', () => {
-    if (commentPopup) commentPopup.style.display = 'flex';
-    if (commentInput) commentInput.value = hiddenComment?.value || '';
+  selectedFileList?.addEventListener('click', (e) => {
+    const removeBtn = e.target instanceof HTMLElement ? e.target.closest('.st-file-remove') : null;
+    if (!removeBtn) return;
+    const row = removeBtn.closest('.st-file-row');
+    if (!row) return;
+    const idx = Number(row.getAttribute('data-index'));
+    if (Number.isNaN(idx) || idx < 0 || idx >= selectedFiles.length) return;
+    selectedFiles.splice(idx, 1);
+    syncInputWithSelectedFiles();
+    renderSelectedFiles();
   });
 
-  cancelComment?.addEventListener('click', () => {
-    if (commentPopup) commentPopup.style.display = 'none';
-  });
-
-  addComment?.addEventListener('click', () => {
-    const val = commentInput ? commentInput.value.trim() : '';
-    if (hiddenComment) hiddenComment.value = val;
-    const preview = document.getElementById('commentPreview');
-    if (preview) preview.textContent = val || 'Add Private Comment';
-    if (commentPopup) commentPopup.style.display = 'none';
+  // Make the whole attachment box clickable, not only the label text.
+  attachmentArea?.addEventListener('click', (e) => {
+    const target = e.target;
+    if (target instanceof HTMLElement && (target.closest('label[for="fileInput"]') || target.id === 'fileInput')) return;
+    fileInput?.click();
   });
 
   resubmitBtn?.addEventListener('click', () => {
+    if (submissionLocked2) {
+      showToast2('The deadline has passed. Submissions are closed.');
+      return;
+    }
     if (submissionForm) submissionForm.style.display = '';
     if (resubmissionSection) resubmissionSection.style.display = 'none';
     document.getElementById('submitContainer')?.classList.add('resubmitting');
-  });
-
-  libraryBtn?.addEventListener('click', (e) => {
-    e.preventDefault();
-    const backdrop = document.getElementById('libraryBackdrop');
-    const searchInput = document.getElementById('librarySearch');
-    if (backdrop) {
-      backdrop.hidden = false;
-      if (searchInput) setTimeout(() => searchInput.focus(), 0);
-    } else {
-      window.location.href = '/Library';
-    }
   });
 
   async function loadComments() {
@@ -761,10 +634,10 @@ document.addEventListener('DOMContentLoaded', () => {
     box.className = 'comment-box';
     const dt = new Date(c.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
     box.innerHTML = `
-      <div class="student-name">${escapeHtml(c.authorName)}${c.role ? ' (' + escapeHtml(c.role) + ')' : ''}</div>
+      <div class="student-name">${escapeHtml(c.authorName)}${c.role ? ' • ' + escapeHtml(c.role) : ''}</div>
       <div class="comment-text">${escapeHtml(c.text)}</div>
       <div class="comment-datetime">${dt}</div>
-      <div class="reply-option" role="button"><i class="fa-solid fa-comment-dots"></i> Reply</div>
+      <div class="reply-option" role="button"><i class="fa-solid fa-reply"></i> Reply</div>
       <div class="reply-box-area" hidden>
         <textarea class="reply-box" placeholder="Write a reply..."></textarea>
         <button class="reply-submit-btn">Post Reply</button>
@@ -776,7 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reply = document.createElement('div');
         reply.className = 'instructor-reply';
         reply.innerHTML = `
-          <div><i class="fa-solid fa-reply"></i> <span class="instructor-name">${escapeHtml(r.authorName)}${r.role ? ' (' + escapeHtml(r.role) + ')' : ''}</span></div>
+          <div><i class="fa-solid fa-reply"></i> <span class="instructor-name">${escapeHtml(r.authorName)}${r.role ? ' • ' + escapeHtml(r.role) : ''}</span></div>
           <div class="reply-text">${escapeHtml(r.text)}</div>
           <div class="reply-datetime">${rdt}</div>
         `;
@@ -809,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reply = document.createElement('div');
         reply.className = 'instructor-reply';
         reply.innerHTML = `
-          <div><i class="fa-solid fa-reply"></i> <span class="instructor-name">${escapeHtml(data.reply.authorName)}${data.reply.role ? ' (' + escapeHtml(data.reply.role) + ')' : ''}</span></div>
+          <div><i class="fa-solid fa-reply"></i> <span class="instructor-name">${escapeHtml(data.reply.authorName)}${data.reply.role ? ' • ' + escapeHtml(data.reply.role) : ''}</span></div>
           <div class="reply-text">${escapeHtml(data.reply.text)}</div>
           <div class="reply-datetime">${rdt}</div>
         `;
@@ -919,23 +792,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderRefs();
     });
 
-    // Hook into Library selection: add selected book as reference on reserve
-    const reserveBtnHook = document.getElementById('reserveBtn');
-    const detailTitleHook = document.getElementById('detailTitle');
-    reserveBtnHook?.addEventListener('click', () => {
-      const title = detailTitleHook?.textContent || 'Library Item';
-      const list = getRefs();
-      list.push({ title, url: '/Library' });
-      setRefs(list);
-      renderRefs();
-    });
-
     renderRefs();
   }
 });
-    function formatSize(bytes) {
-        if (!bytes && bytes !== 0) return '';
-        const kb = bytes / 1024;
-        if (kb < 1024) return `${kb.toFixed(1)} KB`;
-        return `${(kb / 1024).toFixed(2)} MB`;
-    }

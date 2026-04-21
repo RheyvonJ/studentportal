@@ -1,0 +1,24 @@
+/* Student portal: hide scrollbars while keeping scroll (wheel / touch / keyboard).
+   Applied only when _StudentLayout sets html.student-portal-hide-scrollbars (Student* controllers). */
+
+html.student-portal-hide-scrollbars {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+html.student-portal-hide-scrollbars::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+html.student-portal-hide-scrollbars * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+html.student-portal-hide-scrollbars *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}

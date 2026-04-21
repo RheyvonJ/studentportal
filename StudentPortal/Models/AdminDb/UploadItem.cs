@@ -44,7 +44,13 @@ namespace StudentPortal.Models.AdminMaterial
         public string UrgencyColor { get; set; } = "yellow";
         public string LinkUrl { get; set; } = "";
         public List<string> Attachments { get; set; } = new List<string>();
+
+        /// <summary>MongoDB ObjectId strings of SLSHS Library books flagged as eBooks (<c>is_ebook</c>), linked to this material.</summary>
+        public List<string> LinkedLibraryEbookIds { get; set; } = new List<string>();
+
         public DateTime? Deadline { get; set; }
+        /// <summary>When true, students may submit after the deadline without changing the displayed due date (teacher unlock).</summary>
+        public bool AllowSubmissionsPastDeadline { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public int MaxGrade { get; set; } = 100;

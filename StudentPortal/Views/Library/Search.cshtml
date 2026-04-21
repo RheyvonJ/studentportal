@@ -9,6 +9,7 @@
     ViewBag.HideSidebar = true;
     ViewBag.HeaderTitle = "Library";
     ViewBag.HeaderSubtext = "Search and reserve books";
+    ViewBag.SuppressMobilePageContext = true;
     ViewBag.HeaderShowProfile = false;
 }
 @section Styles {
@@ -16,21 +17,29 @@
 }
 
 <main class="library-search">
-    <nav class="class-breadcrumb" aria-label="Breadcrumb">
-        <a href="@Url.Content("~/studentdb/StudentDb")">Dashboard</a>
-        <span class="sep">/</span>
-        <span>Library</span>
-    </nav>
-    <div class="library-search-header">
-        <h1><i class="fas fa-book"></i> Library Search</h1>
-        <form method="post" asp-action="Search" class="library-search-form">
-            <input type="text" name="searchTerm" class="library-search-input"
-                   placeholder="Search by title, author, ISBN, subject..."
-                   value="@searchTerm" />
-            <button type="submit" class="library-search-btn">
-                <i class="fas fa-search"></i> Search
-            </button>
-        </form>
+    <div class="library-search-mobile-stack">
+        <div class="library-page-hero" aria-label="Library">
+            <div class="library-hero-icon"><i class="fas fa-book"></i></div>
+            <div class="library-hero-text">
+                <p class="library-hero-title">Library Search</p>
+                <p class="library-hero-sub">Find books and borrow from the library portal.</p>
+            </div>
+        </div>
+        <div class="library-search-panel">
+            <div class="library-search-panel-head">
+                <i class="fas fa-magnifying-glass"></i>
+                <span class="library-search-panel-label">Search catalog</span>
+            </div>
+            <form method="post" asp-action="Search" class="library-search-form">
+                <input type="text" name="searchTerm" class="library-search-input"
+                       placeholder="Search by title, author, ISBN, subject..."
+                       value="@searchTerm"
+                       autocomplete="off" />
+                <button type="submit" class="library-search-btn">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </form>
+        </div>
     </div>
 
         @if (Model != null && Model.Any())
@@ -106,8 +115,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const reserveButtons = document.querySelectorAll('.library-reserve-btn');
-            const libraryBaseUrl = '@(ViewBag.LibraryPortalBaseUrl ?? "http://localhost:5204")';
-            
+            const openLibraryBridgeUrl = '@Url.Action("OpenLibraryBook", "Library")';
             reserveButtons.forEach(button => {
                 button.addEventListener('click', async function() {
                     const bookId = this.getAttribute('data-book-id');
@@ -115,9 +123,12 @@
                     
                     if (!bookId) return;
 
-                    const url = `${libraryBaseUrl}/Student/BrowseBooks?bookId=${encodeURIComponent(bookId)}&q=${encodeURIComponent(bookTitle || '')}`;
+                    const params = new URLSearchParams();
+                    params.set('bookId', bookId);
+                    if (bookTitle) params.set('q', bookTitle);
+                    const url = `${openLibraryBridgeUrl}?${params.toString()}`;
                     window.open(url, '_blank', 'noopener,noreferrer');
-                    showToast('Redirecting to Library Portal…', 'success');
+                    showToast('Opening library (signing you in)…', 'success');
                 });
             });
         });

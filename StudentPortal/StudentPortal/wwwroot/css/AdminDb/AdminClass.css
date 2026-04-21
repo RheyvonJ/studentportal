@@ -1,0 +1,1623 @@
+
+@import url('/css/Shared/BottomBar.css');
+
+
+:root {
+    --accent: #006b99;
+    --accent-light: #1e3a8a;
+    --card-text: #0b213a;
+    --bg: #eef2f7;
+    --border-light: rgba(16, 24, 40, 0.06);
+    --shadow-soft: 0 6px 16px rgba(16, 24, 40, 0.06);
+    --left-w: 260px;
+    --gap: 32px;
+    /* FAB: theme layer may override; edit these to move the add-content button */
+    --admin-fab-right: 24px;
+    --admin-fab-bottom: 28px;
+    --admin-fab-right-mobile: 8px;
+    /* material / task / assessment in content radial: % of .content-radial width — lower = further left */
+    --admin-radial-upload-actions-left: 107%;
+    --admin-radial-confirm-cancel-actions-left: var(--admin-radial-upload-actions-left);
+    /* “What would you like to do?” — distance from bottom of .content-radial; lower value = tooltip sits lower */
+    --admin-radial-tooltip-bottom: -60px;
+    /* Anchor from the right edge of .content-radial: increase this (e.g. -30px → 0px → 20px) to move the tooltip left */
+    --admin-radial-tooltip-right: -20px;
+    /* Fine-tune: negative = nudge left, positive = nudge right */
+    --admin-radial-tooltip-translate-x: 0px;
+    /* Optional extra nudge downward (e.g. 6px); use 0 for none */
+    --admin-radial-tooltip-translate-y: 0px;
+    /* Create-content modal cap: lower this to make modal shorter */
+    --admin-create-modal-max-height: 72vh;
+    font-family: Inter, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* GLOBAL — layout shell comes from _StudentLayout + StudentClass.css */
+html, body {
+    color: var(--card-text);
+}
+
+/* Prevent text scaling / layout shift */
+.subject-name,
+.subject-code,
+.class-code,
+.instructor-profile,
+.recent-uploads,
+.back-button {
+    flex-shrink: 0; /* prevents shrinking with viewport */
+}
+
+/* Subject info */
+.subject-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.subject-code,
+.class-code {
+    font-size: 0.9rem;
+    color: #4a5568;
+    margin: 4px 0;
+}
+
+/* Instructor Section */
+.instructor-profile {
+    display: flex;
+    align-items: center;
+    margin: 16px 0;
+}
+
+.instructor-profile-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 700;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.instructor-profile-name {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.instructor-role {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+/* Recent Uploads */
+.recent-uploads {
+    flex-grow: 1; /* takes remaining space without moving others */
+    overflow-y: auto; /* scrolls only inside this section */
+    margin-top: 10px;
+    padding-right: 4px;
+}
+
+    .recent-uploads h3 {
+        font-size: 0.95rem;
+        color: var(--accent);
+        margin-bottom: 8px;
+    }
+
+    .recent-uploads ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .recent-uploads li {
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #1e293b;
+    }
+
+/* Back Button */
+.back-button {
+    margin-top: 16px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    align-self: flex-start;
+    flex-shrink: 0;
+}
+
+    .back-button:hover {
+        background: #00577c;
+    }
+
+
+/* Match StudentClass right content rail (AdminClass only) */
+.class-content {
+    width: 100%;
+    display: grid;
+    gap: 12px;
+    padding-top: 2px;
+}
+
+.content-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    background: #ffffff;
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    padding: 12px 14px;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.content-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.content-left {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.content-left i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    line-height: 1;
+    color: #1f4f84;
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+    flex-shrink: 0;
+}
+
+.content-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.content-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1e3a5f;
+    margin: 0 0 2px;
+    line-height: 1.25;
+}
+
+.content-meta {
+    font-size: 0.78rem;
+    color: #66788f;
+    margin: 0;
+}
+
+.urgency {
+    width: 12px;
+    border-radius: 10px;
+    opacity: 0.95;
+}
+
+.urgency.green { background: #22c55e; }
+.urgency.yellow { background: #eab308; }
+.urgency.red { background: #ef4444; }
+
+.announcement {
+    background: #ffffff;
+}
+
+.announcement .content-left i {
+    color: #2d6aaa;
+    background: none;
+}
+
+.announcement .content-meta {
+    color: #5f6f82;
+    font-weight: 500;
+}
+
+/* Ensure Admin class-info matches Student class-info dimensions */
+.class-info-top { width: 100%; }
+.class-info-top {
+    margin-top: 0;
+    padding-top: 0;
+}
+.class-info-middle-top {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 2px 4px;
+    flex-wrap: wrap;
+}
+.class-info-middle-top .subject-code,
+.class-info-middle-top .class-code {
+    flex: 0 0 100%;
+}
+.class-info-middle {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 2px;
+}
+/* Full-width row above the two-column class grid (Back button top-left) */
+.admin-class-back-row {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin: 0 0 4px;
+    padding: 0 2px;
+}
+
+/* ============================
+   Management Buttons (Admin)
+   ============================ */
+.manage-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 12px 0 0;
+    padding: 0;
+    position: static;
+}
+
+/* Base button style - consistent with back-button */
+.manage-btn {
+    width: 100%;
+    background: #fff;
+    color: var(--accent);
+    font-weight: 600;
+    border: 1px solid rgba(10, 20, 40, 0.08);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(16, 24, 40, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+    /* Slight lift on hover (no background color change) */
+    .manage-btn:hover {
+        transform: scale(1.01);
+        box-shadow: 0 6px 16px rgba(16, 24, 40, 0.1);
+    }
+
+    /* Icons slightly smaller for balance */
+    .manage-btn i {
+        font-size: 1rem;
+    }
+
+/* Back button — top row (aligned with class shell, left) */
+.admin-class-back-row .back-button {
+    margin-top: 0;
+    width: auto;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 10px rgba(16, 24, 40, 0.12);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.admin-class-back-row .back-button:hover {
+    background: #00577c;
+    transform: scale(1.01);
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.16);
+}
+
+.teacher-details .teacher-meta,
+.teacher-details .room-location {
+    font-size: 0.82rem;
+    color: #5f6f82;
+    line-height: 1.3;
+}
+
+/* ============================
+   MOBILE TOGGLE BUTTON
+   ============================ */
+.mobile-toggle-btn {
+    display: none; /* Hidden by default (desktop) */
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--accent);
+    border: 1px solid rgba(10, 20, 40, 0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 13000;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mobile-toggle-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.mobile-toggle-btn.active i {
+    color: #1a73e8; /* change icon color when active */
+}
+
+/* ============================
+   MOBILE RESPONSIVENESS (AdminClass)
+   ============================ */
+@media (max-width: 768px) {
+    .mobile-toggle-btn {
+        display: flex;
+    }
+
+    .class-container {
+        padding: 12px;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .class-info {
+        position: relative; /* Remove fixed positioning */
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: auto;
+        min-width: unset;
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 0;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Fixed height issues on mobile */
+    .class-info-top,
+    .class-info-middle-top,
+    .class-info-middle {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    /* Adjust manage-buttons for mobile relative positioning */
+    .manage-buttons {
+        position: relative;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        margin-top: 20px;
+    }
+
+    .admin-class-back-row {
+        margin-bottom: 6px;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .class-content {
+        margin-left: 0;
+        width: 100%;
+        padding-bottom: 20px;
+    }
+
+    /* Toggle logic */
+    .class-info.mobile-hide,
+    .class-content.mobile-hide {
+        display: none !important;
+    }
+}
+
+.recent-uploads ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.recent-uploads li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #1e293b;
+}
+.recent-uploads li i {
+    flex-shrink: 0;
+}
+.recent-uploads .recent-title {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+/* add-content button — match AdminDb .create-class-button (floating FAB) */
+.add-content-button {
+    margin-bottom: 0;
+    margin-right: 0;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    position: fixed;
+    right: var(--admin-fab-right);
+    bottom: var(--admin-fab-bottom);
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    border: none;
+    cursor: pointer;
+    z-index: 12002;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.add-content-button:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(26, 115, 232, 0.25);
+}
+
+.add-content-button.selected {
+    box-shadow: 0 10px 28px rgba(26, 115, 232, 0.3);
+    transform: scale(1.06);
+}
+
+.add-content-button.selected i {
+    color: var(--accent);
+}
+
+/* Add-content tooltip */
+.add-content-button::after {
+    content: none;
+    display: none;
+}
+.add-content-button:hover::after {
+    display: none;
+}
+
+/* Selection style for delete mode */
+.content-card.selected-for-delete {
+    outline: 3px solid rgba(220, 38, 38, 0.35);
+    outline-offset: 2px;
+    background: #fff7f7;
+}
+
+/* content radial container (curves above top-left of button) */
+.content-radial {
+    position: fixed;
+    right: 108px; /* place left of button */
+    bottom: 88px; /* above the add button */
+    width: 220px;
+    height: 140px;
+    pointer-events: none;
+    z-index: 12001;
+    transform-origin: center;
+    transition: opacity 180ms ease, transform 180ms ease;
+    opacity: 0;
+}
+
+    /* show when toggled */
+    .content-radial.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* small compact tooltip top-left of radial set */
+    .content-radial .content-tooltip {
+        position: absolute;
+        right: var(--admin-radial-tooltip-right);
+        bottom: var(--admin-radial-tooltip-bottom);
+        /* Let clicks reach upload/delete/action buttons drawn beneath this label */
+        pointer-events: none;
+        background: #182b5c;
+        color: #fff;
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: 5px;
+        box-shadow: 0 8px 20px rgba(10,20,40,0.06);
+        white-space: nowrap;
+        transform: translate(
+            calc(-10% + var(--admin-radial-tooltip-translate-x)),
+            calc(-10% + var(--admin-radial-tooltip-translate-y))
+        );
+    }
+
+/* action buttons */
+.content-action {
+    position: absolute;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(10,20,40,0.08);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: transform 0.28s cubic-bezier(.2,.9,.3,1), opacity 0.22s ease;
+    pointer-events: none;
+    overflow: visible;
+    right: 0; /* align with container */
+    cursor: pointer;
+}
+
+/* Base triggers (upload/delete) */
+.content-radial-btn {
+    position: absolute;
+    left: var(--admin-radial-upload-actions-left);
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(10,20,40,0.08);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: transform 0.28s cubic-bezier(.2,.9,.3,1), opacity 0.22s ease;
+    pointer-events: none;
+    overflow: visible;
+    right: 0;
+    cursor: pointer;
+    border: none;
+}
+.content-radial.show .content-radial-btn {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+.content-radial-btn.delete { bottom: 50px; }
+.content-radial-btn.upload { bottom: -5px; }
+.content-radial-btn.selected,
+.content-action.selected {
+    box-shadow: 0 10px 28px rgba(36, 58, 115, 0.18);
+    transform: scale(1.06);
+}
+.content-radial-btn.selected {
+    border: none;
+}
+.content-radial-btn::after {
+    content: attr(data-label);
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    transform: translateY(-50%) translateX(-8px);
+    background: #182b5c;
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 300;
+    text-align: right;
+}
+.content-radial-btn:hover::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(-12px);
+}
+
+    /* stack buttons vertically */
+    .content-action.material {
+        bottom: 55px; /* first button above add button */
+        left: var(--admin-radial-upload-actions-left);
+    }
+
+    .content-action.task {
+        bottom: 115px; /* second button */
+        left: var(--admin-radial-upload-actions-left);
+    }
+
+    .content-action.assessment {
+        bottom: 175px; /* third button */
+        left: var(--admin-radial-upload-actions-left);
+    }
+
+    /* Delete mode actions */
+    .content-action.confirm {
+        bottom: 170px;
+        left: var(--admin-radial-confirm-cancel-actions-left);
+    }
+
+    .content-action.cancel {
+        bottom: 110px;
+        left: var(--admin-radial-confirm-cancel-actions-left);
+    }
+
+    /* ----------------------------
+   Hover label on the left of button
+---------------------------- */
+    .content-action::after {
+        content: attr(data-label);
+        position: absolute;
+        top: 50%; /* vertically center with button */
+        right: 100%; /* position to the left of button */
+        transform: translateY(-50%) translateX(-8px); /* vertical center, slight gap */
+        background: #182b5c;
+        color: #fff;
+        padding: 6px 8px;
+        border-radius: 5px;
+        font-size: 12px;
+        white-space: nowrap;
+        opacity: 0; /* hidden by default */
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 300;
+        text-align: right; /* align text to the right edge of tooltip */
+    }
+
+    /* show tooltip only on hover */
+    .content-action:hover::after {
+        opacity: 1;
+        transform: translateY(-50%) translateX(-12px); /* slide slightly left */
+    }
+
+/* ----------------------------
+   Reveal buttons when radial is open
+---------------------------- */
+.content-radial.show .content-action {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+/* small focus outline */
+.content-action:focus {
+    outline: 3px solid rgba(24,43,92,0.12);
+    outline-offset: 3px;
+}
+
+/* Backdrop stays fixed over viewport but transparent */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 13010;
+    background: rgba(16, 24, 40, 0.2);
+    backdrop-filter: blur(4px);
+}
+
+    .modal-backdrop[hidden] {
+        display: none !important;
+        pointer-events: none;
+    }
+/* independent delete backdrop centers modal */
+#deleteBackdrop {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#deleteBackdrop[aria-hidden="false"] {
+    display: flex;
+}
+
+/* Side modal anchored near content-radial (left of buttons) */
+.content-side-modal {
+    position: fixed;
+    right: 360px;
+    bottom: 140px;
+    z-index: 12005;
+    display: none;
+}
+.content-side-inner {
+    width: 360px;
+    max-width: calc(100vw - 420px);
+    border-radius: 12px;
+    background: #f3f6fb;
+    color: #0b213a;
+    box-shadow: 0 20px 40px rgba(3,7,18,0.12);
+    box-sizing: border-box;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.side-modal-top h3 {
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+}
+.side-modal-middle {
+    max-height: 240px;
+    overflow-y: auto;
+}
+.side-modal-middle::-webkit-scrollbar { display: none; }
+.side-modal-bottom .modal-actions {
+    justify-content: flex-end;
+}
+
+@media (min-width: 768px) {
+    .content-side-inner {
+        width: 420px;
+    }
+}
+
+/* Modal itself - manually positionable */
+.modal {
+    position: relative;
+    width: min(420px, 80vw);
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    background: #f3f6fb;
+    color: #0b213a;
+    box-shadow: 0 20px 40px rgba(3,7,18,0.12);
+    max-height: min(420px, 85vh);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 6px;
+}
+.modal#deleteModal {
+    width: 420px;
+    max-width: 90vw;
+    aspect-ratio: auto;
+}
+.modal.delete-confirm {
+    position: fixed;
+    left: calc(100vw - (108px + 220px));
+    bottom: 88px;
+}
+.modal-bottom .modal-actions {
+    justify-content: flex-end;
+}
+/* Transparent backdrop variant for create modal */
+.modal-backdrop.transparent {
+    background: transparent;
+    backdrop-filter: none;
+    pointer-events: none;
+}
+/* Create-content modal restores legacy sizing/placement */
+.modal.create-content {
+    position: absolute;
+    top: 30px;
+    right: 120px;
+    width: 360px;
+    max-width: calc(100vw - 48px);
+    padding: 16px;
+    border-radius: 10px;
+    background: #f3f6fb;
+    color: #0b213a;
+    box-shadow: 0 20px 40px rgba(3,7,18,0.12);
+    max-height: 90vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+    aspect-ratio: auto;
+    display: block;
+}
+/* Create modal: start at natural content height, then scroll internally past cap */
+.modal.create-content .modal-middle {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    margin-bottom: 0;
+}
+.modal.create-content .modal-bottom {
+    margin-top: 0;
+    padding-top: 0;
+}
+.modal.create-content .modal-actions {
+    margin-top: 0;
+    gap: 8px;
+}
+/* allow clicks into modal while backdrop is click-through */
+.modal-backdrop.transparent .modal {
+    pointer-events: auto;
+}
+.modal-top {
+    flex: 0 0 auto;
+}
+.modal-middle {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+.modal-middle::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+.modal-middle {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.modal-bottom {
+    flex: 0 0 auto;
+}
+.modal h3 {
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 400;
+    margin: 0;
+    text-align: center;
+}
+/* Delete confirm modal polish (AdminClass) */
+#deleteContentConfirmModal {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.96);
+    width: auto;
+    max-width: none;
+}
+
+#deleteContentConfirmModal[aria-hidden="false"] {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+#deleteContentConfirmModal .slsp-confirm-card {
+    width: min(560px, calc(100vw - 32px));
+    border-radius: 18px;
+    border: 1px solid rgba(10, 35, 66, 0.1);
+    box-shadow: 0 24px 44px rgba(10, 22, 40, 0.24);
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafd 100%);
+    overflow: hidden;
+}
+
+#deleteContentConfirmModal .slsp-confirm-header {
+    padding: 16px 18px 10px;
+    border-bottom: 1px solid rgba(10, 35, 66, 0.08);
+    background: linear-gradient(165deg, #fff, #f7fbff 65%, #eff6ff);
+    text-align: left;
+    align-items: flex-start;
+}
+
+#deleteContentConfirmModal .slsp-confirm-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #0f2a45;
+    letter-spacing: -0.01em;
+    margin-top: 6px;
+}
+
+#deleteContentConfirmModal .slsp-confirm-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    color: #fff;
+    background: linear-gradient(165deg, #b91c1c, #ef4444);
+    box-shadow: 0 10px 20px rgba(185, 28, 28, 0.28);
+}
+
+#deleteBody.slsp-confirm-desc {
+    margin-top: 8px;
+    padding: 10px 10px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(10, 35, 66, 0.08);
+    background: #ffffff;
+    max-height: min(44vh, 360px);
+    overflow: auto;
+}
+
+.modal-delete-summary {
+    font-size: 0.84rem;
+    line-height: 1.4;
+    color: #6b7280;
+    margin: 0 0 10px 0;
+}
+
+.modal-delete-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0;
+    table-layout: fixed;
+    border: 1px solid rgba(10, 35, 66, 0.08);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.modal-delete-table th,
+.modal-delete-table td {
+    padding: 10px 10px;
+    font-size: 0.88rem;
+    vertical-align: middle;
+}
+
+.modal-delete-table th:nth-child(1),
+.modal-delete-table td:nth-child(1) {
+    width: 46px;
+    text-align: center;
+}
+
+.modal-delete-table th:nth-child(3),
+.modal-delete-table td:nth-child(3) {
+    width: 122px;
+}
+
+.modal-delete-table th {
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    color: #5b6f84;
+    border-bottom: 1px solid rgba(10, 35, 66, 0.08);
+    background: #f8fbff;
+}
+
+.modal-delete-table td {
+    border-bottom: 1px solid rgba(10, 35, 66, 0.06);
+    color: #1f344d;
+    background: #fff;
+}
+
+.modal-delete-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.modal-delete-table td:first-child {
+    color: #64748b;
+    font-weight: 700;
+}
+
+.modal-delete-table .cell-ellipsis {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.modal-delete-table td:nth-child(3) {
+    font-size: 0.74rem;
+    letter-spacing: 0.03em;
+    color: #4d6480;
+    font-weight: 700;
+}
+
+.modal-delete-table tr:nth-child(even) td {
+    background-color: #fbfdff;
+}
+
+.delete-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.delete-type-badge.type-material {
+    background: #ecfeff;
+    color: #0f766e;
+    border-color: #99f6e4;
+}
+.delete-type-badge.type-task {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+}
+.delete-type-badge.type-assessment {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+}
+.delete-type-badge.type-meeting {
+    background: #ede9fe;
+    color: #6d28d9;
+    border-color: #c4b5fd;
+}
+.delete-type-badge.type-announcement {
+    background: #ffedd5;
+    color: #c2410c;
+    border-color: #fed7aa;
+}
+
+#deleteContentConfirmModal .slsp-confirm-actions {
+    padding: 12px 18px 14px;
+    border-top: 1px solid rgba(10, 35, 66, 0.08);
+    background: #f8fafd;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+#deleteContentConfirmModal .slsp-confirm-btn {
+    border-radius: 10px;
+    min-width: 96px;
+    font-weight: 700;
+    font-size: 0.86rem;
+    padding: 8px 14px;
+}
+
+#deleteContentConfirmModal .slsp-confirm-cancel {
+    border: 1px solid rgba(10, 35, 66, 0.12);
+    background: #fff;
+    color: #334155;
+}
+
+#deleteContentConfirmModal .slsp-confirm-primary {
+    background: linear-gradient(165deg, #b91c1c, #dc2626);
+    border-color: #b91c1c;
+    color: #fff;
+}
+
+#deleteContentConfirmModal .slsp-confirm-primary:hover {
+    background: linear-gradient(165deg, #991b1b, #b91c1c);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 14px;
+}
+.modal-actions .btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+}
+.modal-actions .btn-delete {
+    background: #dc2626;
+    color: #fff;
+}
+.modal-actions .btn-cancel {
+    background: #64748b;
+    color: #fff;
+}
+
+    /* Inputs & textareas inside modal */
+    .modal input[type="text"],
+    .modal input[type="date"],
+    .modal input[type="url"],
+    .modal textarea,
+    .modal input[type="file"] {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(16,24,40,0.08);
+        background: #fff;
+        margin-bottom: 8px;
+        box-sizing: border-box;
+    }
+
+    .modal textarea {
+        min-height: 80px;
+        resize: vertical;
+    }
+
+/* File list for chosen uploads */
+.file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 160px;
+    overflow: auto;
+    padding: 6px;
+    border: 1px solid rgba(16,24,40,0.08);
+    border-radius: 8px;
+    background: #fff;
+    box-sizing: border-box;
+}
+.file-list::-webkit-scrollbar { display: none; }
+.file-empty {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+.file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border: 1px solid rgba(16,24,40,0.06);
+    border-radius: 8px;
+    background: #f8fafc;
+}
+.file-name {
+    color: #0b213a;
+    font-size: 0.93rem;
+    font-weight: 600;
+    margin-right: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.remove-file {
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.remove-file:hover {
+    opacity: 0.92;
+}
+
+/* Modal action buttons */
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+    .modal-actions .btn {
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        border: none;
+    }
+
+        .modal-actions .btn.primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .modal-actions .btn.ghost {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid rgba(24,43,92,0.08);
+        }
+
+/* Announcement: full card width (long), modest height; actions row below */
+.create-announcement {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.create-announcement .content-left {
+    width: 100%;
+    min-width: 0;
+    padding-left: 0;
+    align-items: stretch;
+}
+
+.create-announcement .content-info {
+    width: 100%;
+    min-width: 0;
+}
+
+.create-announcement textarea {
+    width: 100%;
+    border: none;
+    resize: vertical;
+    background: transparent;
+    font-size: 0.95rem;
+    color: #0b213a;
+    outline: none;
+    padding: 6px 0;
+    line-height: 1.4;
+    min-height: 40px;
+    max-height: 220px;
+    box-sizing: border-box;
+}
+
+/* actions hidden by default; JS toggles the hidden attribute */
+.create-announcement .announcement-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: 0;
+    margin-top: 0;
+    flex-shrink: 0;
+    width: 100%;
+}
+
+.create-announcement .btn {
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+    .create-announcement .btn.announce {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+    }
+
+    .create-announcement .btn.nevermind {
+        background: transparent;
+        border: 1px solid rgba(24,43,92,0.08);
+        color: var(--accent);
+    }
+
+/* ============================
+   Quick actions (below announcement)
+   ============================ */
+.admin-class-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.ac-quick-btn {
+    aspect-ratio: 1;
+    min-height: 0;
+    width: 100%;
+    margin: 0;
+    padding: 10px 6px;
+    border: 1px solid rgba(10, 35, 66, 0.1);
+    border-radius: 14px;
+    background: linear-gradient(165deg, #ffffff 0%, #f4f7fb 100%);
+    box-shadow: 0 4px 14px rgba(10, 35, 66, 0.08);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #143a66;
+    font: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.ac-quick-btn-icons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    line-height: 1;
+}
+
+.ac-quick-btn-icons .ac-quick-plus {
+    font-size: 0.72rem;
+    font-weight: 900;
+    color: #006b99;
+    opacity: 0.95;
+}
+
+.ac-quick-btn:not(.ac-quick-delete) .ac-quick-btn-icons i:not(.ac-quick-plus) {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.ac-quick-btn.ac-quick-delete i {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.ac-quick-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #3d5a7a;
+    text-align: center;
+    line-height: 1.15;
+}
+
+.ac-quick-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(10, 35, 66, 0.12);
+    border-color: rgba(0, 107, 153, 0.25);
+}
+
+.ac-quick-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.ac-quick-btn.ac-quick-delete {
+    color: #b91c1c;
+    border-color: rgba(185, 28, 28, 0.2);
+    background: linear-gradient(165deg, #fff5f5 0%, #fff 100%);
+}
+
+.ac-quick-btn.ac-quick-delete .ac-quick-label {
+    color: #991b1b;
+}
+
+.ac-quick-btn.ac-quick-delete.is-mode-active,
+.ac-quick-btn.ac-quick-delete.is-mode-active:hover {
+    background: linear-gradient(165deg, #fef2f2 0%, #fee2e2 100%);
+    border-color: #f87171;
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.35);
+}
+
+/* Delete mode toolbar — [hidden] must win over display:flex (author CSS can override default [hidden]) */
+.admin-class-delete-toolbar[hidden] {
+    display: none !important;
+}
+
+/* Delete mode toolbar */
+.admin-class-delete-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(254, 242, 242, 0.85);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+.ac-delete-hint {
+    font-size: 0.85rem;
+    color: #7f1d1d;
+    font-weight: 600;
+    flex: 1 1 160px;
+}
+
+.ac-delete-toolbar-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.ac-toolbar-btn {
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.ac-toolbar-cancel {
+    background: #fff;
+    color: #334155;
+    border-color: rgba(15, 23, 42, 0.12);
+}
+
+.ac-toolbar-confirm {
+    background: #b91c1c;
+    color: #fff;
+    border-color: #b91c1c;
+}
+
+.ac-toolbar-confirm:hover {
+    background: #991b1b;
+}
+
+/* ============================
+   New upload modal (not legacy .modal)
+   ============================ */
+.ac-upload-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 15000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    background: rgba(10, 22, 40, 0.48);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-sizing: border-box;
+}
+
+.ac-upload-modal-overlay[hidden] {
+    display: none !important;
+}
+
+.ac-upload-modal-panel {
+    position: relative;
+    width: min(440px, 100%);
+    max-height: min(88vh, 720px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #f8fafc;
+    box-shadow:
+        0 24px 48px rgba(10, 22, 40, 0.22),
+        0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+    animation: acModalIn 0.22s ease-out;
+}
+
+@keyframes acModalIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.ac-upload-modal-accent {
+    height: 5px;
+    width: 100%;
+    background: linear-gradient(90deg, #0a2342, #006b99, #38bdf8);
+}
+
+.ac-upload-modal-x {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.06);
+    color: #334155;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ac-upload-modal-x:hover {
+    background: rgba(15, 23, 42, 0.12);
+}
+
+.ac-upload-modal-inner {
+    padding: 20px 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.ac-upload-modal-title {
+    margin: 0;
+    padding-right: 40px;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+}
+
+.ac-upload-modal-body {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ac-field-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ac-upload-modal-body label.ac-field-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+}
+
+.ac-upload-modal-body input[type="text"],
+.ac-upload-modal-body input[type="url"],
+.ac-upload-modal-body input[type="date"],
+.ac-upload-modal-body input[type="file"],
+.ac-upload-modal-body textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    padding: 10px 12px;
+    font: inherit;
+    font-size: 0.95rem;
+    background: #fff;
+}
+
+.ac-upload-modal-body textarea {
+    min-height: 72px;
+    resize: vertical;
+}
+
+.ac-upload-modal-body .file-list {
+    border: 1px dashed rgba(0, 107, 153, 0.25);
+    border-radius: 10px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    width: 100%;
+    min-height: 104px;
+    max-height: min(30vh, 220px);
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.ac-upload-modal-foot {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 4px;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.ac-modal-btn {
+    padding: 10px 18px;
+    border-radius: 11px;
+    font-weight: 700;
+    font-size: 0.92rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.ac-modal-btn-secondary {
+    background: #fff;
+    color: #334155;
+    border-color: rgba(15, 23, 42, 0.12);
+}
+
+.ac-modal-btn-primary {
+    background: #006b99;
+    color: #fff;
+    border-color: #006b99;
+}
+
+.ac-modal-btn-primary:hover {
+    background: #00577c;
+}
+
+@media (max-width: 720px) {
+    .admin-class-quick-actions {
+        gap: 8px;
+    }
+
+    .ac-quick-btn:not(.ac-quick-delete) .ac-quick-btn-icons i:not(.ac-quick-plus) {
+        font-size: 1.05rem;
+    }
+
+    .ac-quick-btn.ac-quick-delete i {
+        font-size: 1.2rem;
+    }
+
+    .ac-quick-label {
+        font-size: 0.62rem;
+    }
+
+    .admin-class-delete-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ac-delete-toolbar-actions {
+        justify-content: stretch;
+    }
+
+    .ac-toolbar-btn {
+        flex: 1;
+        text-align: center;
+    }
+}

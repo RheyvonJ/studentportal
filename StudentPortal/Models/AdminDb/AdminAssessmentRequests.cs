@@ -7,6 +7,7 @@ namespace StudentPortal.Models.AdminDb
         public string? Description { get; set; }
         public string? Deadline { get; set; }
         public string? Link { get; set; }
+        public bool? AllowSubmissionsPastDeadline { get; set; }
     }
 
     public class DeleteContentRequest

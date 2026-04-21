@@ -7,6 +7,11 @@ namespace StudentPortal.Models.StudentDb
 		public string StudentName { get; set; } = "Student";
 		public string StudentInitials { get; set; } = "ST";
 		public List<SubjectTodo> Subjects { get; set; } = new List<SubjectTodo>();
+		/// <summary>
+		/// Optional filter (subject title) applied from query string.
+		/// Empty/null means "All subjects".
+		/// </summary>
+		public string? SelectedSubject { get; set; }
 	}
 
 	public class SubjectTodo

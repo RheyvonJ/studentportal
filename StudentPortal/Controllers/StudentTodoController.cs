@@ -21,7 +21,7 @@ namespace StudentPortal.Controllers
         [HttpGet("")]
         [HttpGet("/StudentDb/StudentTodo")]
         [HttpGet("/StudentTodo")]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? subject = null)
         {
             var email = HttpContext.Session.GetString("UserEmail");
             if (string.IsNullOrEmpty(email))
@@ -30,7 +30,8 @@ namespace StudentPortal.Controllers
                 {
                     StudentName = "Student",
                     StudentInitials = "ST",
-                    Subjects = new List<SubjectTodo>()
+                    Subjects = new List<SubjectTodo>(),
+                    SelectedSubject = string.IsNullOrWhiteSpace(subject) ? null : subject
                 };
                 return View("~/Views/StudentDb/StudentTodo/Index.cshtml", emptyVm);
             }
@@ -42,7 +43,8 @@ namespace StudentPortal.Controllers
                 {
                     StudentName = "Student",
                     StudentInitials = "ST",
-                    Subjects = new List<SubjectTodo>()
+                    Subjects = new List<SubjectTodo>(),
+                    SelectedSubject = string.IsNullOrWhiteSpace(subject) ? null : subject
                 };
                 return View("~/Views/StudentDb/StudentTodo/Index.cshtml", emptyVm);
             }
@@ -105,7 +107,13 @@ namespace StudentPortal.Controllers
             {
                 StudentName = string.IsNullOrWhiteSpace(user.FullName) ? "Student" : user.FullName,
                 StudentInitials = GetInitials(user.FullName),
-                Subjects = subjects.Values.OrderBy(s => s.Title).ToList()
+                SelectedSubject = string.IsNullOrWhiteSpace(subject) ? null : subject.Trim(),
+                Subjects = subjects.Values
+                    .Where(s =>
+                        string.IsNullOrWhiteSpace(subject)
+                        || string.Equals(s.Title, subject.Trim(), StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(s => s.Title)
+                    .ToList()
             };
 
             return View("~/Views/StudentDb/StudentTodo/Index.cshtml", vm);

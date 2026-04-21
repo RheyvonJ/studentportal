@@ -1,0 +1,175 @@
+@using System.Reflection
+@{
+    string headerName = "";
+    if (ViewBag.AdminName != null) headerName = ViewBag.AdminName.ToString();
+    if (string.IsNullOrWhiteSpace(headerName) && Model != null)
+    {
+        var t = Model.GetType();
+        var nameProp = t.GetProperty("UserName") ?? t.GetProperty("StudentName");
+        if (nameProp != null) headerName = nameProp.GetValue(Model)?.ToString() ?? "";
+    }
+    if (string.IsNullOrWhiteSpace(headerName) && Context?.Session != null)
+        headerName = Context.Session.GetString("UserName") ?? "";
+    if (string.IsNullOrWhiteSpace(headerName)) headerName = "Student";
+    var currentPage = (ViewBag.CurrentPage?.ToString() ?? "home").ToLowerInvariant();
+    var isDashboard = currentPage == "home";
+    var hideSidebar = ViewBag.HideSidebar == true;
+    var enableSidebarSlide = ViewBag.EnableSidebarSlide == true;
+    var customHeaderTitle = ViewBag.HeaderTitle as string;
+    var customHeaderSubtext = ViewBag.HeaderSubtext as string;
+    var suppressMobilePageContext = ViewBag.SuppressMobilePageContext == true;
+    var showHeaderProfile = ViewBag.HeaderShowProfile == true;
+    var headerTitle = ViewData["Title"]?.ToString() ?? "";
+    var pageLabel = currentPage switch
+    {
+        "library" => "Library",
+        "todo" => "To-Do",
+        "subjects" => "Class",
+        "schedule" => "My Schedule",
+        _ => "Student Portal"
+    };
+    var pageSubtext = currentPage switch
+    {
+        "library" => "Search and reserve books",
+        "todo" => "Track your tasks",
+        "subjects" => "Class overview",
+        "schedule" => "Weekly view",
+        _ => "Student Portal"
+    };
+    if (!string.IsNullOrWhiteSpace(headerTitle))
+    {
+        if (headerTitle.EndsWith(" - Class"))
+        {
+            pageLabel = headerTitle.Substring(0, headerTitle.Length - " - Class".Length);
+            pageSubtext = "Class overview";
+        }
+        else if (headerTitle.Equals("To-Do", StringComparison.OrdinalIgnoreCase))
+        {
+            pageLabel = "To-Do";
+            pageSubtext = "Track your tasks";
+        }
+        else if (headerTitle.Equals("Library", StringComparison.OrdinalIgnoreCase))
+        {
+            pageLabel = "Library";
+            pageSubtext = "Search and reserve books";
+        }
+    }
+    if (!string.IsNullOrWhiteSpace(customHeaderTitle)) pageLabel = customHeaderTitle;
+    if (!string.IsNullOrWhiteSpace(customHeaderSubtext)) pageSubtext = customHeaderSubtext;
+    var showDashboardGreeting = isDashboard && string.IsNullOrWhiteSpace(customHeaderTitle);
+}
+@{
+    var headerInitials = "U";
+    if (!string.IsNullOrWhiteSpace(headerName))
+    {
+        var parts = headerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        headerInitials = parts.Length >= 2
+            ? (parts[0][0].ToString() + parts[parts.Length - 1][0].ToString()).ToUpper()
+            : (parts[0].Length >= 1 ? parts[0].Substring(0, 1).ToUpper() : "U");
+    }
+    var showLiveNotifications = string.Equals(Context.Session.GetString("UserRole"), "Student", StringComparison.OrdinalIgnoreCase);
+    var roleValue = (ViewBag.Role?.ToString() ?? Context.Session.GetString("UserRole") ?? "Student").Trim();
+    var isTeacherOrProfessor = roleValue.Equals("Teacher", StringComparison.OrdinalIgnoreCase) || roleValue.Equals("Professor", StringComparison.OrdinalIgnoreCase);
+    var portalTitle = isTeacherOrProfessor ? "Teacher Portal" : "Student Portal";
+}
+@{
+    var mobileContextIconClass = currentPage switch
+    {
+        "library" => "fa-book-open",
+        "todo" => "fa-list-check",
+        "subjects" => "fa-graduation-cap",
+        _ => "fa-house"
+    };
+}
+<header class="slsp-main-header slsp-main-header--student @(isDashboard ? "slsp-main-header--student-home" : "")">
+    <div class="slsp-student-header-grid">
+        <div class="slsp-student-header-top">
+            <div class="slsp-header-left slsp-header-left--student">
+                @if (enableSidebarSlide)
+                {
+                    <button id="slspGlobalSidebarToggle" class="slsp-header-menu-btn" type="button" aria-label="Toggle navigation" title="Menu" aria-expanded="false">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                }
+
+                <div class="slsp-student-desktop-primary">
+                    <div class="slsp-header-avatar slsp-squircle" aria-hidden="true">@headerInitials</div>
+                    <div class="slsp-header-text">
+                        @if (showDashboardGreeting)
+                        {
+                            <div class="slsp-header-greeting">Hi, <span class="slsp-header-name">@headerName</span></div>
+                            <div class="slsp-header-subtext">Welcome back</div>
+                        }
+                        else
+                        {
+                            <div class="slsp-header-greeting"><span class="slsp-header-name">@pageLabel</span></div>
+                            <div class="slsp-header-subtext">@pageSubtext</div>
+                        }
+                    </div>
+                </div>
+
+                <div class="slsp-student-brand" aria-label="Student portal">
+                    <div class="slsp-dash-logo" aria-hidden="true">
+                        <img src="~/images/SLSHS.png" alt="Sta. Lucia Senior High School Logo" class="slsp-dash-school-img" />
+                    </div>
+                    <div class="slsp-dash-brand-titles">
+                        <div class="slsp-dash-portal-title">@portalTitle</div>
+                        <div class="slsp-dash-school-sub">Sta. Lucia Senior High School</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="slsp-header-right">
+                <div class="slsp-header-actions" role="toolbar" aria-label="Account actions">
+                    @if (showLiveNotifications)
+                    {
+                        <div id="stuLiveNotifHub">
+                            <button type="button" id="stuLiveNotifBell" class="slsp-notif-btn stu-live-bell" title="Notifications" aria-label="Notifications">
+                                <i class="fa-solid fa-bell"></i>
+                                <span id="stuLiveNotifBadge" class="stu-live-badge" style="display:none"></span>
+                            </button>
+                        </div>
+                        <div id="stuLiveNotifBackdrop" class="stu-live-backdrop" aria-hidden="true"></div>
+                        <div id="stuLiveNotifPanel" class="stu-live-panel" role="dialog" aria-modal="true" aria-labelledby="stuLiveNotifHeading" aria-hidden="true">
+                            <div class="stu-live-panel-hd">
+                                <h3 id="stuLiveNotifHeading">Notifications</h3>
+                                <div class="stu-live-panel-tools">
+                                    <button type="button" id="stuLiveNotifMarkAll" class="stu-live-tool" title="Mark all read" aria-label="Mark all read"><i class="fa-solid fa-envelope-open"></i></button>
+                                    <button type="button" id="stuLiveNotifClearAll" class="stu-live-tool" title="Clear all" aria-label="Clear all"><i class="fa-solid fa-trash"></i></button>
+                                    <button type="button" id="stuLiveNotifClose" class="stu-live-tool" title="Close" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                            <div class="stu-live-panel-body">
+                                <ul id="stuLiveNotifList" class="stu-live-list"></ul>
+                            </div>
+                        </div>
+                    }
+                    @if (showHeaderProfile)
+                    {
+                        <button type="button" class="slsp-notif-btn slsp-header-profile-btn" title="@headerName" aria-label="Profile">
+                            <span class="slsp-header-profile-initials">@headerInitials</span>
+                        </button>
+                    }
+                    <button id="slspHeaderSignOutBtn" class="slsp-notif-btn slsp-header-signout-btn" type="button" title="Sign out" aria-label="Sign out">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        @if (!suppressMobilePageContext)
+        {
+            <div class="slsp-student-mobile-context" aria-label="Current page">
+                <div class="slsp-student-mobile-context-card">
+                    <div class="slsp-student-mobile-context-icon" aria-hidden="true">
+                        <i class="fa-solid @mobileContextIconClass"></i>
+                    </div>
+                    <div class="slsp-student-mobile-context-text">
+                        <span class="slsp-student-mobile-context-title">@pageLabel</span>
+                        <span class="slsp-student-mobile-context-sub">@pageSubtext</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</header>

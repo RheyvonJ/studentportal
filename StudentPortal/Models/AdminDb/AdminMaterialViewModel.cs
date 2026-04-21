@@ -1,5 +1,6 @@
-using System;
 using System.Collections.Generic;
+using StudentPortal.Models.AdminClass;
+using StudentPortal.Models.Library;
 
 namespace StudentPortal.Models.AdminMaterial
 {
@@ -7,6 +8,7 @@ namespace StudentPortal.Models.AdminMaterial
     {
         public string MaterialId { get; set; } = "";
         public string SubjectName { get; set; } = "";
+        public string SectionName { get; set; } = "";
         public string SubjectCode { get; set; } = "";
         public string ClassCode { get; set; } = "";
         public string InstructorName { get; set; } = "";
@@ -18,8 +20,9 @@ namespace StudentPortal.Models.AdminMaterial
         public string MaterialName { get; set; } = "";
         public string MaterialDescription { get; set; } = "";
         public List<string> Attachments { get; set; } = new();
+        public List<MaterialLinkedEbookDisplay> LinkedEbooks { get; set; } = new();
         public string PostedDate { get; set; } = "";
         public string EditedDate { get; set; } = "";
-        public List<string> RecentMaterials { get; set; } = new();
+        public List<AdminClassRecentUpload> RecentMaterials { get; set; } = new();
     }
 }

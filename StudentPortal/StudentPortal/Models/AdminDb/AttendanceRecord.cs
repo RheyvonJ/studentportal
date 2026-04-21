@@ -1,9 +1,9 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace StudentPortal.Models.AdminDbLegacy
+namespace StudentPortal.Models.AdminDb
 {
-    public class AttendanceRecordLegacy
+    public class AttendanceRecord
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]

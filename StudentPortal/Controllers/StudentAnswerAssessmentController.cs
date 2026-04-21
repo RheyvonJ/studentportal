@@ -1,9 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
+using StudentPortal.Models;
+using StudentPortal.Models.AdminMaterial;
 using StudentPortal.Models.StudentDb;
 using StudentPortal.Services;
 using StudentPortal.Models.AdminDb;
+using StudentPortal.Utilities;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Collections.Generic;
+using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 
 namespace SIA_IPT.Controllers
 {
@@ -14,6 +20,34 @@ namespace SIA_IPT.Controllers
         public StudentAnswerAssessmentController(MongoDbService mongoDb)
         {
             _mongoDb = mongoDb;
+        }
+
+        private async Task<(ClassItem? classItem, ContentItem? contentItem, User? user)> ResolveStudentAssessmentContextAsync(string classCode, string contentId)
+        {
+            var email = HttpContext.Session.GetString("UserEmail");
+            if (string.IsNullOrEmpty(email)) return (null, null, null);
+
+            var classItem = await _mongoDb.GetClassByCodeAsync(classCode);
+            var contentItem = await _mongoDb.GetContentByIdAsync(contentId);
+            var user = await _mongoDb.GetUserByEmailAsync(email);
+            return (classItem, contentItem, user);
+        }
+
+        private async Task<bool> IsIntegrityLockedForStudentAsync(string classCode, string contentId)
+        {
+            var (classItem, contentItem, user) = await ResolveStudentAssessmentContextAsync(classCode, contentId);
+            if (classItem == null || contentItem == null || user == null) return false;
+
+            var resolvedContentId = AssessmentAntiCheatRules.ResolveAssessmentContentId(contentItem.Id, contentId);
+            var prior = await _mongoDb.GetAssessmentResultForStudentAsync(classItem.Id, resolvedContentId, user);
+            if (prior?.IntegrityLockedAtUtc != null) return true;
+
+            var unlock = await _mongoDb.GetAssessmentUnlockAsync(classItem.Id, resolvedContentId, user.Id ?? string.Empty);
+
+            var logs = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, resolvedContentId);
+            var relevant = logs ?? new List<AntiCheatLog>();
+            var total = AssessmentAntiCheatRules.SumIntegrityEventsForLock(relevant, user.Id, user.Email, unlock);
+            return AssessmentAntiCheatRules.IsIntegrityLockActive(total);
         }
 
         [HttpGet("/StudentAnswerAssessment/{classCode}/{contentId}")]
@@ -37,23 +71,45 @@ namespace SIA_IPT.Controllers
             if (contentItem.ClassId != classItem.Id)
                 return NotFound("Assessment not found in this class.");
 
-            var user = await _mongoDb.GetUserByEmailAsync(email);
-
-            try
+            if (ContentSubmissionRules.IsSubmissionLocked(contentItem, DateTime.UtcNow))
             {
-                var logs = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, contentItem.Id);
-                var relevant = logs ?? new System.Collections.Generic.List<StudentPortal.Models.AdminDb.AntiCheatLog>();
-                var studentTotal = relevant
-                    .Where(l => (!string.IsNullOrEmpty(user?.Id) && l.StudentId == (user?.Id ?? string.Empty))
-                             || (!string.IsNullOrEmpty(user?.Email) && string.Equals(l.StudentEmail, user?.Email, System.StringComparison.OrdinalIgnoreCase)))
-                    .Sum(l => l.EventCount);
-                if (studentTotal >= 20)
+                TempData["ToastMessage"] = "This assessment is no longer accepting submissions.";
+                return RedirectToAction("Index", "StudentAssessment", new { classCode, contentId });
+            }
+
+            var user = await _mongoDb.GetUserByEmailAsync(email);
+            var resolvedContentId = AssessmentAntiCheatRules.ResolveAssessmentContentId(contentItem.Id, contentId);
+            StudentPortal.Models.StudentDb.AssessmentResult? existingResult = null;
+            if (user != null)
+            {
+                existingResult = await _mongoDb.GetAssessmentResultForStudentAsync(classItem.Id, resolvedContentId, user);
+                if (existingResult != null && (existingResult.SubmittedAt.HasValue || string.Equals(existingResult.Status, "done", System.StringComparison.OrdinalIgnoreCase) || string.Equals(existingResult.Status, "submitted", System.StringComparison.OrdinalIgnoreCase)))
                 {
-                    TempData["ToastMessage"] = "Assessment locked for your account.";
-                    return RedirectToAction("Index", "StudentAssessment", new { classCode, contentId, flag = "void" });
+                    TempData["ToastMessage"] = "Assessment already submitted.";
+                    return RedirectToAction("Index", "StudentAssessment", new { classCode, contentId, submitted = 1 });
                 }
             }
-            catch { }
+
+            var unlock = await _mongoDb.GetAssessmentUnlockAsync(classItem.Id, resolvedContentId, user?.Id ?? string.Empty);
+            // Persisted lock is authoritative (teacher restore clears it in DB). Do not skip it when
+            // AssessmentUnlock is still true from an earlier restore — that caused re-lock to be ignored.
+            if (existingResult?.IntegrityLockedAtUtc != null)
+            {
+                TempData["ToastMessage"] = "Assessment locked for your account due to repeated integrity alerts. Contact your instructor if you need access restored.";
+                return RedirectToAction("Index", "StudentAssessment", new { classCode, contentId, flag = "void" });
+            }
+
+            var logs = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, resolvedContentId);
+            var relevant = logs ?? new System.Collections.Generic.List<AntiCheatLog>();
+            var studentTotalForLock = AssessmentAntiCheatRules.SumIntegrityEventsForLock(relevant, user?.Id, user?.Email, unlock);
+            // Log-based lock still applies when unlock is true — totals are only events after UnlockedAtUtc.
+            if (AssessmentAntiCheatRules.IsIntegrityLockActive(studentTotalForLock))
+            {
+                if (user != null)
+                    await _mongoDb.SetAssessmentIntegrityLockForUserAsync(classItem.Id, classItem.ClassCode ?? classCode, resolvedContentId, user);
+                TempData["ToastMessage"] = "Assessment locked for your account due to repeated integrity alerts. Contact your instructor if you need access restored.";
+                return RedirectToAction("Index", "StudentAssessment", new { classCode, contentId, flag = "void" });
+            }
 
             var vm = new StudentAnswerAssessmentViewModel
             {
@@ -89,7 +145,7 @@ namespace SIA_IPT.Controllers
             {
                 ClassId = classItem.Id,
                 ClassCode = classItem.ClassCode,
-                ContentId = contentItem.Id,
+                ContentId = AssessmentAntiCheatRules.ResolveAssessmentContentId(contentItem.Id, contentId),
                 StudentId = user.Id ?? string.Empty,
                 StudentEmail = user.Email ?? string.Empty,
                 StudentName = user.FullName ?? string.Empty,
@@ -117,7 +173,134 @@ namespace SIA_IPT.Controllers
             }
 
             await _mongoDb.AddAntiCheatLogAsync(log);
+
+            // If this event pushes the student over the integrity threshold, tell the client immediately
+            // so it can lock the UI without attempting any "submission" shortcuts.
+            var resolvedContentId = AssessmentAntiCheatRules.ResolveAssessmentContentId(contentItem.Id, contentId);
+            var logs2 = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, resolvedContentId);
+            var relevant2 = logs2 ?? new List<AntiCheatLog>();
+            var unlock2 = await _mongoDb.GetAssessmentUnlockAsync(classItem.Id, resolvedContentId, user.Id ?? string.Empty);
+            var total2 = AssessmentAntiCheatRules.SumIntegrityEventsForLock(relevant2, user.Id, user.Email, unlock2);
+            if (AssessmentAntiCheatRules.IsIntegrityLockActive(total2))
+            {
+                await _mongoDb.SetAssessmentIntegrityLockForUserAsync(classItem.Id, classItem.ClassCode ?? classCode, resolvedContentId, user);
+                return Ok(new { status = "locked", total = total2 });
+            }
+
             return Ok(new { status = "event_logged" });
+        }
+
+        /// <summary>
+        /// Persist an integrity lock immediately (used by client keepalive/beacon on navigation).
+        /// This does not submit anything; it only blocks re-entry until teacher restores access.
+        /// </summary>
+        [HttpPost("/StudentAnswerAssessment/{classCode}/{contentId}/lock-now")]
+        public async Task<IActionResult> LockNow(string classCode, string contentId)
+        {
+            if (string.IsNullOrEmpty(classCode) || string.IsNullOrEmpty(contentId))
+                return BadRequest("Missing identifiers.");
+
+            var email = HttpContext.Session.GetString("UserEmail");
+            if (string.IsNullOrEmpty(email))
+                return Unauthorized();
+
+            var classItem = await _mongoDb.GetClassByCodeAsync(classCode);
+            var contentItem = await _mongoDb.GetContentByIdAsync(contentId);
+            var user = await _mongoDb.GetUserByEmailAsync(email);
+            if (classItem == null || contentItem == null || user == null)
+                return NotFound();
+
+            var resolvedContentId = AssessmentAntiCheatRules.ResolveAssessmentContentId(contentItem.Id, contentId);
+            await _mongoDb.SetAssessmentIntegrityLockForUserAsync(classItem.Id, classItem.ClassCode ?? classCode, resolvedContentId, user);
+            return Ok(new { status = "locked" });
+        }
+
+        [HttpGet("/StudentAnswerAssessment/{classCode}/{contentId}/anti-cheat-totals")]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public async Task<IActionResult> AntiCheatTotals(string classCode, string contentId)
+        {
+            var email = HttpContext.Session.GetString("UserEmail");
+            if (string.IsNullOrEmpty(email))
+                return Unauthorized(new { success = false });
+
+            var classItem = await _mongoDb.GetClassByCodeAsync(classCode);
+            var contentItem = await _mongoDb.GetContentByIdAsync(contentId);
+            var user = await _mongoDb.GetUserByEmailAsync(email);
+            if (classItem == null || contentItem == null || user == null)
+                return NotFound(new { success = false });
+
+            var resolvedContentIdAc = AssessmentAntiCheatRules.ResolveAssessmentContentId(contentItem.Id, contentId);
+            var logs = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, resolvedContentIdAc);
+            var relevant = (logs ?? new List<AntiCheatLog>())
+                .Where(l => (!string.IsNullOrEmpty(user.Id) && l.StudentId == user.Id)
+                    || (!string.IsNullOrEmpty(user.Email) && string.Equals(l.StudentEmail, user.Email, System.StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            int copy = 0, paste = 0, inspect = 0, print = 0, mouse = 0, tabSwitch = 0, openPrograms = 0, screenShareOff = 0;
+
+            foreach (var l in relevant)
+            {
+                var c = l.EventCount > 0 ? l.EventCount : 1;
+                var t = (l.EventType ?? string.Empty).ToLowerInvariant();
+                if (t == "copy_paste")
+                {
+                    // Details JSON: { action: "copy"|"paste", count: n, ... }
+                    try
+                    {
+                        if (!string.IsNullOrWhiteSpace(l.Details))
+                        {
+                            using var doc = JsonDocument.Parse(l.Details);
+                            if (doc.RootElement.TryGetProperty("action", out var actEl))
+                            {
+                                var act = (actEl.GetString() ?? string.Empty).ToLowerInvariant();
+                                if (act == "copy") copy += c;
+                                else if (act == "paste") paste += c;
+                                else copy += c; // unknown: treat as copy bucket
+                                continue;
+                            }
+                        }
+                    }
+                    catch { /* ignore */ }
+                    copy += c;
+                }
+                else if (t == "inspect") inspect += c;
+                else if (t == "print_screen") print += c;
+                else if (t == "mouse_activity") mouse += c;
+                else if (t == "tab_switch") tabSwitch += c;
+                else if (t == "open_programs") openPrograms += c;
+                else if (t == "screen_share")
+                {
+                    // Details JSON: { on: false|true }
+                    try
+                    {
+                        if (!string.IsNullOrWhiteSpace(l.Details))
+                        {
+                            using var doc = JsonDocument.Parse(l.Details);
+                            if (doc.RootElement.TryGetProperty("on", out var onEl) && onEl.ValueKind == JsonValueKind.False)
+                                screenShareOff += c;
+                        }
+                    }
+                    catch { /* ignore */ }
+                }
+            }
+
+            var total = AssessmentAntiCheatRules.SumIntegrityEvents(relevant, user.Id, user.Email);
+            return Ok(new
+            {
+                success = true,
+                totals = new
+                {
+                    total,
+                    copy,
+                    paste,
+                    inspect,
+                    print,
+                    mouse,
+                    tabSwitch,
+                    openPrograms,
+                    screenShareOff
+                }
+            });
         }
 
         [HttpPost("/StudentAnswerAssessment/{classCode}/{contentId}/mark-answered")]
@@ -129,7 +312,12 @@ namespace SIA_IPT.Controllers
             var contentItem = await _mongoDb.GetContentByIdAsync(contentId);
             var user = await _mongoDb.GetUserByEmailAsync(email);
             if (classItem == null || contentItem == null || user == null) return NotFound();
-            await _mongoDb.UpsertAssessmentSubmittedAsync(classItem.Id, classItem.ClassCode, contentItem.Id, user.Id ?? string.Empty, user.Email ?? string.Empty);
+            if (ContentSubmissionRules.IsSubmissionLocked(contentItem, DateTime.UtcNow))
+                return Unauthorized();
+            if (await IsIntegrityLockedForStudentAsync(classCode, contentId))
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { success = false, message = "Assessment locked due to repeated integrity alerts. Submission is not allowed." });
+            await _mongoDb.UpsertAssessmentSubmittedAsync(classItem.Id, classItem.ClassCode, AssessmentAntiCheatRules.ResolveAssessmentContentId(contentItem.Id, contentId), user.Id ?? string.Empty, user.Email ?? string.Empty);
             return Ok(new { status = "marked_submitted" });
         }
 
@@ -215,13 +403,22 @@ namespace SIA_IPT.Controllers
         // POST: /StudentAnswerAssessment/SubmitAssessment  (form post)
         [HttpPost]
 		[ValidateAntiForgeryToken]
-		public IActionResult SubmitAssessment([FromForm] StudentAnswerSubmission submission)
+		public async Task<IActionResult> SubmitAssessment([FromForm] StudentAnswerSubmission submission)
 		{
 			if (submission == null)
 			{
 				TempData["ToastMessage"] = "Submission failed: payload missing.";
 				return RedirectToAction("Index");
 			}
+
+            var classCode = (submission.ClassCode ?? string.Empty).Trim();
+            var contentId = (submission.ContentId ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(classCode) && !string.IsNullOrWhiteSpace(contentId)
+                && await IsIntegrityLockedForStudentAsync(classCode, contentId))
+            {
+                TempData["ToastMessage"] = "Assessment locked due to repeated integrity alerts. Submission is not allowed.";
+                return RedirectToAction("Index", "StudentAssessment", new { classCode, contentId, flag = "void" });
+            }
 
 			// TODO: replace with real persistence logic (DB, queue, etc.)
 			Console.WriteLine($"[Assessment Submit] StudentId: {submission.StudentId ?? "anonymous"} - Received {submission.Answers?.Count ?? 0} answers at {DateTime.UtcNow:o}");
@@ -237,12 +434,27 @@ namespace SIA_IPT.Controllers
 		// POST: /StudentAnswerAssessment/SubmitJson  (ajax JSON)
 		[HttpPost("StudentAnswerAssessment/SubmitJson")]
 		[Consumes("application/json")]
-		public IActionResult SubmitAssessmentJson([FromBody] StudentAnswerSubmission submission)
+		public async Task<IActionResult> SubmitAssessmentJson([FromBody] StudentAnswerSubmission submission)
 		{
 			if (submission == null)
 			{
 				return BadRequest(new { success = false, message = "payload missing" });
 			}
+
+            var email = HttpContext.Session.GetString("UserEmail");
+            if (string.IsNullOrEmpty(email))
+                return Unauthorized(new { success = false, message = "Not authenticated." });
+
+            var classCode = (submission.ClassCode ?? string.Empty).Trim();
+            var contentId = (submission.ContentId ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(classCode) || string.IsNullOrWhiteSpace(contentId))
+                return BadRequest(new { success = false, message = "classCode and contentId are required." });
+
+            if (await IsIntegrityLockedForStudentAsync(classCode, contentId))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { success = false, message = "Assessment locked due to repeated integrity alerts. Submission is not allowed." });
+            }
 
 			// TODO: persist submission (DB, storage). For now log to console.
 			Console.WriteLine($"[Assessment SubmitJson] StudentId: {submission.StudentId ?? "anonymous"} - {submission.Answers?.Count ?? 0} answers");

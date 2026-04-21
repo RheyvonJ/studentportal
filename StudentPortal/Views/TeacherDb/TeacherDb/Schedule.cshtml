@@ -1,0 +1,436 @@
+@model StudentPortal.Models.ProfessorDb.ProfessorDashboardViewModel
+@{
+    Layout = "_StudentLayout";
+    ViewData["Title"] = "My Schedule";
+    ViewBag.CurrentPage = "schedule";
+    ViewBag.Role = (Context.Session.GetString("UserRole") ?? "Teacher").Trim();
+    ViewBag.AdminName = Model.ProfessorName;
+    ViewBag.AdminInitials = Model.ProfessorInitials;
+    var role = (ViewBag.Role?.ToString() ?? "Teacher").Trim();
+    /* Match Teacher Portal chrome: logo + portal title + school (same as mobile), no second page strip */
+    ViewBag.SuppressMobilePageContext = true;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/TeacherDb/TeacherSchedule.css" asp-append-version="true" />
+}
+
+<main class="slsp-sched" id="teacherSchedule" data-role="@role">
+    <div class="slsp-sched__titleRow slsp-sched__titleRow--toolbar">
+        <h1 class="slsp-sched__sr-only">My Schedule</h1>
+        <div class="slsp-sched__filters" aria-label="Schedule filters">
+            <label class="slsp-sched__filterLabel" for="syFilter">School year</label>
+            <select class="slsp-sched__filterSelect" id="syFilter">
+                <option value="">All</option>
+            </select>
+            <label class="slsp-sched__filterLabel" for="semFilter">Semester</label>
+            <select class="slsp-sched__filterSelect" id="semFilter">
+                <option value="">All</option>
+            </select>
+        </div>
+    </div>
+
+    <section class="slsp-sched__body" aria-live="polite">
+        <div class="slsp-sched__state" id="scheduleState">Loading…</div>
+        <div class="slsp-sched__tableWrap" id="scheduleTableWrap" hidden>
+            <table class="slsp-sched__table" aria-label="Weekly schedule table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="slsp-sched__thTime">Time</th>
+                        <th scope="col">Monday</th>
+                        <th scope="col">Tuesday</th>
+                        <th scope="col">Wednesday</th>
+                        <th scope="col">Thursday</th>
+                        <th scope="col">Friday</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleTbody"></tbody>
+            </table>
+        </div>
+        <div class="slsp-sched__listWrap" id="scheduleListWrap" hidden aria-label="Schedule by day">
+            <div class="slsp-sched__listRoot" id="scheduleList"></div>
+        </div>
+    </section>
+</main>
+
+@section Scripts {
+    <script>
+        (function () {
+            const root = document.getElementById('teacherSchedule');
+            const stateEl = document.getElementById('scheduleState');
+            const tableWrap = document.getElementById('scheduleTableWrap');
+            const tbody = document.getElementById('scheduleTbody');
+            const listWrap = document.getElementById('scheduleListWrap');
+            const listEl = document.getElementById('scheduleList');
+
+            const role = (root?.dataset?.role || document.body.getAttribute('data-user-role') || 'Teacher').trim();
+
+            const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+            const DAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4 };
+            const DAY_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+            const TABLE_START_HOUR = 7;
+            const TABLE_END_HOUR = 15;
+
+            function escapeHtml(text) {
+                return String(text ?? "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            function normalizeDay(raw) {
+                if (!raw) return null;
+                const s = String(raw).trim();
+                const m = s.match(/\b(Mon|Tue|Tues|Wed|Thu|Thur|Thurs|Fri|Sat|Sun)\b/i);
+                if (!m) return null;
+                const v = m[1].toLowerCase();
+                if (v === "tues") return "Tue";
+                if (v === "thur" || v === "thurs") return "Thu";
+                return (v[0].toUpperCase() + v.slice(1, 3));
+            }
+
+            /** Row label in 24-hour (military) time, e.g. 07:00 … 15:00 */
+            function fmtHourLabel(hour24) {
+                const h = Math.max(0, Math.min(23, hour24 | 0));
+                return `${String(h).padStart(2, '0')}:00`;
+            }
+
+            function parseTimeToMinutes(token) {
+                if (!token) return null;
+                const t = String(token).trim();
+                const m = t.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+                if (!m) return null;
+                let hh = parseInt(m[1], 10);
+                const mm = m[2] ? parseInt(m[2], 10) : 0;
+                const ap = (m[3] || "").toUpperCase();
+                if (ap) {
+                    if (hh === 12) hh = 0;
+                    if (ap === "PM") hh += 12;
+                }
+                return hh * 60 + mm;
+            }
+
+            function parseTimeRange(raw) {
+                if (!raw) return null;
+                const s = String(raw).replace(/\u2013|\u2014/g, "-");
+                // examples: "Fri 12:30-13:30", "Mon 07:30 - 08:30", "Mon 7:30 AM - 8:30 AM"
+                const m = s.match(/(\d{1,2}(?::\d{2})?\s*(?:AM|PM)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:AM|PM)?)/i);
+                if (!m) return null;
+                const start = parseTimeToMinutes(m[1]);
+                const end = parseTimeToMinutes(m[2]);
+                if (start == null || end == null) return null;
+                return { start, end: Math.max(end, start + 15) };
+            }
+
+            function colorFromString(str) {
+                return {
+                    bg: `rgba(0, 31, 63, 0.04)`,
+                    bar: `#001F3F`
+                };
+            }
+
+            function openClassOrNotify(classCode) {
+                const code = (classCode || "").trim();
+                if (!code) {
+                    if (typeof window.showToast === 'function') window.showToast("This class hasn’t been created yet.");
+                    else alert("This class hasn’t been created yet.");
+                    return;
+                }
+                // AdminClassController route is /AdminClass/{id}
+                window.location.href = `/AdminClass/${encodeURIComponent(code)}`;
+            }
+
+            function renderTable(events) {
+                const hours = [];
+                for (let h = TABLE_START_HOUR; h <= TABLE_END_HOUR; h++) hours.push(h);
+
+                const cells = new Map(); // key: `${hour}|${dayIndex}` => events[]
+                for (const e of events) {
+                    const hour = Math.max(TABLE_START_HOUR, Math.min(TABLE_END_HOUR, Math.floor(e.startMin / 60)));
+                    const key = `${hour}|${e.dayIndex}`;
+                    if (!cells.has(key)) cells.set(key, []);
+                    cells.get(key).push(e);
+                }
+                for (const arr of cells.values()) {
+                    arr.sort((a, b) => a.startMin - b.startMin);
+                }
+
+                const html = hours.map(h => {
+                    const timeLabel = fmtHourLabel(h);
+                    const tds = DAYS.map((d, idx) => {
+                        const key = `${h}|${idx}`;
+                        const list = cells.get(key) || [];
+                        const items = list.map(e => {
+                            const c = colorFromString(e.subjectCode || e.subjectName || "");
+                            const title = e.subjectName || e.subjectCode || "—";
+                            const section = e.section || "—";
+                            const time = e.timeText || "—";
+                            const room = e.roomName || "—";
+                            return `
+                                <button type="button" class="slsp-sched__item" style="background:${c.bg}; --bar:${c.bar};" data-classcode="${escapeHtml(e.classCode || "")}">
+                                    <span class="slsp-sched__itemBar"></span>
+                                    <span class="slsp-sched__itemTitle">${escapeHtml(title)}</span>
+                                    <span class="slsp-sched__itemLine"><strong>Section:</strong> ${escapeHtml(section)}</span>
+                                    <span class="slsp-sched__itemLine"><strong>Time:</strong> ${escapeHtml(time)}</span>
+                                    <span class="slsp-sched__itemLine"><strong>Room:</strong> ${escapeHtml(room)}</span>
+                                </button>
+                            `;
+                        }).join("");
+                        return `<td class="slsp-sched__td">${items || ""}</td>`;
+                    }).join("");
+
+                    return `<tr><th scope="row" class="slsp-sched__tdTime">${escapeHtml(timeLabel)}</th>${tds}</tr>`;
+                }).join("");
+
+                tbody.innerHTML = html;
+                tbody.querySelectorAll('.slsp-sched__item').forEach(btn => {
+                    btn.addEventListener('click', () => openClassOrNotify(btn.getAttribute('data-classcode')));
+                });
+            }
+
+            /** Phone-sized: one block per weekday (Mon…Fri), classes listed in time order under each day. */
+            function renderList(events) {
+                if (!listEl) return;
+                const byDay = new Map();
+                for (const e of events) {
+                    const di = e.dayIndex;
+                    if (di < 0 || di > 4) continue;
+                    if (!byDay.has(di)) byDay.set(di, []);
+                    byDay.get(di).push(e);
+                }
+                for (const arr of byDay.values()) {
+                    arr.sort((a, b) => a.startMin - b.startMin);
+                }
+
+                const sections = [];
+                for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
+                    const dayEvents = byDay.get(dayIdx) || [];
+                    if (!dayEvents.length) continue;
+                    const dayName = DAY_FULL[dayIdx];
+                    const cards = dayEvents.map(e => {
+                        const c = colorFromString(e.subjectCode || e.subjectName || "");
+                        const title = e.subjectName || e.subjectCode || "—";
+                        const section = e.section || "—";
+                        const time = e.timeText || "—";
+                        const room = e.roomName || "—";
+                        return `
+                            <div class="slsp-sched__listItem" role="listitem">
+                                <button type="button" class="slsp-sched__listBtn" style="background:${c.bg}; --bar:${c.bar};" data-classcode="${escapeHtml(e.classCode || "")}">
+                                    <span class="slsp-sched__listBar"></span>
+                                    <span class="slsp-sched__listTitle">${escapeHtml(title)}</span>
+                                    <span class="slsp-sched__listLine"><strong>Section:</strong> ${escapeHtml(section)}</span>
+                                    <span class="slsp-sched__listLine"><strong>Time:</strong> ${escapeHtml(time)}</span>
+                                    <span class="slsp-sched__listLine"><strong>Room:</strong> ${escapeHtml(room)}</span>
+                                </button>
+                            </div>
+                        `;
+                    }).join("");
+
+                    sections.push(`
+                        <section class="slsp-sched__daySection" aria-labelledby="sched-day-${dayIdx}">
+                            <h2 class="slsp-sched__dayHeading" id="sched-day-${dayIdx}">${escapeHtml(dayName)}</h2>
+                            <div class="slsp-sched__dayCards" role="list">${cards}</div>
+                        </section>
+                    `);
+                }
+
+                const html = sections.join("");
+                listEl.innerHTML = html || `<p class="slsp-sched__listEmpty">No schedule items found.</p>`;
+                listEl.querySelectorAll('.slsp-sched__listBtn').forEach(btn => {
+                    btn.addEventListener('click', () => openClassOrNotify(btn.getAttribute('data-classcode')));
+                });
+            }
+
+            function isMobileListLayout() {
+                return window.matchMedia('(max-width: 768px)').matches;
+            }
+
+            function syncLayout() {
+                const mobile = isMobileListLayout();
+                if (tableWrap) tableWrap.hidden = mobile;
+                if (listWrap) listWrap.hidden = !mobile;
+            }
+
+            async function load() {
+                try {
+                    const res = await fetch('/teacherdb/TeacherDb/GetMyAssignedSubjects', { headers: { 'Accept': 'application/json' } });
+                    const data = await res.json();
+                    const subjects = Array.isArray(data?.subjects) ? data.subjects : [];
+
+                    const allEventsRaw = subjects.map(s => {
+                        const dayKey = normalizeDay(s.timeSlotDisplay);
+                        const dayIndex = dayKey ? (DAY_INDEX[dayKey] ?? -1) : -1;
+                        const tr = parseTimeRange(s.timeSlotDisplay);
+                        const startMin = tr?.start ?? (TABLE_START_HOUR * 60);
+                        const endMin = tr?.end ?? (TABLE_START_HOUR * 60 + 60);
+                        return {
+                            subjectName: s.subjectName,
+                            subjectCode: s.subjectCode,
+                            section: s.section,
+                            roomName: s.roomName,
+                            schoolYear: s.schoolYear,
+                            semester: s.semester,
+                            timeSlotDisplay: s.timeSlotDisplay,
+                            timeText: s.timeSlotDisplay,
+                            dayIndex,
+                            startMin,
+                            endMin,
+                            classCode: s.classCode
+                        };
+                    }).filter(e => e.dayIndex >= 0 && e.dayIndex <= 4);
+
+                    if (!allEventsRaw.length) {
+                        stateEl.textContent = "No schedule items found.";
+                        stateEl.hidden = false;
+                        if (tableWrap) tableWrap.hidden = true;
+                        if (listWrap) listWrap.hidden = true;
+                        return;
+                    }
+
+                    // Populate school year filter from the teacher's assigned subjects (Enrollment DB),
+                    // not from "today's date" alone — teachers need to review past/future school years too.
+                    const sySelect = document.getElementById('syFilter');
+                    const semSelect = document.getElementById('semFilter');
+                    function computeCurrentSchoolYearLabel() {
+                        // Portal rule: current school year starts on the current calendar year.
+                        // Example: for any date in 2026 -> "2026-2027".
+                        const now = new Date();
+                        const y = now.getFullYear();
+                        return `${y}-${y + 1}`;
+                    }
+
+                    const currentSchoolYear = computeCurrentSchoolYearLabel();
+
+                    function parseSchoolYearStart(label) {
+                        const s = String(label || '').trim();
+                        const m = s.match(/^(\d{4})\s*-\s*(\d{4})$/);
+                        if (!m) return Number.NaN;
+                        const a = parseInt(m[1], 10);
+                        const b = parseInt(m[2], 10);
+                        if (!Number.isFinite(a) || !Number.isFinite(b)) return Number.NaN;
+                        // Accept both "2026-2027" and "2027-2026" style strings by taking the smaller year as the anchor.
+                        return Math.min(a, b);
+                    }
+
+                    const yearsFromData = Array.from(new Set(allEventsRaw
+                        .map(e => String(e.schoolYear || '').trim())
+                        .filter(Boolean)));
+
+                    yearsFromData.sort((a, b) => {
+                        const sa = parseSchoolYearStart(a);
+                        const sb = parseSchoolYearStart(b);
+                        if (Number.isFinite(sa) && Number.isFinite(sb) && sa !== sb) return sa - sb;
+                        return a.localeCompare(b, undefined, { sensitivity: 'base' });
+                    });
+
+                    if (sySelect) {
+                        sySelect.disabled = false;
+                        sySelect.innerHTML =
+                            '<option value=\"\">All</option>' +
+                            yearsFromData.map(y => `<option value=\"${escapeHtml(y)}\">${escapeHtml(y)}</option>`).join('');
+
+                        // Default selection: prefer the current school year if it exists in the dataset,
+                        // otherwise fall back to the most recent school year in the dataset (last after sort),
+                        // otherwise "All".
+                        let defaultSy = '';
+                        if (yearsFromData.includes(currentSchoolYear)) defaultSy = currentSchoolYear;
+                        else if (yearsFromData.length > 0) defaultSy = yearsFromData[yearsFromData.length - 1] || '';
+                        sySelect.value = defaultSy;
+                    }
+
+                    function normalizeSemesterLabel(raw) {
+                        const s = String(raw || '').trim();
+                        if (!s) return '';
+                        const low = s.toLowerCase();
+                        if (low.includes('1') || low.includes('first')) return '1st Semester';
+                        if (low.includes('2') || low.includes('second')) return '2nd Semester';
+                        return s;
+                    }
+
+                    function guessCurrentSemesterLabel() {
+                        // PH academic year commonly: 1st sem Aug–Dec, 2nd sem Jan–May.
+                        const m = (new Date()).getMonth() + 1;
+                        return (m >= 8 && m <= 12) ? '1st Semester' : '2nd Semester';
+                    }
+
+                    const currentSemGuess = guessCurrentSemesterLabel();
+
+                    const getSemestersForYear = (yearVal) => {
+                        const list = (yearVal ? allEventsRaw.filter(e => String(e.schoolYear || '').trim() === yearVal) : allEventsRaw);
+                        const semsFromData = Array.from(new Set(list.map(e => normalizeSemesterLabel(e.semester)).filter(Boolean)));
+                        // Always show 1st/2nd semester options even if DB values are missing.
+                        const sems = Array.from(new Set(['1st Semester', '2nd Semester', ...semsFromData]));
+                        // order: 1st, 2nd, then others
+                        sems.sort((a, b) => {
+                            const rank = (x) => x.startsWith('1st') ? 0 : x.startsWith('2nd') ? 1 : 9;
+                            const ra = rank(a), rb = rank(b);
+                            if (ra !== rb) return ra - rb;
+                            return a.localeCompare(b, undefined, { sensitivity: 'base' });
+                        });
+                        return sems;
+                    };
+
+                    const hydrateSemesterOptions = () => {
+                        if (!semSelect) return;
+                        const yearVal = (sySelect?.value || '').trim();
+                        const sems = getSemestersForYear(yearVal);
+                        semSelect.innerHTML = '<option value=\"\">All</option>' + sems.map(s => `<option value=\"${escapeHtml(s)}\">${escapeHtml(s)}</option>`).join('');
+                        // Default semester:
+                        // - If we're viewing the CURRENT school year, default to the current semester (when present).
+                        // - Otherwise, leave as "All" so we don't guess for past/future years.
+                        const isCurrentSchoolYearSelected = yearVal && (yearVal === currentSchoolYear);
+                        if (isCurrentSchoolYearSelected && sems.includes(currentSemGuess)) {
+                            semSelect.value = currentSemGuess;
+                        } else {
+                            semSelect.value = '';
+                        }
+                    };
+
+                    hydrateSemesterOptions();
+
+                    const applyFilterAndRender = () => {
+                        const selected = (sySelect?.value || '').trim();
+                        const selectedSem = (semSelect?.value || '').trim();
+                        const events = allEventsRaw.filter(e => {
+                            const okYear = selected ? String(e.schoolYear || '').trim() === selected : true;
+                            const semNorm = normalizeSemesterLabel(e.semester);
+                            const okSem = selectedSem ? semNorm === selectedSem : true;
+                            return okYear && okSem;
+                        });
+                        if (!events.length) {
+                            stateEl.textContent = "No schedule items found for these filters.";
+                            stateEl.hidden = false;
+                            if (tableWrap) tableWrap.hidden = true;
+                            if (listWrap) listWrap.hidden = true;
+                            return;
+                        }
+                        stateEl.hidden = true;
+                        renderTable(events);
+                        renderList(events);
+                        syncLayout();
+                    };
+
+                    sySelect?.addEventListener('change', () => { hydrateSemesterOptions(); applyFilterAndRender(); });
+                    semSelect?.addEventListener('change', applyFilterAndRender);
+                    applyFilterAndRender();
+                    syncLayout();
+                } catch (e) {
+                    stateEl.textContent = "Failed to load schedule.";
+                    stateEl.hidden = false;
+                }
+            }
+
+            load();
+            window.addEventListener('resize', syncLayout);
+            try {
+                window.matchMedia('(max-width: 768px)').addEventListener('change', syncLayout);
+            } catch {
+                try { window.matchMedia('(max-width: 768px)').addListener(syncLayout); } catch { }
+            }
+        })();
+    </script>
+}
+

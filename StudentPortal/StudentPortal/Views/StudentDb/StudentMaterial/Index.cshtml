@@ -1,0 +1,227 @@
+@model StudentPortal.Models.StudentDb.StudentMaterialViewModel
+@{
+    Layout = "_StudentLayout";
+    ViewData["Title"] = $"{Model.SubjectName} - Material";
+    ViewBag.CurrentPage = "subjects";
+    ViewBag.EnableSidebarSlide = true;
+    ViewBag.HideSidebar = true;
+    ViewBag.HeaderTitle = "Material";
+    ViewBag.HeaderSubtext = $"{Model.SectionName} • {Model.SubjectName} • {Model.SubjectCode} • {Model.ClassCode}";
+    ViewBag.SuppressMobilePageContext = true;
+    ViewBag.HeaderShowProfile = false;
+    var postedDisplay = Model.UploadDate.ToString("MMM d, yyyy");
+    var editedDisplay = string.Empty;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/StudentDb/StudentClass.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminClass.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminAssessment.theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminClass.theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/AdminDb/AdminMaterial.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/Shared/PublicComments.css" asp-append-version="true" />
+}
+
+<main class="student-class-shell admin-class-page admin-material-page" id="studentMaterialPage" data-student-dashboard-url="@Url.Content("~/studentdb/StudentDb")">
+        <section class="class-container admin-material-view-container">
+            <div class="admin-class-topbar admin-class-topbar--breadcrumb-only">
+                <nav class="admin-class-topbar-right class-breadcrumb aae-breadcrumb slsp-crumb-tabs" aria-label="Breadcrumb">
+                    <a class="slsp-crumb-tab" href="@Url.Content("~/studentdb/StudentDb")" title="Dashboard">
+                        <i class="fa-solid fa-table-cells-large" aria-hidden="true"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <span class="slsp-crumb-divider" aria-hidden="true"></span>
+                    <a class="slsp-crumb-tab" href="@Url.Action("Index", "StudentClass", new { classCode = Model.ClassCode })" title="@Model.SubjectName">
+                        <i class="fa-solid fa-book" aria-hidden="true"></i>
+                        <span>@Model.SubjectCode</span>
+                    </a>
+                    <span class="slsp-crumb-divider" aria-hidden="true"></span>
+                    <span class="slsp-crumb-tab is-active" aria-current="page" title="@Model.MaterialTitle">
+                        <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
+                        <span>@Model.MaterialTitle</span>
+                    </span>
+                </nav>
+            </div>
+            <section class="class-info aae-profile-card">
+                <div class="aae-profile">
+                    <div class="aae-profile-avatar" aria-hidden="true">@Model.InstructorInitials</div>
+                    <div class="aae-profile-text">
+                        <div class="aae-profile-name">@Model.InstructorName</div>
+                        <div class="aae-profile-secondary">
+                            @Model.InstructorRole
+                            @if (!string.IsNullOrWhiteSpace(Model.TeacherDepartment))
+                            {
+                                <text> · @Model.TeacherDepartment</text>
+                            }
+                        </div>
+                        <div class="aae-profile-secondary aae-profile-muted">
+                            @Model.RoomName
+                            @if (!string.IsNullOrWhiteSpace(Model.FloorDisplay))
+                            {
+                                <text> · @Model.FloorDisplay</text>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="aae-subject-block">
+                    <h2 class="aae-subject-title">@Model.SubjectName</h2>
+                    <p class="aae-subject-line"><span class="aae-label">Subject code</span> <span class="aae-value">@Model.SubjectCode</span></p>
+                    <p class="aae-subject-line"><span class="aae-label">Class code</span> <span class="aae-value">@Model.ClassCode</span></p>
+                </div>
+
+                <div class="aae-divider" role="presentation"></div>
+
+                <div class="class-info-middle">
+                    @if (Model.RecentMaterialRows != null && Model.RecentMaterialRows.Count > 0)
+                    {
+                        <div class="recent-uploads">
+                            <h3 class="aae-aside-heading"><i class="fa-regular fa-clock"></i> Recent Materials</h3>
+                            <ul>
+                                @foreach (var u in Model.RecentMaterialRows)
+                                {
+                                    <li class="recent-upload-row @(string.Equals(u.ContentId, Model.MaterialId, StringComparison.Ordinal) ? "is-current" : "")" data-content-id="@(u.ContentId ?? "")">
+                                        @if (!string.IsNullOrWhiteSpace(u.TargetUrl) && u.TargetUrl != "#")
+                                        {
+                                            <a class="recent-upload-link" href="@u.TargetUrl">
+                                                <i class="@u.IconClass" aria-hidden="true"></i>
+                                                <span class="recent-title">@u.Title</span>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="recent-upload-static">
+                                                <i class="@u.IconClass" aria-hidden="true"></i>
+                                                <span class="recent-title">@u.Title</span>
+                                            </span>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <section class="class-content admin-material-right-column" id="classContent">
+                <div class="admin-material-stack">
+                    <section class="material-container aae-assessment-card" id="materialContainer" data-material-id="@Model.MaterialId">
+                        <div class="material-scrollable aae-assessment-body">
+                            <header class="aae-card-header">
+                                <div class="aae-title-row">
+                                    <h2 class="material-name aae-assessment-name" id="materialName" contenteditable="false">@Model.MaterialTitle</h2>
+                                </div>
+                            </header>
+
+                            <p class="material-description aae-description" id="materialDescription" contenteditable="false">@Model.Description</p>
+
+                            <div class="aae-divider soft" role="presentation"></div>
+
+                            <div id="dateInfo" class="aae-meta-row" data-posted="@postedDisplay" data-edited="@editedDisplay">
+                                <div class="aae-meta-item">
+                                    <span class="aae-meta-icon" aria-hidden="true"><i class="fa-regular fa-calendar"></i></span>
+                                    <span class="aae-meta-label">Posted</span>
+                                    <span class="aae-meta-value">@postedDisplay</span>
+                                </div>
+                            </div>
+
+                            <div class="aae-divider soft" role="presentation"></div>
+
+                            <section class="attachments-section aae-files-section">
+                                <h3 class="aae-section-heading"><i class="fa-regular fa-file-lines"></i> Attached files</h3>
+                                <div id="attachmentDropzone" class="aae-dropzone @((Model.Files != null && Model.Files.Count > 0) ? "has-files" : "")">
+                                    <div class="attachments aae-attachments" id="attachmentList">
+                                        @if (Model.Files != null && Model.Files.Count > 0)
+                                        {
+                                            foreach (var f in Model.Files)
+                                            {
+                                                <div class="attachment-box aae-file-chip" data-file-label="@f.FileName">
+                                                    <a href="#"
+                                                       class="attachment-link attachment-name sm-attachment-open"
+                                                       data-filename="@f.FileName"
+                                                       data-contentid="@Model.MaterialId"
+                                                       title="Open @f.FileName">
+                                                        @f.FileName
+                                                    </a>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                    @if (Model.Files == null || Model.Files.Count == 0)
+                                    {
+                                        <div class="aae-empty-files" id="attachmentEmptyState">
+                                            <div class="aae-empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></div>
+                                            <p class="aae-empty-title">No files yet</p>
+                                        </div>
+                                    }
+                                </div>
+                            </section>
+                        </div>
+                    </section>
+
+                    <section class="public-comment-container" id="publicCommentContainer">
+                        <h3 class="public-comment-header">Class Comments</h3>
+                        <form id="materialForm">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="contentId" value="@Model.MaterialId" />
+                            <input type="hidden" name="classCode" value="@Model.ClassCode" />
+                        </form>
+                        <div class="public-comment-input">
+                            <textarea id="publicCommentText" placeholder="Add a class comment..."></textarea>
+                            <button type="button" id="postPublicCommentBtn" class="post-comment-btn">Post</button>
+                        </div>
+                        <div class="public-comment-list" id="publicCommentList"></div>
+                    </section>
+                </div>
+            </section>
+        </section>
+</main>
+<div id="toast" class="toast"></div>
+
+<!-- In-page file viewer (Student Material) -->
+<div id="smFileViewer" class="sm-file-viewer" style="display:none;">
+    <div class="sm-file-dialog">
+        <div class="sm-file-header">
+            <div id="smFileTitle" class="sm-file-title">File</div>
+            <a id="smOpenNewTab" href="#" rel="noopener" class="sm-file-action sm-file-open">Open in new tab</a>
+            <a id="smDownload" href="#" download class="sm-file-action sm-file-download">Download</a>
+            <button type="button" id="smCloseViewer" class="sm-file-close" aria-label="Close">×</button>
+        </div>
+        <div id="smViewerBody" class="sm-file-body"></div>
+    </div>
+</div>
+
+<!-- Open confirmation modal -->
+<div id="smOpenConfirmBackdrop" class="slsp-confirm-backdrop" hidden aria-hidden="true"></div>
+<div id="smOpenConfirmModal" class="slsp-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="smOpenConfirmTitle" aria-describedby="smOpenConfirmDesc" hidden>
+    <div class="slsp-confirm-card">
+        <div class="slsp-confirm-header">
+            <div class="slsp-confirm-icon" aria-hidden="true"><i class="fa-solid fa-up-right-from-square"></i></div>
+            <h2 id="smOpenConfirmTitle" class="slsp-confirm-title">Open file</h2>
+            <p id="smOpenConfirmDesc" class="slsp-confirm-desc">Do you want to open this file in a new tab?</p>
+        </div>
+        <div class="slsp-confirm-actions">
+            <button type="button" id="smOpenConfirmCancel" class="slsp-confirm-btn slsp-confirm-cancel">Cancel</button>
+            <button type="button" id="smOpenConfirmOk" class="slsp-confirm-btn slsp-confirm-primary">Open</button>
+        </div>
+    </div>
+</div>
+
+<!-- Download confirmation modal (reuse logout confirm design) -->
+<div id="smDownloadConfirmBackdrop" class="slsp-confirm-backdrop" hidden aria-hidden="true"></div>
+<div id="smDownloadConfirmModal" class="slsp-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="smDownloadConfirmTitle" aria-describedby="smDownloadConfirmDesc" hidden>
+    <div class="slsp-confirm-card">
+        <div class="slsp-confirm-header">
+            <div class="slsp-confirm-icon" aria-hidden="true"><i class="fa-solid fa-download"></i></div>
+            <h2 id="smDownloadConfirmTitle" class="slsp-confirm-title">Download file</h2>
+            <p id="smDownloadConfirmDesc" class="slsp-confirm-desc">Do you want to download this file?</p>
+        </div>
+        <div class="slsp-confirm-actions">
+            <button type="button" id="smDownloadConfirmCancel" class="slsp-confirm-btn slsp-confirm-cancel">Cancel</button>
+            <button type="button" id="smDownloadConfirmOk" class="slsp-confirm-btn slsp-confirm-primary">Download</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/StudentDb/StudentMaterial.js" asp-append-version="true"></script>
+}

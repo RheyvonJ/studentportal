@@ -1,7 +1,11 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using SIA_IPT.Models.AdminAssessment;
 using StudentPortal.Services;
 using StudentPortal.Models.AdminDb;
+using StudentPortal.Models.AdminMaterial;
+using StudentPortal.Utilities;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 
@@ -10,10 +14,12 @@ namespace SIA_IPT.Controllers
     public class AdminAssessmentController : Controller
     {
         private readonly MongoDbService _mongoDb;
+        private readonly IWebHostEnvironment _env;
 
-        public AdminAssessmentController(MongoDbService mongoDb)
+        public AdminAssessmentController(MongoDbService mongoDb, IWebHostEnvironment env)
         {
             _mongoDb = mongoDb;
+            _env = env;
         }
         [HttpGet("/AdminAssessment/{classCode}/{contentId}")]
         public async Task<IActionResult> Index(string classCode, string contentId)
@@ -25,12 +31,37 @@ namespace SIA_IPT.Controllers
                 return NotFound();
             }
 
-            var recent = (await _mongoDb.GetContentsForClassAsync(classItem.Id, classItem.ClassCode))?
-                .Where(c => c.Type == "assessment")
+            var assessmentList = (await _mongoDb.GetContentsForClassAsync(classItem.Id, classItem.ClassCode))?
+                .Where(c => string.Equals(c.Type, "assessment", StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(c => c.CreatedAt)
-                .Select(c => c.Title)
-                .Take(3)
-                .ToList() ?? new List<string>();
+                .ToList() ?? new List<ContentItem>();
+
+            var recent = assessmentList.Take(3).Select(c => c.Title ?? "").ToList();
+            // Recent sidebar: current first + up to 2 others (matches AdminMaterial / StudentMaterial recent-uploads)
+            var recentNav = new List<RecentAssessmentNavItem>();
+            var currentAssessment = assessmentList.FirstOrDefault(c => string.Equals(c.Id, content.Id, StringComparison.Ordinal));
+            var otherAssessments = assessmentList
+                .Where(c => !string.Equals(c.Id, content.Id, StringComparison.Ordinal))
+                .Take(2)
+                .ToList();
+            if (currentAssessment != null)
+            {
+                recentNav.Add(new RecentAssessmentNavItem
+                {
+                    Title = string.IsNullOrWhiteSpace(currentAssessment.Title) ? "Untitled" : currentAssessment.Title,
+                    ContentId = currentAssessment.Id ?? "",
+                    IsCurrent = true
+                });
+            }
+            foreach (var c in otherAssessments)
+            {
+                recentNav.Add(new RecentAssessmentNavItem
+                {
+                    Title = string.IsNullOrWhiteSpace(c.Title) ? "Untitled" : c.Title,
+                    ContentId = c.Id ?? "",
+                    IsCurrent = false
+                });
+            }
             var professorName = HttpContext.Session.GetString("UserName") ?? "Professor";
             var professorEmail = HttpContext.Session.GetString("UserEmail") ?? (classItem.OwnerEmail ?? string.Empty);
             string teacherRole = "Professor";
@@ -96,10 +127,36 @@ namespace SIA_IPT.Controllers
                 catch { }
             }
 
+            var utcNow = DateTime.UtcNow;
+            string statusLabel;
+            string statusVariant;
+            if (content.Deadline.HasValue && content.Deadline.Value < utcNow)
+            {
+                statusLabel = "Closed";
+                statusVariant = "closed";
+            }
+            else if (string.IsNullOrWhiteSpace((content.Description ?? "").Trim())
+                     && (content.Attachments == null || content.Attachments.Count == 0)
+                     && string.IsNullOrWhiteSpace(content.LinkUrl))
+            {
+                statusLabel = "Draft";
+                statusVariant = "draft";
+            }
+            else
+            {
+                statusLabel = "Active";
+                statusVariant = "active";
+            }
+
+            var deadlineIso = content.Deadline.HasValue
+                ? content.Deadline.Value.ToLocalTime().ToString("yyyy-MM-dd")
+                : "";
+
             var vm = new AdminAssessmentViewModel
             {
                 AssessmentId = content.Id ?? string.Empty,
                 SubjectName = classItem.SubjectName,
+                SectionName = !string.IsNullOrWhiteSpace(classItem.SectionLabel) ? classItem.SectionLabel : (classItem.Section ?? string.Empty),
                 SubjectCode = classItem.SubjectCode,
                 ClassCode = classItem.ClassCode,
                 InstructorName = displayName,
@@ -109,6 +166,10 @@ namespace SIA_IPT.Controllers
                 RoomName = roomName,
                 FloorDisplay = floorDisplay,
                 RecentMaterials = recent,
+                RecentAssessments = recentNav,
+                StatusLabel = statusLabel,
+                StatusVariant = statusVariant,
+                DeadlineIso = deadlineIso,
                 AssessmentTitle = content.Title,
                 AssessmentDescription = content.Description,
                 Attachments = content.Attachments ?? new List<string>(),
@@ -116,7 +177,9 @@ namespace SIA_IPT.Controllers
                 Deadline = content.Deadline.HasValue ? content.Deadline.Value.ToLocalTime().ToString("MMM d, yyyy") : "N/A",
                 EditedDate = content.UpdatedAt > content.CreatedAt ? content.UpdatedAt.ToLocalTime().ToString("MMM d, yyyy") : "",
                 Submissions = new List<StudentSubmission>(),
-                LinkUrl = content.LinkUrl ?? string.Empty
+                LinkUrl = content.LinkUrl ?? string.Empty,
+                AllowSubmissionsPastDeadline = content.AllowSubmissionsPastDeadline,
+                IsSubmissionLockedForStudents = ContentSubmissionRules.IsSubmissionLocked(content, utcNow)
             };
 
             var logs = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, content.Id);
@@ -174,6 +237,8 @@ namespace SIA_IPT.Controllers
             vm.LogOpenPrograms = openPrograms;
             vm.LogScreenShare = screenShare;
 
+            vm.IntegrityLockedStudents = await _mongoDb.GetIntegrityThresholdStudentRowsAsync(classItem.Id, content.Id!);
+
             return View("~/Views/AdminDb/AdminAssessment/Index.cshtml", vm);
         }
 
@@ -203,10 +268,95 @@ namespace SIA_IPT.Controllers
             {
                 if (DateTime.TryParse(req.Deadline, out var dl)) content.Deadline = dl;
             }
+            if (req.AllowSubmissionsPastDeadline.HasValue)
+                content.AllowSubmissionsPastDeadline = req.AllowSubmissionsPastDeadline.Value;
             content.UpdatedAt = DateTime.UtcNow;
             content.MetaText = GenerateUpdatedMetaText(content);
             await _mongoDb.UpdateContentAsync(content);
             return Json(new { success = true });
+        }
+
+        [HttpPost("/AdminAssessment/RestoreIntegrityAccess")]
+        public async Task<IActionResult> RestoreIntegrityAccess([FromBody] IntegrityAccessRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.ClassCode) || string.IsNullOrEmpty(request.AssessmentId) || string.IsNullOrEmpty(request.StudentId))
+                return BadRequest(new { success = false, message = "Invalid request" });
+            var classItem = await _mongoDb.GetClassByCodeAsync(request.ClassCode);
+            var content = await _mongoDb.GetContentByIdAsync(request.AssessmentId);
+            if (classItem == null || content == null || content.ClassId != classItem.Id || content.Type != "assessment")
+                return NotFound(new { success = false, message = "Not found" });
+            var user = await _mongoDb.GetUserByIdAsync(request.StudentId);
+            var email = user?.Email ?? request.StudentEmail ?? string.Empty;
+            var unlockedBy = HttpContext.Session.GetString("UserEmail") ?? string.Empty;
+            var priorResult = await _mongoDb.GetAssessmentResultAsync(classItem.Id, request.AssessmentId, request.StudentId);
+            if ((priorResult?.TeacherIntegrityRestoreCount ?? 0) >= 1)
+            {
+                return Json(new
+                {
+                    success = false,
+                    message = "This student has already used their one allowed integrity restore for this assessment. No further restorations are permitted."
+                });
+            }
+            await _mongoDb.SetAssessmentUnlockAsync(classItem.Id, classItem.ClassCode ?? request.ClassCode, request.AssessmentId, request.StudentId, email, true, unlockedBy);
+            // Allow the student to submit again after integrity access is restored.
+            await _mongoDb.ResetAssessmentResultAsync(classItem.Id, request.AssessmentId, request.StudentId);
+            await _mongoDb.IncrementTeacherIntegrityRestoreCountAsync(
+                classItem.Id,
+                classItem.ClassCode ?? request.ClassCode,
+                request.AssessmentId,
+                request.StudentId,
+                email);
+            var rows = await _mongoDb.GetIntegrityThresholdStudentRowsAsync(classItem.Id, request.AssessmentId);
+            return Json(new { success = true, students = rows });
+        }
+
+        [HttpPost("/AdminAssessment/RevokeIntegrityAccess")]
+        public async Task<IActionResult> RevokeIntegrityAccess([FromBody] IntegrityAccessRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.ClassCode) || string.IsNullOrEmpty(request.AssessmentId) || string.IsNullOrEmpty(request.StudentId))
+                return BadRequest(new { success = false, message = "Invalid request" });
+            var classItem = await _mongoDb.GetClassByCodeAsync(request.ClassCode);
+            var content = await _mongoDb.GetContentByIdAsync(request.AssessmentId);
+            if (classItem == null || content == null || content.ClassId != classItem.Id || content.Type != "assessment")
+                return NotFound(new { success = false, message = "Not found" });
+            await _mongoDb.ClearAssessmentUnlockAsync(classItem.Id, request.AssessmentId, request.StudentId);
+            var rows = await _mongoDb.GetIntegrityThresholdStudentRowsAsync(classItem.Id, request.AssessmentId);
+            return Json(new { success = true, students = rows });
+        }
+
+        public class IntegrityAccessRequest
+        {
+            public string ClassCode { get; set; } = string.Empty;
+            public string AssessmentId { get; set; } = string.Empty;
+            public string StudentId { get; set; } = string.Empty;
+            public string? StudentEmail { get; set; }
+        }
+
+        [HttpPost("/AdminAssessment/SetSubmissionUnlock")]
+        public async Task<IActionResult> SetSubmissionUnlock([FromBody] SetAssessmentSubmissionUnlockRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.AssessmentId))
+                return BadRequest(new { success = false, message = "Invalid request" });
+            var content = await _mongoDb.GetContentByIdAsync(request.AssessmentId);
+            if (content == null || content.Type != "assessment")
+                return Json(new { success = false, message = "Assessment not found" });
+            content.AllowSubmissionsPastDeadline = request.AllowPastDeadline;
+            content.UpdatedAt = DateTime.UtcNow;
+            content.MetaText = GenerateUpdatedMetaText(content);
+            await _mongoDb.UpdateContentAsync(content);
+            var utcNow = DateTime.UtcNow;
+            return Json(new
+            {
+                success = true,
+                allowPastDeadline = content.AllowSubmissionsPastDeadline,
+                isLockedForStudents = ContentSubmissionRules.IsSubmissionLocked(content, utcNow)
+            });
+        }
+
+        public class SetAssessmentSubmissionUnlockRequest
+        {
+            public string AssessmentId { get; set; } = string.Empty;
+            public bool AllowPastDeadline { get; set; }
         }
 
         [HttpPost("/AdminAssessment/ReplaceAttachment")]
@@ -226,7 +376,7 @@ namespace SIA_IPT.Controllers
 
             var uploads = await _mongoDb.GetUploadsByClassIdAsync(content.ClassId);
             var recentUpload = uploads
-                .Where(u => u.UploadedBy == (User?.Identity?.Name ?? "Admin") && u.FileName == request.FileName)
+                .Where(u => u.FileName == request.FileName && string.IsNullOrEmpty(u.ContentId))
                 .OrderByDescending(u => u.UploadedAt)
                 .FirstOrDefault();
             if (recentUpload != null)
@@ -274,17 +424,18 @@ namespace SIA_IPT.Controllers
         }
 
         [HttpGet("/AdminAssessment/DownloadFile/{fileName}")]
-        public async Task<IActionResult> DownloadFile(string fileName, string assessmentId)
+        public async Task<IActionResult> DownloadFile(string fileName, [FromQuery] string contentId, [FromQuery] string assessmentId)
         {
             try
             {
-                var uploadItem = await _mongoDb.GetUploadByFileNameAsync(fileName, assessmentId);
+                var resolvedContentId = !string.IsNullOrWhiteSpace(contentId) ? contentId : (assessmentId ?? string.Empty);
+                var uploadItem = await _mongoDb.GetUploadByFileNameAsync(fileName, resolvedContentId);
                 if (uploadItem == null)
                     return NotFound("File not found.");
 
                 var url = uploadItem.FileUrl ?? string.Empty;
                 var fileWithGuid = System.IO.Path.GetFileName(url);
-                var uploadsDir = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                var uploadsDir = System.IO.Path.Combine(_env.WebRootPath, "uploads");
                 var physPath = !string.IsNullOrWhiteSpace(fileWithGuid)
                     ? System.IO.Path.Combine(uploadsDir, fileWithGuid)
                     : string.Empty;
@@ -343,7 +494,7 @@ namespace SIA_IPT.Controllers
 
                 var url = uploadItem.FileUrl ?? string.Empty;
                 var fileWithGuid = System.IO.Path.GetFileName(url);
-                var uploadsDir = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                var uploadsDir = System.IO.Path.Combine(_env.WebRootPath, "uploads");
                 var physPath = !string.IsNullOrWhiteSpace(fileWithGuid)
                     ? System.IO.Path.Combine(uploadsDir, fileWithGuid)
                     : string.Empty;

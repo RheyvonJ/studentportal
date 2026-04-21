@@ -49,11 +49,36 @@ namespace StudentPortal.Models.Library
         [BsonElement("is_active")]
         public bool IsActive { get; set; } = true;
 
+        [BsonElement("is_ebook")]
+        public bool IsEBook { get; set; } = false;
+
+        [BsonElement("ebook_file_path")]
+        public string? EBookFilePath { get; set; }
+
+        [BsonElement("ebook_file_name")]
+        public string? EBookFileName { get; set; }
+
+        [BsonElement("ebook_content_type")]
+        public string? EBookContentType { get; set; }
+
         [BsonElement("updated_at")]
         public DateTime? UpdatedAt { get; set; }
 
         [BsonIgnore]
         public bool IsAvailable => AvailableCopies > 0 && !IsReferenceOnly;
+
+        /// <summary>
+        /// Library rows that should behave as eBooks in the LMS: explicit flag or legacy rows with a stored file under uploads/ebooks.
+        /// </summary>
+        [BsonIgnore]
+        public bool EffectiveIsEBook => IsEBook || LooksLikeStoredLibraryEbookFile(EBookFilePath);
+
+        public static bool LooksLikeStoredLibraryEbookFile(string? pathOrUrl)
+        {
+            if (string.IsNullOrWhiteSpace(pathOrUrl)) return false;
+            var n = pathOrUrl.Trim().Replace('\\', '/');
+            return n.Contains("/uploads/ebooks/", StringComparison.OrdinalIgnoreCase);
+        }
     }
 }
 
