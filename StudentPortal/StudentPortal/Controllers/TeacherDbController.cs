@@ -273,7 +273,7 @@ namespace StudentPortal.Controllers.TeacherDb
                             {
                                 Email = r,
                                 Type = "class-auto-joined",
-                                Text = $\"You have been auto-joined to \\\"{newClass.SubjectName}\\\" ({newClass.ClassCode})\",
+                                Text = $"You have been auto-joined to \"{newClass.SubjectName}\" ({newClass.ClassCode})",
                                 Code = newClass.ClassCode,
                                 CreatedAt = DateTime.UtcNow
                             });
@@ -284,7 +284,7 @@ namespace StudentPortal.Controllers.TeacherDb
                 catch { }
             });
 
-            TempData["ToastMessage"] = $\"✅ Class \\\"{subjectName}\\\" created (Code: {newClass.ClassCode}). Invites are sending in the background.\";
+            TempData["ToastMessage"] = $"✅ Class \"{subjectName}\" created (Code: {newClass.ClassCode}). Invites are sending in the background.";
 
             return RedirectToAction("Index");
         }
