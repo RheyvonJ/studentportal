@@ -14,6 +14,7 @@ const cancelCreate = document.getElementById('cancelCreate');
 const sectionInput = document.getElementById('section');
 const createModal = document.getElementById('createModal');
 const schoolYearInput = document.getElementById('schoolYear');
+const schoolYearSelectEl = document.getElementById('schoolYearSelect');
 const sectionTextInput = document.getElementById('sectionText');
 const subjectNameTextInput = document.getElementById('subjectNameText');
 const subjectCodeTextInput = document.getElementById('subjectCodeText');
@@ -179,7 +180,14 @@ function detectCreateFormKind() {
 createForm?.addEventListener('submit', async function (e) {
     const name = subjectNameInput?.value?.trim();
     const code = subjectCodeInput?.value?.trim();
+    const selectedSchoolYear = schoolYearInput?.value?.trim() || '';
     let section = sectionInput?.value?.trim();
+
+    if (schoolYearInput && !selectedSchoolYear) {
+        e.preventDefault();
+        showToast('⚠️ Please select a school year first.', 'warning');
+        return;
+    }
 
     if (sectionInput) {
         sectionInput.value = section ?? '';
@@ -463,8 +471,12 @@ cancelDeleteClass?.addEventListener('click', () => {
 
 function closeOtherSelects(except) {
     const sectionSelectEl = document.getElementById('sectionSelect');
+    const schoolYearSelect = document.getElementById('schoolYearSelect');
     if (profSubjectSelect && profSubjectSelect !== except) {
         profSubjectSelect.classList.remove('open');
+    }
+    if (schoolYearSelect && schoolYearSelect !== except) {
+        schoolYearSelect.classList.remove('open');
     }
     if (sectionSelectEl && sectionSelectEl !== except) {
         sectionSelectEl.classList.remove('open');
@@ -746,28 +758,27 @@ function setupProfessorSubjectSelect() {
         const allSchoolYears = Array.from(
             new Set(subjects.map(s => String(s.schoolYear || '').trim()).filter(Boolean))
         ).sort((a, b) => b.localeCompare(a, undefined, { sensitivity: 'base' }));
-        const currentSY = computeCurrentSchoolYearLabel();
-        let selectedSchoolYear = allSchoolYears.includes(currentSY) ? currentSY : (allSchoolYears[0] || currentSY);
+        let selectedSchoolYear = '';
 
-        const schoolYearSelect = document.getElementById('schoolYear');
-        if (schoolYearSelect instanceof HTMLSelectElement) {
-            schoolYearSelect.innerHTML = '';
-            const placeholder = document.createElement('option');
-            placeholder.value = '';
-            placeholder.textContent = 'Select School Year';
-            schoolYearSelect.appendChild(placeholder);
+        const schoolYearSelectedDisplay = schoolYearSelectEl?.querySelector('.selected');
+        const schoolYearOptions = schoolYearSelectEl?.querySelector('.options');
+        if (schoolYearOptions) schoolYearOptions.innerHTML = '';
 
-            const yearValues = allSchoolYears.length ? allSchoolYears : [selectedSchoolYear];
+        const yearValues = allSchoolYears.length ? allSchoolYears : [computeCurrentSchoolYearLabel()];
+        if (schoolYearOptions) {
+            const frYears = document.createDocumentFragment();
             yearValues.forEach((sy) => {
-                const option = document.createElement('option');
-                option.value = sy;
-                option.textContent = sy;
-                schoolYearSelect.appendChild(option);
+                const div = document.createElement('div');
+                div.setAttribute('data-school-year', sy);
+                div.textContent = sy;
+                frYears.appendChild(div);
             });
-            schoolYearSelect.value = selectedSchoolYear || '';
+            schoolYearOptions.appendChild(frYears);
         }
+        if (schoolYearSelectedDisplay) schoolYearSelectedDisplay.textContent = 'Select School Year';
+        if (schoolYearSelectEl) schoolYearSelectEl.dataset.value = '';
 
-        syInputEls.forEach(el => { try { el.value = selectedSchoolYear || ''; } catch { } });
+        syInputEls.forEach(el => { try { el.value = ''; } catch { } });
 
         const rebuildOptions = () => {
             const fr = document.createDocumentFragment();
@@ -815,14 +826,32 @@ function setupProfessorSubjectSelect() {
                 optionsContainer.innerHTML = '';
                 optionsContainer.appendChild(fr);
             }
-            setSelected('', 'Select Assigned Class');
+            setSelected('', selectedSchoolYear ? 'Select Assigned Class' : 'Select School Year first');
             syInputEls.forEach(el => { try { el.value = selectedSchoolYear || ''; } catch { } });
         };
         rebuildOptions();
 
-        if (schoolYearSelect instanceof HTMLSelectElement) {
-            schoolYearSelect.addEventListener('change', () => {
-                selectedSchoolYear = (schoolYearSelect.value || '').trim();
+        if (schoolYearSelectEl && !schoolYearSelectEl.dataset.wired) {
+            schoolYearSelectEl.dataset.wired = 'true';
+            const selected = schoolYearSelectEl.querySelector('.selected');
+            const options = schoolYearSelectEl.querySelector('.options');
+
+            selected?.addEventListener('click', (event) => {
+                event.preventDefault();
+                const isOpen = schoolYearSelectEl.classList.contains('open');
+                closeOtherSelects(schoolYearSelectEl);
+                schoolYearSelectEl.classList.toggle('open', !isOpen);
+            });
+
+            options?.addEventListener('click', (event) => {
+                const target = event.target;
+                if (!(target instanceof Element)) return;
+                const opt = target.closest('div[data-school-year]');
+                if (!opt) return;
+                selectedSchoolYear = (opt.getAttribute('data-school-year') || '').trim();
+                if (selected) selected.textContent = selectedSchoolYear || 'Select School Year';
+                schoolYearSelectEl.dataset.value = selectedSchoolYear;
+                schoolYearSelectEl.classList.remove('open');
                 syInputEls.forEach(el => { try { el.value = selectedSchoolYear || ''; } catch { } });
                 rebuildOptions();
             });

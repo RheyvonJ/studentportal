@@ -79,8 +79,13 @@
         <h3 id="createTitle">Create a Class</h3>
         <form id="createForm" method="post" asp-controller="TeacherDb" asp-action="CreateClass">
             @Html.AntiForgeryToken()
+            <div class="custom-select" id="schoolYearSelect" data-value="">
+                <div class="selected">Select School Year</div>
+                <div class="options"></div>
+            </div>
+            <input type="hidden" id="schoolYear" name="schoolYear" />
             <div class="custom-select" id="profSubjectSelect" data-value="">
-                <div class="selected">Select Subject (optional)</div>
+                <div class="selected">Select School Year first</div>
                 <div class="options"></div>
             </div>
             <input type="hidden" id="profSubjectValue" />
@@ -89,9 +94,6 @@
             <input type="text" id="section" name="section" placeholder="Enter section (e.g., BSIT-2025-2025-0017)" />
             <input type="text" id="subjectName" name="subjectName" placeholder="Enter subject name" />
             <input type="text" id="subjectCode" name="subjectCode" placeholder="Enter subject code" />
-            <select id="schoolYear" name="schoolYear">
-                <option value="">Select School Year</option>
-            </select>
             <button id="createClass" type="submit">CREATE CLASS</button>
         </form>
     </div>

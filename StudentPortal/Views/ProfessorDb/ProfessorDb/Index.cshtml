@@ -321,8 +321,12 @@
         <form id="createForm" method="post" asp-controller="ProfessorDb" asp-action="CreateClass">
             @Html.AntiForgeryToken()
             <input type="hidden" name="allowDuplicate" id="allowDuplicate" value="false" />
+            <div class="custom-select" id="schoolYearSelect" data-value="">
+                <div class="selected">Select School Year</div>
+                <div class="options"></div>
+            </div>
             <div class="custom-select" id="profSubjectSelect" data-value="">
-                <div class="selected">Select Assigned Class</div>
+                <div class="selected">Select School Year first</div>
                 <div class="options"></div>
             </div>
             <input type="hidden" id="profSubjectValue" />
@@ -335,7 +339,6 @@
             <input type="text" id="sectionText" placeholder="Section" disabled />
             <input type="text" id="subjectNameText" placeholder="Subject Name" disabled />
             <input type="text" id="subjectCodeText" placeholder="Subject Code" disabled />
-            <input type="text" id="schoolYearText" placeholder="School Year" disabled />
             <button id="createClass" type="submit">CREATE CLASS</button>
         </form>
     </div>
