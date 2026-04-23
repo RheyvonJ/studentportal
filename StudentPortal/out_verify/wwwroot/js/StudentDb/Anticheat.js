@@ -247,6 +247,19 @@
             if (typeof window.showToast === 'function') {
                 window.showToast('Assessment locked due to integrity alerts.');
             }
+
+            // Return the student to the assessment details page where Open Quiz is locked.
+            try {
+                const parts = (window.location.pathname || '').split('/').filter(Boolean);
+                const idx = parts.findIndex(p => p.toLowerCase() === 'studentanswerassessment');
+                if (idx >= 0 && parts.length >= idx + 3) {
+                    const classCode = parts[idx + 1];
+                    const contentId = parts[idx + 2];
+                    setTimeout(() => {
+                        window.location.href = `/StudentAssessment/${encodeURIComponent(classCode)}/${encodeURIComponent(contentId)}?flag=void`;
+                    }, 900);
+                }
+            } catch (_) { /* ignore */ }
         } catch (_) {}
     }
 

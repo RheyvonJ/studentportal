@@ -159,17 +159,22 @@ namespace SIA_IPT.Controllers
                 LogTimeUtc = DateTime.UtcNow
             };
 
-            var isDuplicate = await _mongoDb.HasRecentDuplicateAntiCheatLogAsync(
-                log.ClassId,
-                log.ContentId,
-                log.StudentId,
-                log.EventType,
-                log.Details,
-                withinSeconds: 2);
-
-            if (isDuplicate)
+            var eventType = (log.EventType ?? string.Empty).Trim().ToLowerInvariant();
+            var shouldDedupe = eventType == "summary" || eventType == "ac_loaded";
+            if (shouldDedupe)
             {
-                return Ok(new { status = "duplicate_skipped" });
+                var isDuplicate = await _mongoDb.HasRecentDuplicateAntiCheatLogAsync(
+                    log.ClassId,
+                    log.ContentId,
+                    log.StudentId,
+                    eventType,
+                    log.Details ?? string.Empty,
+                    withinSeconds: 1);
+
+                if (isDuplicate)
+                {
+                    return Ok(new { status = "duplicate_skipped" });
+                }
             }
 
             await _mongoDb.AddAntiCheatLogAsync(log);

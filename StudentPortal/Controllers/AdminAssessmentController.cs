@@ -288,24 +288,9 @@ namespace SIA_IPT.Controllers
             var user = await _mongoDb.GetUserByIdAsync(request.StudentId);
             var email = user?.Email ?? request.StudentEmail ?? string.Empty;
             var unlockedBy = HttpContext.Session.GetString("UserEmail") ?? string.Empty;
-            var priorResult = await _mongoDb.GetAssessmentResultAsync(classItem.Id, request.AssessmentId, request.StudentId);
-            if ((priorResult?.TeacherIntegrityRestoreCount ?? 0) >= 1)
-            {
-                return Json(new
-                {
-                    success = false,
-                    message = "This student has already used their one allowed integrity restore for this assessment. No further restorations are permitted."
-                });
-            }
             await _mongoDb.SetAssessmentUnlockAsync(classItem.Id, classItem.ClassCode ?? request.ClassCode, request.AssessmentId, request.StudentId, email, true, unlockedBy);
             // Allow the student to submit again after integrity access is restored.
             await _mongoDb.ResetAssessmentResultAsync(classItem.Id, request.AssessmentId, request.StudentId);
-            await _mongoDb.IncrementTeacherIntegrityRestoreCountAsync(
-                classItem.Id,
-                classItem.ClassCode ?? request.ClassCode,
-                request.AssessmentId,
-                request.StudentId,
-                email);
             var rows = await _mongoDb.GetIntegrityThresholdStudentRowsAsync(classItem.Id, request.AssessmentId);
             return Json(new { success = true, students = rows });
         }
@@ -607,11 +592,40 @@ namespace SIA_IPT.Controllers
                 return t;
             }
 
+            string NormalizeStudentName(string? raw)
+            {
+                var input = (raw ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(input)) return "Unknown";
+
+                var parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 0) return "Unknown";
+
+                // Case 1: full-name block repeated once (e.g. "John Doe John Doe").
+                if (parts.Length % 2 == 0)
+                {
+                    var half = parts.Length / 2;
+                    var firstHalf = string.Join(" ", parts.Take(half));
+                    var secondHalf = string.Join(" ", parts.Skip(half));
+                    if (string.Equals(firstHalf, secondHalf, StringComparison.OrdinalIgnoreCase))
+                        return firstHalf;
+                }
+
+                // Case 2: adjacent duplicate words (e.g. "John John Doe").
+                var deduped = new List<string>();
+                foreach (var p in parts)
+                {
+                    if (deduped.Count == 0 || !string.Equals(deduped[^1], p, StringComparison.OrdinalIgnoreCase))
+                        deduped.Add(p);
+                }
+
+                return deduped.Count == 0 ? "Unknown" : string.Join(" ", deduped);
+            }
+
             var result = logs
                 .Where(MatchesType)
                 .Select(l => new
                 {
-                    student = l.StudentName,
+                    student = NormalizeStudentName(l.StudentName),
                     email = l.StudentEmail,
                     type = NormalizeType(l),
                     count = l.EventCount > 0 ? l.EventCount : 1,

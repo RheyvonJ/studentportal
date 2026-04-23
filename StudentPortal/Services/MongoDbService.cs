@@ -3831,7 +3831,6 @@ namespace StudentPortal.Services
                 .SetOnInsert(r => r.ClassCode, classCode ?? string.Empty)
                 .SetOnInsert(r => r.ContentId, contentId)
                 .SetOnInsert(r => r.StudentId, studentId)
-                .SetOnInsert(r => r.StudentEmail, studentEmail ?? string.Empty)
                 .SetOnInsert(r => r.Status, "pending")
                 .Set(r => r.StudentEmail, studentEmail ?? string.Empty)
                 .Set(r => r.IntegrityLockedAtUtc, now);
@@ -3888,7 +3887,6 @@ namespace StudentPortal.Services
                 .SetOnInsert(r => r.ClassCode, classCode ?? string.Empty)
                 .SetOnInsert(r => r.ContentId, contentId)
                 .SetOnInsert(r => r.StudentId, studentId)
-                .SetOnInsert(r => r.StudentEmail, studentEmail ?? string.Empty)
                 .SetOnInsert(r => r.Status, "pending")
                 .Set(r => r.StudentEmail, studentEmail ?? string.Empty)
                 .Inc(r => r.TeacherIntegrityRestoreCount, 1);
