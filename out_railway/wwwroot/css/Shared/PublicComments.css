@@ -1,0 +1,198 @@
+/* Shared class comments UI — Task, Material, Assessment (student + admin).
+   Height follows content; the page scrolls for long threads. */
+
+.public-comment-container {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 24px 0;
+    padding: 18px;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+}
+
+.public-comment-header {
+    margin: 0;
+    padding: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    flex-shrink: 0;
+}
+
+.public-comment-input {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(16, 24, 40, 0.06);
+    flex-shrink: 0;
+}
+
+.public-comment-input textarea {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 0.92rem;
+}
+
+.public-comment-input .post-comment-btn {
+    flex-shrink: 0;
+}
+
+.post-comment-btn {
+    padding: 10px 16px;
+    background: var(--accent, #006b99);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background 0.15s ease;
+}
+
+.post-comment-btn:hover {
+    background: #00577c;
+}
+
+.public-comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 4px;
+    overflow: visible;
+    flex: 0 1 auto;
+    min-height: 0;
+}
+
+/* Thread items (rendered by JS) */
+.public-comment-list .comment-box {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.public-comment-list .comment-box .student-name {
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 0.95rem;
+}
+
+.public-comment-list .comment-box .comment-text {
+    font-size: 0.9rem;
+    color: #334155;
+    line-height: 1.45;
+}
+
+.public-comment-list .comment-box .comment-datetime {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.public-comment-list .comment-box .instructor-reply {
+    margin-top: 8px;
+    padding-left: 20px;
+    border-left: 2px solid #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.public-comment-list .comment-box .instructor-reply .fa-reply {
+    color: #0ea5e9;
+    margin-right: 4px;
+}
+
+.public-comment-list .instructor-name {
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 0.9rem;
+}
+
+.public-comment-list .reply-text {
+    font-size: 0.88rem;
+    color: #334155;
+    line-height: 1.45;
+}
+
+.public-comment-list .reply-datetime {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.public-comment-list .reply-option {
+    margin-top: 4px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--accent, #006b99);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: max-content;
+    padding: 4px 6px;
+    border-radius: 6px;
+}
+
+.public-comment-list .reply-option:hover {
+    background: rgba(0, 107, 153, 0.08);
+}
+
+.public-comment-list .reply-box-area {
+    margin-top: 10px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.public-comment-list .reply-box {
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.9rem;
+    resize: vertical;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.public-comment-list .reply-submit-btn {
+    width: max-content;
+    padding: 6px 14px;
+    background: var(--accent, #006b99);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.public-comment-list .reply-submit-btn:hover {
+    background: #00577c;
+}

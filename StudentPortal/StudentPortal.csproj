@@ -22,6 +22,8 @@
 
   <ItemGroup>
     <Compile Remove="Models\AdminDb\AdminManageGradesViewModel - Copy.cs" />
+    <!-- Exclude accidental nested project copy from compilation -->
+    <Compile Remove="StudentPortal\**\*.cs" />
   </ItemGroup>
 
 </Project>

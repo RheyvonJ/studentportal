@@ -1,0 +1,79 @@
+/* Segmented breadcrumb tabs (shared: student + teacher/professor + admin) */
+.slsp-crumb-tabs{
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 6px;
+  border-radius: 22px;
+  border: 1px solid rgba(0, 31, 63, 0.12);
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(0, 31, 63, 0.12);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Desktop: compact (no stretching) */
+@media (min-width: 901px){
+  .slsp-crumb-tabs{
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    justify-self: start;
+  }
+}
+
+.slsp-crumb-tab{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px;
+  color: #5b6678;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: clamp(0.82rem, 2.1vw, 0.95rem);
+  border-radius: 18px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.slsp-crumb-tab i{
+  font-size: clamp(0.92rem, 2.3vw, 1.05rem);
+  line-height: 1;
+}
+.slsp-crumb-tab span{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+.slsp-crumb-tab.is-active{
+  color: #ffffff;
+  background: linear-gradient(135deg, #032f73 0%, #001a50 100%);
+  box-shadow: 0 8px 22px rgba(0, 31, 87, 0.35);
+}
+
+.slsp-crumb-divider{
+  width: 8px;
+  height: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='24' viewBox='0 0 8 24'%3E%3Cpolyline points='1,0 7,4 1,8 7,12 1,16 7,20 1,24' fill='none' stroke='rgba(0,31,63,0.35)' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-y;
+  background-position: center;
+  background-size: 8px 24px;
+  flex: 0 0 8px;
+  margin: 0 2px;
+}
+
+@media (max-width: 520px){
+  .slsp-crumb-tab{
+    padding: 9px 10px;
+    font-size: clamp(0.76rem, 3.2vw, 0.85rem);
+    border-radius: 16px;
+    gap: 6px;
+  }
+  .slsp-crumb-tab i{ font-size: clamp(0.84rem, 3.4vw, 0.95rem); }
+  .slsp-crumb-divider{
+    height: 24px;
+    margin: 0 2px;
+  }
+}
