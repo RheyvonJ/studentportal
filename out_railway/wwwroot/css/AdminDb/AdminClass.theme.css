@@ -1,0 +1,370 @@
+/* Admin Class — navy theme layer (loads after AdminClass.css + AdminAssessment.theme.css) */
+
+/* Use full main column width and trim right gutter (gap before scrollbar / FAB lane) */
+.slsp-shell .slsp-main:has(.student-class-shell.admin-class-page) {
+    padding-right: max(8px, env(safe-area-inset-right, 0px));
+}
+
+/* Top bar: breadcrumb only (no back button) */
+.admin-class-view-container > .admin-class-topbar.admin-class-topbar--breadcrumb-only {
+    grid-template-columns: 1fr;
+}
+
+/* Top bar chrome: match Admin Material (AdminMaterial.css) */
+.admin-class-topbar-left {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.admin-class-topbar-left .back-button {
+    margin-top: 0;
+}
+
+.admin-class-topbar-right {
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    row-gap: 4px;
+    padding: 2px 0;
+}
+
+.admin-class-page .admin-class-topbar-right.aae-breadcrumb {
+    padding: 0;
+}
+
+.admin-class-page .admin-class-topbar-right .sep {
+    flex-shrink: 0;
+}
+
+.admin-class-page .admin-class-view-container .class-breadcrumb a {
+    color: var(--class-navy-700, #1f4f84);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.admin-class-page .admin-class-view-container .class-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .admin-class-page .admin-class-view-container .class-breadcrumb {
+        flex-wrap: wrap;
+        row-gap: 4px;
+        line-height: 1.35;
+    }
+}
+
+.student-class-shell.admin-class-page {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Right column stack (parity with admin-assessment-right-column) */
+.admin-class-page .admin-class-right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    min-width: 0;
+    padding-top: 0;
+}
+
+/* Recent list under aae-aside-heading */
+.admin-class-page .recent-uploads {
+    margin-top: 0;
+}
+
+.admin-class-page .recent-uploads ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.admin-class-page .recent-uploads li {
+    display: block;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: none;
+}
+
+.admin-class-page .recent-uploads a.recent-upload-link,
+.admin-class-page .recent-uploads .recent-upload-static {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--aae-radius-md);
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid var(--aae-border);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--aae-navy-800);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
+    min-width: 0;
+}
+
+.admin-class-page .recent-uploads a.recent-upload-link {
+    text-decoration: none;
+    cursor: pointer;
+    color: inherit;
+}
+
+.admin-class-page .recent-uploads a.recent-upload-link:hover,
+.admin-class-page .recent-uploads a.recent-upload-link:focus-visible {
+    border-color: rgba(31, 79, 132, 0.28);
+    box-shadow: 0 2px 10px rgba(10, 35, 66, 0.08);
+    transform: translateX(1px);
+    outline: none;
+}
+
+.admin-class-page .recent-uploads a.recent-upload-link i,
+.admin-class-page .recent-uploads .recent-upload-static i {
+    color: var(--aae-accent);
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.admin-class-page .recent-uploads .recent-title {
+    color: var(--aae-navy-900);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Current row — same corner radius as base .recent-upload-link / .recent-upload-static (not pill-shaped) */
+.admin-class-page .recent-uploads li.is-current a.recent-upload-link,
+.admin-class-page .recent-uploads li.is-current .recent-upload-static {
+    border-radius: var(--aae-radius-md);
+    background: linear-gradient(135deg, rgba(31, 79, 132, 0.12), rgba(31, 79, 132, 0.06));
+    border-color: rgba(31, 79, 132, 0.35);
+    color: var(--aae-navy-900);
+    box-shadow: none;
+}
+
+.admin-class-page .recent-uploads li.is-current a.recent-upload-link:hover,
+.admin-class-page .recent-uploads li.is-current a.recent-upload-link:focus-visible {
+    border-radius: var(--aae-radius-md);
+    transform: none;
+}
+
+/* Content cards */
+.admin-class-page .content-card {
+    border-radius: var(--aae-radius-lg);
+    border: 1px solid var(--aae-border);
+    box-shadow: var(--aae-shadow);
+    background: var(--aae-card);
+    transition: box-shadow 0.22s ease, transform 0.22s ease;
+}
+
+.admin-class-page .content-card:hover {
+    box-shadow: var(--aae-shadow-hover);
+}
+
+.admin-class-page .content-left > i {
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+    /* Former circular “box” fill was navy gradient — icon uses that hue */
+    color: var(--aae-navy-700);
+}
+
+.admin-class-page .announcement .content-left > i {
+    color: #2d6aaa;
+    background: none;
+    box-shadow: none;
+}
+
+.admin-class-page .content-title {
+    color: var(--aae-navy-900);
+    font-weight: 800;
+}
+
+.admin-class-page .content-meta {
+    color: var(--aae-muted);
+}
+
+.admin-class-page .create-announcement textarea#announcementInput {
+    border-radius: var(--aae-radius-md);
+    border: 1px solid var(--aae-border);
+    font-size: 0.9375rem;
+    color: var(--aae-navy-900);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    min-height: 40px;
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.6);
+    box-sizing: border-box;
+}
+
+.admin-class-page .create-announcement textarea#announcementInput:focus {
+    outline: none;
+    border-color: var(--aae-accent);
+    box-shadow: 0 0 0 3px rgba(31, 79, 132, 0.12);
+}
+
+.admin-class-page .announcement-actions .btn.announce {
+    border-radius: 10px;
+    font-weight: 600;
+    background: var(--aae-accent);
+    color: #fff;
+    border: none;
+    box-shadow: 0 2px 10px rgba(31, 79, 132, 0.25);
+}
+
+.admin-class-page .announcement-actions .btn.announce:hover {
+    background: var(--aae-navy-800);
+}
+
+/* Manage class */
+.admin-class-page .manage-btn {
+    border-radius: var(--aae-radius-md);
+    border: 1px solid var(--aae-border);
+    background: var(--aae-card);
+    color: var(--aae-navy-800);
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(10, 35, 66, 0.06);
+    transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-class-page .manage-btn:hover {
+    border-color: rgba(31, 79, 132, 0.25);
+    box-shadow: var(--aae-shadow);
+    background: #fff;
+}
+
+.admin-class-page .manage-btn i {
+    color: var(--aae-accent);
+}
+
+/* Quick actions + upload modal — inside / after main (sibling selectors) */
+.admin-class-page .admin-class-quick-actions .ac-quick-btn {
+    border-color: var(--aae-border);
+    box-shadow: var(--aae-shadow);
+}
+
+.admin-class-page .admin-class-quick-actions .ac-quick-btn:hover {
+    border-color: rgba(31, 79, 132, 0.22);
+    box-shadow: var(--aae-shadow-hover);
+}
+
+.admin-class-page .admin-class-delete-toolbar {
+    background: rgba(254, 242, 242, 0.92);
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+.student-class-shell.admin-class-page ~ .ac-upload-modal-panel {
+    border: 1px solid var(--aae-border);
+    box-shadow: var(--aae-shadow-hover);
+}
+
+.student-class-shell.admin-class-page ~ .ac-upload-modal-title {
+    color: var(--aae-navy-900);
+}
+
+.student-class-shell.admin-class-page ~ .ac-modal-btn-primary {
+    background: var(--aae-accent);
+    border-color: var(--aae-accent);
+}
+
+/* --- Admin Task (professor): FAB inset + delete modal + navy cards --- */
+.student-class-shell.admin-task-page ~ .delete-modal .modal-buttons {
+    flex-direction: row-reverse;
+    gap: 10px;
+}
+
+.student-class-shell.admin-task-page ~ .make-changes-wrap {
+    right: max(10px, env(safe-area-inset-right, 0px));
+    bottom: max(24px, env(safe-area-inset-bottom, 0px) + 8px);
+}
+
+.student-class-shell.admin-task-page ~ .make-changes-wrap .admin-actions {
+    right: 0;
+    left: auto;
+    transform: translateX(-8px);
+}
+
+.student-class-shell.admin-task-page ~ .make-changes-wrap .admin-actions.show {
+    transform: translateX(-8px) translateY(0);
+}
+
+.student-class-shell.admin-task-page ~ .make-changes-wrap .admin-actions:not(.show) {
+    transform: translateX(-8px) translateY(10px);
+}
+
+.student-class-shell.admin-task-page ~ .make-changes-wrap .make-changes-button {
+    color: #143a66;
+    border: 1px solid rgba(10, 35, 66, 0.08);
+}
+
+.admin-class-page.admin-task-page .task-container,
+.admin-class-page.admin-task-page .submitted-container,
+.admin-class-page.admin-task-page .public-comment-container,
+.admin-class-page.admin-material-page .public-comment-container,
+.admin-class-page.admin-assessment-page .public-comment-container {
+    border-radius: var(--aae-radius-lg);
+    border: 1px solid var(--aae-border);
+    box-shadow: var(--aae-shadow);
+    background: var(--aae-card);
+}
+
+.admin-class-page.admin-task-page .task-title {
+    color: var(--aae-navy-900);
+    font-weight: 800;
+}
+
+.admin-class-page.admin-task-page .task-description {
+    color: var(--aae-muted);
+}
+
+.admin-class-page.admin-task-page .task-bottom {
+    border-top-color: var(--aae-border);
+}
+
+.admin-class-page.admin-task-page .submitted-top h3,
+.admin-class-page.admin-task-page .public-comment-header,
+.admin-class-page.admin-material-page .public-comment-header,
+.admin-class-page.admin-assessment-page .public-comment-header {
+    color: var(--aae-navy-900);
+}
+
+.admin-class-page.admin-task-page .stat-box {
+    border: 1px solid var(--aae-border);
+    border-radius: var(--aae-radius-md);
+    background: var(--aae-surface);
+}
+
+.admin-class-page.admin-task-page .task-container .attachment-box:not(.aae-file-chip) {
+    background: linear-gradient(145deg, var(--aae-navy-900), var(--aae-navy-600));
+    box-shadow: 0 4px 12px rgba(10, 35, 66, 0.2);
+}
+
+.admin-class-page.admin-task-page .task-container .attachment-box:not(.aae-file-chip):hover {
+    filter: brightness(1.05);
+}
+
+.admin-class-page.admin-task-page .check-submission-content {
+    border-radius: var(--aae-radius-lg);
+    border: 1px solid var(--aae-border);
+    box-shadow: var(--aae-shadow-hover);
+}
+
+@media (max-width: 768px) {
+    .slsp-shell .slsp-main:has(.student-class-shell.admin-class-page) {
+        padding-right: max(6px, env(safe-area-inset-right, 0px));
+    }
+
+    .student-class-shell.admin-task-page ~ .make-changes-wrap {
+        right: max(8px, env(safe-area-inset-right, 0px));
+    }
+
+}

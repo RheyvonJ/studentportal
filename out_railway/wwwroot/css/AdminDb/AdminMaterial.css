@@ -1,0 +1,953 @@
+/* AdminMaterial — use with _StudentLayout + StudentClass.css + AdminClass.css */
+:root {
+    --accent: #006b99;
+    --accent-light: #1e3a8a;
+    --card-text: #0b213a;
+    --border-light: rgba(16, 24, 40, 0.06);
+    --shadow-soft: 0 6px 16px rgba(16, 24, 40, 0.06);
+    font-family: Inter, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.admin-material-page .admin-material-right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    min-width: 0;
+    padding-top: 0;
+}
+
+.admin-material-page .admin-material-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    min-width: 0;
+}
+
+.admin-material-page .class-breadcrumb a {
+    color: var(--class-navy-700, #1f4f84);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.admin-material-page .class-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+/* Fine alignment parity with AdminAssessment/AdminTask pages */
+.admin-class-page.admin-material-page .admin-material-view-container > .admin-class-topbar {
+    margin-top: 4px;
+    margin-left: -5px;
+}
+.admin-class-page.admin-material-page .class-info.aae-profile-card,
+.admin-class-page.admin-material-page .admin-material-right-column {
+    margin-top: 4px;
+    margin-left: -5px;
+}
+
+.code-value {
+    font-weight: 700;
+    color: #1e3a5f;
+}
+
+.attachments-section h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin: 16px 0 10px;
+}
+
+.no-files {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* Material card */
+.material-container {
+    position: relative;
+    min-height: 260px;
+    max-height: none;
+    width: 100%;
+    margin: 0;
+    background: #fff;
+    color: #0b213a;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.material-name {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 8px;
+}
+
+.material-description {
+    text-align: justify;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    color: #334155;
+}
+
+/* AdminAssessment-like material card chrome (no status badge). */
+.admin-material-page .aae-assessment-card.material-container {
+    min-height: 320px;
+    border-radius: var(--aae-radius-lg);
+    border: 1px solid var(--aae-border);
+    box-shadow: var(--aae-shadow);
+    background: var(--aae-card);
+    transition: box-shadow 0.22s ease;
+}
+.admin-material-page .aae-assessment-card.material-container:hover {
+    box-shadow: var(--aae-shadow-hover);
+}
+.admin-material-page .aae-assessment-body.material-scrollable {
+    padding: 24px 24px 20px;
+}
+.admin-material-page .aae-card-header {
+    margin-bottom: 14px;
+}
+.admin-material-page .aae-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px 16px;
+}
+.admin-material-page .aae-assessment-name.material-name {
+    font-size: var(--aae-font-title);
+    font-weight: 800;
+    color: var(--aae-navy-900);
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+    letter-spacing: -0.02em;
+}
+.admin-material-page .aae-description.material-description {
+    font-size: var(--aae-font-body);
+    font-weight: 400;
+    color: var(--aae-muted);
+    line-height: 1.65;
+    text-align: left;
+    margin: 0 0 4px 0;
+}
+.admin-material-page .aae-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    align-items: stretch;
+}
+.admin-material-page .aae-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--aae-surface);
+    border-radius: var(--aae-radius-md);
+    border: 1px solid transparent;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+.admin-material-page .aae-meta-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--aae-accent);
+    box-shadow: 0 2px 8px rgba(10, 35, 66, 0.06);
+}
+.admin-material-page .aae-meta-icon i {
+    font-size: 0.95rem;
+}
+.admin-material-page .aae-meta-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--aae-muted-2);
+    margin-right: 4px;
+}
+.admin-material-page .aae-meta-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--aae-navy-800);
+}
+.admin-material-page .aae-section-heading {
+    font-size: var(--aae-font-section);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--aae-muted);
+    margin: 0 0 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.admin-material-page .aae-section-heading i {
+    color: var(--aae-accent);
+    font-size: 1rem;
+}
+.admin-material-page .aae-dropzone {
+    position: relative;
+    border: 1.5px dashed rgba(31, 79, 132, 0.22);
+    border-radius: var(--aae-radius-md);
+    background: linear-gradient(180deg, rgba(244, 246, 250, 0.5) 0%, rgba(255, 255, 255, 0.9) 100%);
+    padding: 20px;
+    min-height: 140px;
+}
+.admin-material-page .aae-dropzone.has-files {
+    border-style: solid;
+    border-color: var(--aae-border);
+    background: var(--aae-surface);
+    min-height: auto;
+}
+.admin-material-page .aae-attachments.attachments {
+    margin-top: 0;
+    gap: 10px;
+}
+/* Match AdminTask / AdminAssessment file chips (fixed size, ellipsis, hover label). */
+.admin-material-page .aae-file-chip.attachment-box {
+    background: var(--aae-card);
+    color: var(--aae-navy-800);
+    border: 1px solid var(--aae-border);
+    border-radius: var(--aae-radius-md);
+    box-shadow: 0 2px 8px rgba(10, 35, 66, 0.05);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    width: 260px;
+    max-width: 260px;
+    min-width: 260px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+    box-sizing: border-box;
+    position: relative;
+    cursor: pointer;
+}
+.admin-material-page .aae-file-chip.attachment-box:hover {
+    border-color: rgba(31, 79, 132, 0.3);
+    box-shadow: 0 4px 14px rgba(10, 35, 66, 0.08);
+}
+.admin-material-page .aae-file-chip.attachment-box .attachment-name {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1 1 auto;
+}
+
+/* <a class="attachment-name"> — avoid default link blue; match chip text */
+.admin-material-page .aae-file-chip.attachment-box a.attachment-name,
+.admin-material-page .aae-file-chip.attachment-box a.attachment-name:visited {
+    color: inherit;
+    text-decoration: none;
+}
+
+.admin-material-page .aae-file-chip.attachment-box a.attachment-name:hover,
+.admin-material-page .aae-file-chip.attachment-box a.attachment-name:focus-visible {
+    color: var(--aae-navy-900, #0a2342);
+    text-decoration: underline;
+}
+
+/* ---------------- StudentMaterial in-page viewer ---------------- */
+.sm-file-viewer {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .55);
+    z-index: 10050;
+}
+
+.sm-file-dialog {
+    position: absolute;
+    inset: 6% 6%;
+    background: #0b1220; /* navy */
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 18px 45px rgba(0,0,0,.45);
+    border: 1px solid rgba(255,255,255,.10);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.sm-file-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,.05);
+    border-bottom: 1px solid rgba(255,255,255,.10);
+    min-width: 0;
+}
+
+.sm-file-title {
+    flex: 1;
+    font-weight: 700;
+    color: #e5e7eb;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.sm-file-action {
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+.sm-file-download { color: #ffffff; }
+
+.sm-file-action:hover,
+.sm-file-action:focus-visible {
+    text-decoration: underline;
+    opacity: 0.92;
+}
+
+.sm-file-close {
+    margin-left: 8px;
+    background: transparent;
+    color: #e5e7eb;
+    border: 0;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.sm-file-body {
+    width: 100%;
+    height: calc(100% - 52px);
+    background: #0b1220; /* navy behind previews */
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+    .sm-file-dialog {
+        inset: 10px;
+        border-radius: 12px;
+    }
+    .sm-file-header {
+        padding: 10px 12px;
+        gap: 8px;
+    }
+    .sm-file-action {
+        font-size: 0.9rem;
+    }
+    .sm-file-title {
+        font-size: 0.92rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .sm-file-header {
+        flex-wrap: wrap;
+        row-gap: 6px;
+    }
+    .sm-file-title {
+        flex-basis: 100%;
+    }
+    .sm-file-close {
+        margin-left: auto;
+    }
+}
+
+.admin-material-page .aae-file-chip.attachment-box[data-file-label]::after {
+    content: attr(data-file-label);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 8px);
+    transform: translateX(-50%);
+    background: linear-gradient(145deg, #0a2342, #2a5a9a);
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(10, 35, 66, 0.15);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 200;
+}
+.admin-material-page .aae-file-chip.attachment-box[data-file-label]:hover::after {
+    opacity: 1;
+}
+.admin-material-page .aae-empty-files {
+    text-align: center;
+    padding: 24px 16px 12px;
+    pointer-events: none;
+}
+.admin-material-page .aae-empty-icon {
+    font-size: 2.25rem;
+    color: var(--aae-muted-2);
+    margin-bottom: 10px;
+    opacity: 0.85;
+}
+.admin-material-page .aae-empty-title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--aae-navy-800);
+    margin: 0 0 6px 0;
+}
+.admin-material-page .aae-empty-hint {
+    font-size: 0.8125rem;
+    color: var(--aae-muted);
+    margin: 0;
+    line-height: 1.5;
+    max-width: 280px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.material-scrollable {
+    padding: 24px;
+    overflow: visible;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+/* library search removed */
+
+.material-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    background: #fff;
+    padding: 0px 24px 10px;
+    border-radius: 0 0 14px 14px;
+    box-shadow: 0 -2px 8px rgba(16, 24, 40, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+    .material-bottom p {
+        padding-left: 10px;
+        margin: -10px;
+        margin-top: 13px;
+    }
+
+.posted-date {
+    font-size: 0.85rem;
+    color: #64748b;
+    text-align: left;
+    padding-top: 5px;
+}
+
+/* --- ADMIN MAKE CHANGES BUTTON --- */
+.make-changes-wrap {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 12050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.make-changes-button {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #fff;
+    color: #0b213a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0;
+}
+
+    .make-changes-button:hover {
+        box-shadow: 0 10px 28px rgba(36, 58, 115, 0.18);
+        border: 1px solid rgba(36, 58, 115, 0.12);
+        transform: scale(1.06);
+    }
+
+/* --- ADMIN ACTIONS (Radial Above Button) --- */
+.admin-actions {
+    position: absolute;
+    top: -130px;
+    right: -30px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+}
+
+    /* shown state */
+    .admin-actions.show {
+        opacity: 1;
+        pointer-events: all;
+        transform: translateY(0);
+    }
+
+/* each action is a 2-column grid: label (auto) | button (fixed 54px) */
+.admin-action {
+    display: grid;
+    grid-template-columns: auto 54px; /* label (left) | button (right) */
+    gap: 8px;
+    align-items: center;
+    justify-items: start;
+}
+
+    /* ensure the label sits close to the button and doesn't stretch */
+    .admin-action .label {
+        background: #0b213a;
+        color: #fff;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        justify-self: end; /* push the label to the right so it hugs the button */
+    }
+
+    /* the circular control */
+    .admin-action button {
+        grid-column: 2;
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        border: none;
+        background: #fff;
+        box-shadow: 0 6px 16px rgba(16, 24, 40, 0.1);
+        cursor: pointer;
+        font-size: 1.2rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        /* hover / active style preserved */
+        .admin-action button:hover {
+            box-shadow: 0 10px 28px rgba(36, 58, 115, 0.18);
+            border: 1px solid rgba(36, 58, 115, 0.12);
+            transform: scale(1.06);
+        }
+
+
+/* --- EDIT MODE --- */
+.attachment-box {
+    position: relative;
+    width: min(240px, 100%);
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+    .attachment-box .remove-attachment {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: #ef4444;
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        font-size: 0.75rem;
+        display: none;
+        cursor: pointer;
+    }
+
+    .attachment-box.editing .remove-attachment {
+        display: block;
+    }
+
+.add-attachment-box {
+    width: 180px;
+    height: 40px;
+    border-radius: 8px;
+    background: #f3f6fb;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    border: 2px dashed var(--accent);
+    color: var(--accent);
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+    .add-attachment-box.show {
+        display: flex;
+    }
+
+/* Attachment menu (match ManageClass ellipsis menu styles) */
+.attachment-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid rgba(16, 24, 40, 0.08);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(10, 20, 40, 0.08);
+    min-width: 180px;
+    z-index: 13025;
+    padding: 6px;
+}
+
+.attachment-menu .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #23385f;
+}
+
+.attachment-menu .menu-item:hover {
+    background: rgba(16,24,40,0.06);
+}
+
+.attachment-menu .menu-divider {
+    height: 1px;
+    background: rgba(16,24,40,0.08);
+    margin: 6px 0;
+}
+/* --- SAVE / CANCEL --- */
+.edit-controls {
+    position: absolute;
+    bottom: 15px;
+    right: 100px;
+    display: flex;
+    gap: 10px;
+}
+
+    .edit-controls .btn {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+    }
+
+.save-btn {
+    background: var(--accent);
+    color: #fff;
+}
+
+.cancel-btn {
+    background: #cbd5e1;
+    color: #1e293b;
+}
+
+/* --- DELETE MODAL --- */
+.delete-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    backdrop-filter: blur(2px);
+    transition: opacity 0.25s ease;
+}
+
+    .delete-modal.show {
+        display: flex;
+        animation: fadeIn 0.25s ease forwards;
+    }
+
+/* Modal Box */
+.modal-content {
+    background: linear-gradient(135deg, #ffffff, #f8fafc);
+    border-radius: 16px;
+    padding: 28px 36px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    text-align: center;
+    width: 340px;
+    animation: slideUp 0.25s ease;
+    position: relative;
+}
+
+/* Warning Icon */
+.modal-icon {
+    font-size: 2.8rem;
+    color: #f87171;
+    margin-bottom: 12px;
+}
+
+/* Modal Header */
+.modal-content h3 {
+    font-size: 1.25rem;
+    color: #1e293b;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+/* Modal Text */
+.modal-content p {
+    font-size: 0.95rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+/* Buttons */
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 22px;
+}
+
+    .modal-buttons .btn {
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 10px 18px;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        font-size: 0.95rem;
+    }
+
+.confirm-delete {
+    background: #ef4444;
+    color: #fff;
+}
+
+    .confirm-delete:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+    }
+
+.cancel-delete {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+    .cancel-delete:hover {
+        background: #cbd5e1;
+        transform: translateY(-2px);
+    }
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .admin-material-page .material-container {
+        max-height: none;
+        min-height: 220px;
+    }
+
+    .material-scrollable {
+        padding: 18px 16px;
+    }
+
+    .make-changes-wrap {
+        right: max(12px, env(safe-area-inset-right, 0px));
+        bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    }
+
+}
+
+/* Mobile shell + FAB: clear fixed bottom nav (56px, see StudentSidebar.css) */
+@media (max-width: 900px) {
+    #adminMaterialPage.student-class-shell.admin-material-page {
+        padding-bottom: calc(16px + 56px + env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
+    }
+
+    #adminMaterialPage ~ .make-changes-wrap {
+        bottom: calc(56px + 14px + env(safe-area-inset-bottom, 0px));
+        right: max(10px, env(safe-area-inset-right, 0px));
+        z-index: 10060;
+    }
+
+    .admin-class-page.admin-material-page .admin-material-view-container > .admin-class-topbar,
+    .admin-class-page.admin-material-page .class-info.aae-profile-card,
+    .admin-class-page.admin-material-page .admin-material-right-column {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-material-page .class-breadcrumb {
+        flex-wrap: wrap;
+        row-gap: 4px;
+        line-height: 1.35;
+    }
+
+    /* File chips were fixed 260px — overflow narrow columns; fill dropzone + ellipsis */
+    .admin-material-page .aae-attachments.attachments {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .admin-material-page .aae-file-chip.attachment-box {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .admin-material-page .aae-dropzone {
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
+        padding: 14px 12px;
+    }
+
+    .admin-material-page .aae-assessment-body.material-scrollable {
+        padding: 16px 12px 18px;
+    }
+
+    .admin-material-page .attachments-section.aae-files-section {
+        min-width: 0;
+    }
+
+    .material-bottom {
+        position: relative;
+        height: auto;
+        min-height: 50px;
+        padding: 12px 16px 14px;
+        box-shadow: none;
+        border-top: 1px solid rgba(16, 24, 40, 0.08);
+        border-radius: 0 0 14px 14px;
+    }
+
+    .material-bottom .posted-date {
+        margin: 0;
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+
+    .edit-controls {
+        position: static;
+        margin-top: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        right: auto;
+        bottom: auto;
+    }
+
+    .delete-modal .modal-content {
+        width: min(340px, calc(100vw - 32px));
+        padding: 22px 20px;
+    }
+}
+
+/* Linked SLSHS Library eBooks (Admin + Student material views) */
+.aae-library-ebooks-section .aae-library-ebooks-hint {
+    font-size: 0.88rem;
+    color: rgba(11, 33, 58, 0.72);
+    margin: 0 0 12px;
+    line-height: 1.45;
+}
+
+.aae-library-ebook-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.aae-library-ebook-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light, rgba(16, 24, 40, 0.08));
+    background: rgba(255, 255, 255, 0.65);
+}
+
+.aae-library-ebook-text {
+    min-width: 0;
+    flex: 1 1 200px;
+}
+
+.aae-library-ebook-title {
+    font-weight: 650;
+    color: var(--card-text, #0b213a);
+    font-size: 0.98rem;
+    line-height: 1.3;
+}
+
+.aae-library-ebook-meta {
+    font-size: 0.82rem;
+    color: rgba(11, 33, 58, 0.62);
+    margin-top: 4px;
+    line-height: 1.35;
+}
+
+.aae-library-ebook-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent-light, #1e3a8a) 0%, var(--accent, #006b99) 100%);
+    border: 1px solid rgba(0, 107, 153, 0.35);
+    box-shadow: 0 2px 8px rgba(0, 107, 153, 0.16);
+}
+
+.aae-library-ebook-btn:hover {
+    filter: brightness(1.05);
+    color: #fff;
+}
+
+.aae-library-ebook-btn:focus-visible {
+    outline: 2px solid var(--accent, #006b99);
+    outline-offset: 2px;
+}

@@ -1,0 +1,1028 @@
+:root{
+  /* Gemini spec: Deep Navy primary, iOS glassmorphic */
+  --slsp-navy: #001F3F;
+  --slsp-midnight: #0a1628;
+  --slsp-electric: #007AFF;
+  --slsp-bg: #f2f2f7;
+  --slsp-surface: #ffffff;
+  --slsp-text: #0f172a;
+  --slsp-muted: #6b7280;
+  --slsp-border: rgba(0, 31, 63, 0.08);
+  --slsp-radius: 14px;
+  --slsp-squircle: 20px;
+  --slsp-shadow: 0 14px 40px rgba(0, 31, 63, 0.10);
+  --slsp-shadow-ios: 0 16px 38px rgba(0, 31, 63, 0.12);
+  --slsp-hairline: rgba(255,255,255,0.12);
+  --slsp-glass: rgba(255,255,255,0.08);
+  --slsp-sidebar-w: 240px;
+}
+
+.slsp-shell{
+  min-height: 100vh;
+  background: #f8fafc;
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.slsp-sidebar{
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--slsp-sidebar-w);
+  height: 100vh;
+  transform: translateX(0);
+  transition: transform .3s ease;
+  z-index: 12000;
+  box-shadow: var(--slsp-shadow);
+  background: linear-gradient(135deg, rgba(0,31,63,0.75) 0%, rgba(0,31,63,0.88) 50%, rgba(0,26,52,0.92) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-right: 1px solid rgba(255,255,255,0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.slsp-main{
+  min-width: 0;
+  margin-left: var(--slsp-sidebar-w);
+  padding: 0 18px 24px;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left .3s ease;
+  box-sizing: border-box;
+  /* Viewport-bound column so .slsp-content can scroll (body often overflow:hidden on class pages) */
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.slsp-shell.sidebar-collapsed .slsp-sidebar{
+  transform: translateX(-102%);
+}
+.slsp-shell.sidebar-collapsed .slsp-main{
+  margin-left: 0;
+}
+
+.slsp-header-menu-btn{
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--slsp-border);
+  background: #ffffff;
+  color: var(--slsp-navy);
+  box-shadow: 0 8px 20px rgba(0,31,63,0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-right: 4px;
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+.slsp-header-menu-btn i{ font-weight: 900; }
+.slsp-header-menu-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(0,31,63,0.12);
+}
+.slsp-header-menu-btn.is-open{
+  background: #0a2342;
+  color: #fff;
+}
+
+.slsp-sidebar-brand{
+  background: transparent;
+  color: #fff;
+  padding: 18px 16px 14px;
+  display: grid;
+  grid-template-columns: 54px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+}
+
+.slsp-brand-mark{
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.12);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.26);
+  backdrop-filter: blur(10px);
+}
+.slsp-school-logo{
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+}
+.slsp-brand-title{
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+  font-size: 1.2rem;
+}
+.slsp-brand-subtitle{
+  font-size: 0.74rem;
+  opacity: 0.82;
+  margin-top: 2px;
+  line-height: 1.25;
+  max-width: 145px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.slsp-sidebar-toggle{
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.10);
+  color: #fff;
+  cursor: pointer;
+}
+.slsp-sidebar-toggle:hover{ background: rgba(255,255,255,0.16); }
+
+.slsp-nav{
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.slsp-nav-item{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: rgba(255,255,255,0.92);
+  border: 1px solid transparent;
+  transition: background .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.slsp-nav-item i{
+  width: 18px;
+  text-align: center;
+  color: rgba(255,255,255,0.78);
+}
+.slsp-nav-item:hover{
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.12);
+  transform: translateY(-0.5px);
+}
+.slsp-nav-item.active{
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+  border-color: rgba(255,255,255,0.22);
+  box-shadow: 0 14px 28px rgba(0,0,0,0.20);
+  backdrop-filter: blur(10px);
+}
+.slsp-nav-item.active i{ color: #fff; }
+
+.slsp-nav-divider{
+  height: 1px;
+  background: rgba(255,255,255,0.10);
+  margin: 8px 4px;
+}
+
+.slsp-sidebar-footer{
+  margin-top: auto;
+  padding: 14px 12px 16px;
+  border-top: 1px solid var(--slsp-hairline);
+  display: grid;
+  gap: 10px;
+}
+
+.slsp-profile{
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+}
+.slsp-avatar{
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--slsp-navy), #1a3a5c);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 20px rgba(0,31,63,0.2);
+}
+.slsp-profile-name{ font-weight: 700; line-height: 1.2; color: rgba(255,255,255,0.96); }
+.slsp-profile-role{ font-size: 0.8rem; color: rgba(255,255,255,0.78); margin-top: 2px; }
+
+.slsp-signout{
+  width: 100%;
+  border: 1px solid rgba(255,100,100,0.25);
+  background: rgba(255,80,80,0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: rgba(255,255,255,0.92);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+}
+.slsp-signout:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(255,80,80,0.18);
+  border-color: rgba(255,120,120,0.35);
+  background: rgba(255,80,80,0.18);
+}
+.slsp-signout i{ color: rgba(255,200,200,0.95); }
+
+/* Full header: student name + notification */
+.slsp-main-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0 18px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 31, 63, 0.06);
+  gap: 16px;
+}
+.slsp-header-left{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.slsp-header-avatar{
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--slsp-navy), #1a3a5c);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 16px rgba(0,31,63,0.15);
+}
+.slsp-squircle{ border-radius: 12px; }
+.slsp-header-text{ display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.slsp-header-greeting{
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--slsp-text);
+}
+.slsp-header-name{ color: var(--slsp-navy); font-weight: 700; }
+/* Only style plain text links; don't override styled/tab/button anchors */
+.slsp-header-text a,
+.slsp-content a:not([class]) {
+    color: var(--slsp-electric);
+}
+.slsp-header-subtext{ font-size: 0.82rem; color: var(--slsp-muted); }
+.slsp-header-right{
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.slsp-header-actions{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slsp-header-profile-btn{ pointer-events: none; }
+.slsp-header-profile-initials{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--slsp-navy), #1a3a5c);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.slsp-header-signout-btn i{
+  color: #b91c1c;
+  font-size: 1rem;
+}
+/* Header sign-out: mobile/tablet only (desktop uses sidebar) */
+#slspHeaderSignOutBtn{
+  display: none;
+}
+.slsp-notif-btn{
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,31,63,0.1);
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--slsp-navy);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0,31,63,0.08);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.slsp-notif-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(0,31,63,0.12);
+  border-color: rgba(0,31,63,0.14);
+}
+.slsp-notif-btn i{ font-size: 1.05rem; font-weight: 500; }
+/* FA6 solid icons need 900 — otherwise glyphs show as squares on mobile WebKit */
+.slsp-notif-btn i.fa-solid{
+  font-weight: 900;
+}
+.slsp-notif-badge{
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  padding: 0;
+  border-radius: 999px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 0;
+  line-height: 10px;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.9);
+}
+
+/* Student portal (all pages): mobile = logo + portal + school + optional page strip; desktop = avatar + titles */
+.slsp-main-header--student{
+  display: block;
+  width: 100%;
+}
+.slsp-student-header-grid{
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0;
+}
+.slsp-student-header-top{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+.slsp-header-left--student{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.slsp-student-brand{
+  display: none;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.slsp-student-desktop-primary{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+.slsp-student-mobile-context{
+  display: none;
+  width: 100%;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(0, 31, 63, 0.08);
+}
+.slsp-student-mobile-context-card{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(0, 31, 63, 0.08);
+  background: #fff;
+  box-shadow: 0 3px 12px rgba(0, 31, 63, 0.07);
+}
+.slsp-student-mobile-context-icon{
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, #003f87 0%, #007aff 100%);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(0, 63, 135, 0.32);
+}
+.slsp-student-mobile-context-icon i{
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+.slsp-student-mobile-context-text{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.slsp-student-mobile-context-title{
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--slsp-navy);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.slsp-student-mobile-context-sub{
+  display: block;
+  margin-top: 3px;
+  font-size: 0.78rem;
+  color: var(--slsp-muted);
+  line-height: 1.3;
+}
+
+@media (min-width: 901px){
+  .slsp-main-header--student{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    margin: 0 0 4px;
+    padding: 14px 0 18px;
+    border-bottom: 1px solid rgba(0, 31, 63, 0.06);
+  }
+  .slsp-student-header-grid{
+    flex: 1;
+    min-width: 0;
+  }
+  .slsp-student-header-top{
+    align-items: center;
+  }
+  .slsp-main-header--student .slsp-student-brand{
+    display: none !important;
+  }
+  .slsp-main-header--student .slsp-student-desktop-primary{
+    display: flex !important;
+  }
+  .slsp-main-header--student .slsp-student-mobile-context{
+    display: none !important;
+  }
+  .slsp-shell--student .slsp-main{
+    background: transparent;
+  }
+  .slsp-shell--student .slsp-content{
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+.slsp-dash-logo{
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(0,31,63,0.12);
+  border: 1px solid rgba(0, 31, 63, 0.08);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.slsp-dash-school-img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 4px;
+  box-sizing: border-box;
+}
+.slsp-dash-brand-titles{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.slsp-dash-portal-title{
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--slsp-navy);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.slsp-dash-school-sub{
+  font-size: 0.74rem;
+  color: var(--slsp-muted);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Notif modal: override BottomBar.css (loaded after this file) via .slsp-shell */
+.slsp-shell .notif-modal{
+  top: 72px;
+  right: 24px;
+  left: auto;
+  bottom: auto;
+  width: min(360px, calc(100vw - 40px));
+  max-width: min(360px, calc(100vw - 40px));
+  max-height: min(52vh, 340px);
+}
+.slsp-shell .notif-modal.show{
+  display: flex;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.notif-modal.show{ display: flex; opacity: 1; transform: translateY(0) scale(1); }
+
+/* Scrollable body: prevent overflow */
+.notif-modal .notif-modal-content{ padding: 0; }
+.notif-modal .notif-modal-body{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Notification list scrollbar: visible and clean */
+.notif-modal-body::-webkit-scrollbar { width: 8px; }
+.notif-modal-body::-webkit-scrollbar-track { background: rgba(0,31,63,0.04); border-radius: 4px; }
+.notif-modal-body::-webkit-scrollbar-thumb { background: rgba(0,31,63,0.2); border-radius: 4px; }
+.notif-modal-body::-webkit-scrollbar-thumb:hover { background: rgba(0,31,63,0.32); }
+
+.notif-backdrop.show{ display: block; opacity: 1; }
+
+/* Sign out confirmation modal — theme-aligned */
+.slsp-confirm-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 31, 63, 0.32);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 13000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.slsp-confirm-backdrop:not([hidden]){ pointer-events: auto; }
+.slsp-confirm-backdrop[aria-hidden="false"]{ opacity: 1; }
+
+.slsp-confirm-modal{
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.96);
+  z-index: 13001;
+  width: 100%;
+  max-width: 360px;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+  pointer-events: none;
+}
+.slsp-confirm-modal:not([hidden]){ pointer-events: auto; }
+.slsp-confirm-modal[aria-hidden="false"]{
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.slsp-confirm-card{
+  background: var(--slsp-surface);
+  border-radius: var(--slsp-squircle);
+  box-shadow: var(--slsp-shadow-ios), inset 0 1px 0 rgba(255,255,255,0.9);
+  border: 1px solid var(--slsp-border);
+  overflow: hidden;
+}
+
+.slsp-confirm-header{
+  padding: 24px 20px 8px;
+  text-align: center;
+}
+.slsp-confirm-icon{
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--slsp-navy), #1a3a5c);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 31, 63, 0.2);
+}
+.slsp-confirm-icon i{ font-size: 1.2rem; }
+.slsp-confirm-title{
+  margin: 0 0 6px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--slsp-text);
+}
+.slsp-confirm-desc{
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--slsp-muted);
+  line-height: 1.4;
+}
+
+.slsp-confirm-actions{
+  display: flex;
+  gap: 12px;
+  padding: 20px;
+  border-top: 1px solid var(--slsp-border);
+}
+.slsp-confirm-btn{
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  border: 1px solid transparent;
+}
+.slsp-confirm-cancel{
+  background: var(--slsp-bg);
+  color: var(--slsp-text);
+  border-color: var(--slsp-border);
+}
+.slsp-confirm-cancel:hover{
+  background: rgba(0, 31, 63, 0.06);
+  border-color: rgba(0, 31, 63, 0.12);
+}
+.slsp-confirm-primary{
+  background: var(--slsp-navy);
+  color: #fff;
+  border-color: rgba(0, 31, 63, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 31, 63, 0.25);
+}
+.slsp-confirm-primary:hover{
+  background: #002952;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 31, 63, 0.3);
+}
+.slsp-confirm-primary:active{ transform: translateY(0); }
+
+.slsp-content{
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Bottom nav: hidden on desktop, shown on mobile */
+.slsp-bottom-nav{
+  display: none;
+}
+
+/* Mobile: sidebar becomes drawer + bottom nav + responsive header, modals, safe areas */
+@media (max-width: 900px){
+  /* Side drawer is not opened from the header on phones — use bottom nav / in-page links */
+  .slsp-header-menu-btn {
+    display: none !important;
+  }
+
+  .slsp-shell{
+    grid-template-columns: 1fr;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  body { overflow-x: hidden; }
+  .slsp-sidebar{
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: min(304px, 85vw);
+    max-width: 304px;
+    transform: translateX(-102%);
+    transition: transform .22s cubic-bezier(.2,.9,.3,1);
+    z-index: 12000;
+    box-shadow: var(--slsp-shadow);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .slsp-sidebar.is-open{ transform: translateX(0); }
+  .slsp-sidebar-toggle{ display: inline-flex; align-items: center; justify-content: center; }
+  .slsp-sidebar-backdrop{
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 31, 63, 0.4);
+    z-index: 11999;
+  }
+
+  /* Bottom nav bar: fixed at bottom, theme-aligned */
+  .slsp-bottom-nav{
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 56px;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    background: rgba(255,255,255,0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--slsp-border);
+    box-shadow: 0 -4px 20px rgba(0,31,63,0.06);
+    z-index: 10000;
+    align-items: center;
+    justify-content: space-around;
+    gap: 4px;
+  }
+  .slsp-bottom-nav-item{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 4px;
+    min-height: 56px;
+    text-decoration: none;
+    color: var(--slsp-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color .18s ease, background .18s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .slsp-bottom-nav-item i{
+    font-size: 1.2rem;
+    color: var(--slsp-muted);
+    transition: color .18s ease;
+  }
+  .slsp-bottom-nav-item:hover,
+  .slsp-bottom-nav-item:focus-visible{
+    color: var(--slsp-navy);
+  }
+  .slsp-bottom-nav-item:hover i,
+  .slsp-bottom-nav-item:focus-visible i{ color: var(--slsp-navy); }
+  .slsp-bottom-nav-item.active{
+    color: var(--slsp-navy);
+  }
+  .slsp-bottom-nav-item.active i{ color: var(--slsp-navy); }
+
+  /* Main content: padding so content isn't under bottom nav */
+  .slsp-main{
+    margin-left: 0 !important;
+    padding: 0 12px 20px;
+    padding-bottom: calc(20px + 56px + env(safe-area-inset-bottom, 0));
+  }
+  .slsp-main.slsp-main--no-bottom-nav{
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0));
+  }
+
+  /* Student mobile: app chrome + page background */
+  .slsp-shell--student .slsp-main{
+    background: #f2f2f7;
+  }
+  .slsp-shell--student .slsp-content{
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  /* Student mobile header: logo + portal + school; desktop-primary hidden */
+  .slsp-main-header--student{
+    background: #fff;
+    border-bottom: 1px solid rgba(0, 31, 63, 0.06);
+    border-radius: 0 0 16px 16px;
+    margin: 0 0 10px;
+    padding: 12px 0 14px;
+    box-shadow: 0 6px 20px rgba(0, 31, 63, 0.05);
+  }
+  .slsp-main-header--student .slsp-student-brand{
+    display: flex;
+  }
+  .slsp-main-header--student .slsp-student-desktop-primary{
+    display: none !important;
+  }
+  .slsp-main-header--student .slsp-student-mobile-context{
+    display: block;
+  }
+  .slsp-main-header--student-home .slsp-student-mobile-context{
+    display: none !important;
+  }
+  .slsp-student-mobile-context-card{
+    border-radius: 16px;
+  }
+
+  /* Header: compact, touch-friendly */
+  .slsp-main-header{
+    padding: 12px 0 14px;
+    margin-bottom: 2px;
+    gap: 12px;
+  }
+  .slsp-header-avatar{
+    width: 36px;
+    height: 36px;
+    font-size: 0.8rem;
+  }
+  .slsp-header-greeting{ font-size: 0.9rem; }
+  .slsp-header-subtext{ font-size: 0.78rem; }
+  .slsp-notif-btn{
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  #slspHeaderSignOutBtn{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .slsp-header-signout-btn{
+    border-color: rgba(185, 28, 28, 0.22);
+    color: var(--slsp-navy);
+  }
+  .slsp-header-signout-btn i.fa-solid{
+    font-weight: 900;
+    font-size: 1.05rem;
+    line-height: 1;
+    display: block;
+  }
+
+  /* Notification modal: compact centered card (beats BottomBar .notif-modal) */
+  .slsp-shell .notif-modal{
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    top: 56px;
+    bottom: auto;
+    width: min(320px, calc(100vw - 32px));
+    max-width: min(320px, calc(100vw - 32px));
+    max-height: min(44vh, calc(100vh - 140px - env(safe-area-inset-bottom, 0)));
+    margin-left: 0;
+    margin-right: 0;
+    border-radius: 16px;
+    box-shadow: 0 12px 36px rgba(0,31,63,0.2);
+  }
+  .slsp-shell .notif-modal.show{
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  .notif-modal .notif-modal-header{
+    padding: 10px 12px;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+  }
+  .notif-modal .notif-modal-header h3{ font-size: 0.95rem; }
+  .notif-modal .notif-modal-body{
+    -webkit-overflow-scrolling: touch;
+  }
+  .notif-modal .notif-list{
+    padding: 4px 8px 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
+  }
+  .notif-modal .notif-list li{
+    padding: 10px 8px;
+    font-size: 0.85rem;
+    grid-template-columns: 28px 1fr auto;
+    grid-column-gap: 8px;
+  }
+  .notif-modal .notif-list li .notif-icon{ width: 26px; height: 26px; font-size: 0.8rem; }
+  .notif-modal .notif-list li .notif-text{ word-break: break-word; }
+  .notif-modal .notif-header-btn{
+    min-width: 36px;
+    min-height: 36px;
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Sign-out confirmation: compact centered card */
+  .slsp-confirm-backdrop{
+    padding: 20px;
+    align-items: center;
+    justify-content: center;
+  }
+  .slsp-confirm-modal{
+    left: 50%;
+    top: 50%;
+    width: min(300px, calc(100vw - 40px));
+    max-width: min(300px, calc(100vw - 40px));
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  .slsp-confirm-modal[aria-hidden="false"]{
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .slsp-confirm-card{
+    border-radius: 16px;
+    margin: 0;
+  }
+  .slsp-confirm-header{
+    padding: 16px 16px 8px;
+  }
+  .slsp-confirm-icon{
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 10px;
+    border-radius: 12px;
+  }
+  .slsp-confirm-icon i{
+    font-size: 1rem;
+    font-weight: 900;
+  }
+  .slsp-confirm-title{ font-size: 1rem; }
+  .slsp-confirm-desc{ font-size: 0.82rem; line-height: 1.35; }
+  .slsp-confirm-actions{
+    padding: 12px 14px 14px;
+    gap: 8px;
+    flex-direction: column-reverse;
+  }
+  .slsp-confirm-btn{
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Extra small: single column, tighter padding, bottom nav spacing */
+@media (max-width: 520px){
+  .slsp-main{ padding: 0 10px 16px; padding-bottom: calc(16px + 56px + env(safe-area-inset-bottom, 0)); }
+  .slsp-main-header{ padding: 10px 0 12px; }
+  .slsp-confirm-backdrop{ padding: 16px; }
+  .slsp-confirm-modal{
+    width: min(280px, calc(100vw - 28px));
+    max-width: min(280px, calc(100vw - 28px));
+  }
+  .slsp-confirm-header{ padding: 14px 14px 6px; }
+  .slsp-confirm-actions{ padding: 10px 12px 12px; }
+  .slsp-bottom-nav-item{ font-size: 0.65rem; }
+  .slsp-bottom-nav-item i{ font-size: 1.1rem; }
+  .notif-modal .notif-list li{ padding: 10px 8px; font-size: 0.85rem; }
+  .slsp-student-mobile-context-card{
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+  .slsp-student-mobile-context-icon{
+    width: 48px;
+    height: 48px;
+  }
+  .slsp-student-mobile-context-title{
+    font-size: 0.98rem;
+  }
+}
+
+/*
+ * Docked sidebar (no slide / overlay drawer) — e.g. Library with EnableSidebarSlide=false.
+ * Keeps the rail visible instead of the default mobile off-canvas drawer when slide JS is off.
+ */
+.slsp-shell.sidebar-static:not(.sidebar-collapsed) .slsp-sidebar {
+  transition: none;
+}
+
+@media (max-width: 900px) {
+  .slsp-shell.sidebar-static:not(.sidebar-collapsed) .slsp-sidebar {
+    transform: translateX(0) !important;
+    width: min(240px, 78vw);
+    max-width: 260px;
+    box-shadow: 4px 0 24px rgba(0, 31, 63, 0.14);
+  }
+
+  .slsp-shell.sidebar-static:not(.sidebar-collapsed) .slsp-main {
+    margin-left: min(240px, 78vw) !important;
+    padding-left: 8px;
+    padding-right: 10px;
+    box-sizing: border-box;
+  }
+
+  .slsp-shell.sidebar-static .slsp-sidebar-backdrop {
+    display: none !important;
+  }
+
+  .slsp-shell.sidebar-static .slsp-sidebar-toggle {
+    display: none;
+  }
+}
+
