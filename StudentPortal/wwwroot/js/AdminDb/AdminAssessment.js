@@ -498,6 +498,35 @@ class AdminAssessmentManager {
         }
     }
 
+    normalizeStudentName(rawName) {
+        const input = String(rawName || '').trim();
+        if (!input) return 'Unknown';
+
+        const parts = input.split(/\s+/).filter(Boolean);
+        if (!parts.length) return 'Unknown';
+
+        // Case 1: full-name block repeated once: "John Doe John Doe"
+        if (parts.length % 2 === 0) {
+            const half = parts.length / 2;
+            const firstHalf = parts.slice(0, half).join(' ');
+            const secondHalf = parts.slice(half).join(' ');
+            if (firstHalf.toLowerCase() === secondHalf.toLowerCase()) {
+                return firstHalf;
+            }
+        }
+
+        // Case 2: adjacent duplicate tokens: "John John Doe"
+        const deduped = [];
+        for (const token of parts) {
+            const prev = deduped.length ? deduped[deduped.length - 1] : '';
+            if (!prev || prev.toLowerCase() !== token.toLowerCase()) {
+                deduped.push(token);
+            }
+        }
+
+        return deduped.join(' ') || 'Unknown';
+    }
+
     async fetchLogs(type) {
         const { classCode: routeClass, contentId: routeContent } = this.getRouteParams();
         const classCode = routeClass || this.getClassCode() || '';
@@ -510,7 +539,11 @@ class AdminAssessmentManager {
         if (!res.ok) throw new Error('Failed to load logs');
         const json = await res.json();
         if (!json.success) throw new Error(json.message || 'Failed to load logs');
-        return Array.isArray(json.logs) ? json.logs : [];
+        const rows = Array.isArray(json.logs) ? json.logs : [];
+        return rows.map((row) => ({
+            ...row,
+            student: this.normalizeStudentName(row.student),
+        }));
     }
 
     getRouteParams() {
@@ -561,6 +594,7 @@ class AdminAssessmentManager {
             container.innerHTML = '<div class="empty">No logs found for this category.</div>';
             return;
         }
+        const groupedMap = new Map();
         const sanitizeDetails = (raw) => {
             try {
                 const obj = JSON.parse(raw || '{}');
@@ -574,19 +608,57 @@ class AdminAssessmentManager {
             } catch { /* ignore */ }
             return { details: String(raw || '') };
         };
-        const detailsHtml = (obj, countNum) => {
+        const typeLabel = (rawType) => {
+            const t = String(rawType || '').toLowerCase();
+            if (t === 'tabswitch') return 'tab switch';
+            if (t === 'openprograms') return 'open programs';
+            if (t === 'screenshare') return 'screen share';
+            return t || 'event';
+        };
+        const detailsHtml = (obj, countNum, rowType) => {
             const entries = Object.keys(obj).map((k) => ({ k, v: obj[k] }));
-            if (!entries.length) return `<div class="loglist-details number-only">${countNum || 0}</div>`;
-            const rows = entries.map((e) => `<div class="kv-item"><span class="kv-key">${e.k}</span><span class="kv-val">${e.v}</span></div>`).join('');
+            const rowsWithTimes = entries.concat([{ k: `times of ${typeLabel(rowType)}`, v: `${countNum || 0}x` }]);
+            if (!rowsWithTimes.length) return `<div class="loglist-details number-only">${countNum || 0}</div>`;
+            const rows = rowsWithTimes.map((e) => `<div class="kv-item"><span class="kv-key">${e.k}</span><span class="kv-val">${e.v}</span></div>`).join('');
             return `<div class="loglist-details"><div class="kv-grid">${rows}</div></div>`;
         };
-        const frag = document.createDocumentFragment();
+
         logs.forEach((l) => {
+            const obj = sanitizeDetails(l.details || '');
+            const key = [
+                String(l.student || 'Unknown').toLowerCase(),
+                String(l.email || '').toLowerCase(),
+                String(l.type || '').toLowerCase(),
+                JSON.stringify(obj),
+            ].join('|');
+
+            const existing = groupedMap.get(key);
+            if (!existing) {
+                groupedMap.set(key, {
+                    ...l,
+                    _detailsObj: obj,
+                    _totalCount: l.count || 1,
+                    _latestTimeMs: new Date(l.time).getTime() || 0,
+                });
+                return;
+            }
+
+            existing._totalCount += l.count || 1;
+            const ms = new Date(l.time).getTime() || 0;
+            if (ms > existing._latestTimeMs) {
+                existing._latestTimeMs = ms;
+                existing.time = l.time;
+            }
+        });
+
+        const groupedLogs = Array.from(groupedMap.values()).sort((a, b) => (b._latestTimeMs || 0) - (a._latestTimeMs || 0));
+
+        const frag = document.createDocumentFragment();
+        groupedLogs.forEach((l) => {
             const row = document.createElement('div');
             row.className = 'loglist-row';
             const time = new Date(l.time).toLocaleString();
-            const obj = sanitizeDetails(l.details || '');
-            const det = detailsHtml(obj, l.count || 1);
+            const det = detailsHtml(l._detailsObj || {}, l._totalCount || 1, l.type || '');
             row.innerHTML = `
                 <div class="loglist-left">
                     <div class="loglist-name">${l.student || 'Unknown'}</div>
@@ -601,6 +673,7 @@ class AdminAssessmentManager {
                 </div>`;
             frag.appendChild(row);
         });
+
         container.innerHTML = '';
         container.appendChild(frag);
     }

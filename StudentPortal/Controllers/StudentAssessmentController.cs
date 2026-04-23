@@ -18,6 +18,49 @@ namespace StudentPortal.Controllers
             _mongoDb = mongoDb;
         }
 
+        private async Task<bool> IsAssessmentLockedForStudentAsync(string classCode, string contentId)
+        {
+            var email = HttpContext.Session.GetString("UserEmail");
+            if (string.IsNullOrEmpty(email)) return false;
+
+            var classItem = await _mongoDb.GetClassByCodeAsync(classCode);
+            if (classItem == null) return false;
+
+            var contentItem = await _mongoDb.GetContentByIdAsync(contentId);
+            if (contentItem == null || contentItem.Type != "assessment") return false;
+
+            if (contentItem.ClassId != classItem.Id) return false;
+
+            var user = await _mongoDb.GetUserByEmailAsync(email);
+            if (user == null) return false;
+
+            var resolvedContentId = AssessmentAntiCheatRules.ResolveAssessmentContentId(contentItem.Id, contentId);
+            var assessmentResult = await _mongoDb.GetAssessmentResultForStudentAsync(classItem.Id, resolvedContentId, user);
+            if (assessmentResult?.IntegrityLockedAtUtc != null)
+                return true;
+
+            var logs = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, resolvedContentId);
+            var relevant = logs ?? new List<AntiCheatLog>();
+            var unlock = await _mongoDb.GetAssessmentUnlockAsync(classItem.Id, resolvedContentId, user.Id ?? string.Empty);
+            var studentTotalForLock = AssessmentAntiCheatRules.SumIntegrityEventsForLock(relevant, user.Id, user.Email, unlock);
+            return AssessmentAntiCheatRules.IsIntegrityLockActive(studentTotalForLock);
+        }
+
+        [HttpGet("/StudentAssessment/{classCode}/{contentId}/quiz-lock-status")]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public async Task<IActionResult> GetQuizLockStatus(string classCode, string contentId)
+        {
+            if (string.IsNullOrWhiteSpace(classCode) || string.IsNullOrWhiteSpace(contentId))
+                return BadRequest(new { success = false, message = "Missing identifiers." });
+
+            var email = HttpContext.Session.GetString("UserEmail");
+            if (string.IsNullOrEmpty(email))
+                return Unauthorized(new { success = false, message = "Not authenticated." });
+
+            var isLocked = await IsAssessmentLockedForStudentAsync(classCode, contentId);
+            return Ok(new { success = true, isLocked });
+        }
+
         [HttpGet("/StudentAssessment/{classCode}/{contentId}")]
         public async Task<IActionResult> Index(string classCode, string contentId)
         {

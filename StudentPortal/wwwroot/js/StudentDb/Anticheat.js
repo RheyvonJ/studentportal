@@ -161,7 +161,7 @@
             const key = `${type}|${JSON.stringify(obj || {})}`;
             const now = Date.now();
             // Ignore immediate duplicate dispatches from overlapping listeners.
-            if (key === __lastEventKey && now - __lastEventAt < 800) return;
+            if (key === __lastEventKey && now - __lastEventAt < 120) return;
             __lastEventKey = key;
             __lastEventAt = now;
 
@@ -247,7 +247,36 @@
             if (typeof window.showToast === 'function') {
                 window.showToast('Assessment locked due to integrity alerts.');
             }
+
+            // Return the student to the assessment details page where Open Quiz is locked.
+            try {
+                const parts = (window.location.pathname || '').split('/').filter(Boolean);
+                const idx = parts.findIndex(p => p.toLowerCase() === 'studentanswerassessment');
+                if (idx >= 0 && parts.length >= idx + 3) {
+                    const classCode = parts[idx + 1];
+                    const contentId = parts[idx + 2];
+                    setTimeout(() => {
+                        window.location.href = `/StudentAssessment/${encodeURIComponent(classCode)}/${encodeURIComponent(contentId)}?flag=void`;
+                    }, 900);
+                }
+            } catch (_) { /* ignore */ }
         } catch (_) {}
+    }
+
+    function persistAssessmentLockNow() {
+        try {
+            const parts = (window.location.pathname || '').split('/').filter(Boolean);
+            const idx = parts.findIndex(p => p.toLowerCase() === 'studentanswerassessment');
+            if (idx < 0 || parts.length < idx + 3) return;
+            const classCode = parts[idx + 1];
+            const contentId = parts[idx + 2];
+            const url = `/StudentAnswerAssessment/${classCode}/${contentId}/lock-now`;
+            if (navigator && typeof navigator.sendBeacon === 'function') {
+                navigator.sendBeacon(url);
+            } else {
+                fetch(url, { method: 'POST', credentials: 'same-origin', keepalive: true }).catch(() => {});
+            }
+        } catch (_) { /* ignore */ }
     }
 
     function checkViolationThresholdAndCloseIfNeeded() {
@@ -699,7 +728,10 @@
                 } catch (_) {}
             }
 
-            window.addEventListener('beforeunload', sendSummary);
+            window.addEventListener('beforeunload', () => {
+                sendSummary();
+                persistAssessmentLockNow();
+            });
             setInterval(sendSummary, 60000);
 
             
@@ -1115,6 +1147,15 @@
             // pagehide/pageshow + visibility would log false "cheat" events when the student uses back then returns.
             window.addEventListener('pagehide', () => {
                 if (!monitoringActive) return;
+                if (graceEnded) {
+                    state.tabSwitchEvents.push(1);
+                    updateStatus();
+                    updateOmniCounts();
+                    acSendEvent('tab_switch', { duration: 1, count: 1, source: 'page_leave' });
+                    checkViolationThresholdAndCloseIfNeeded();
+                }
+                // Student leaving while answering should lock re-entry from dashboard.
+                persistAssessmentLockNow();
                 tabSwitchStart = null;
                 focusStart = null;
             });

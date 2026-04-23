@@ -41,6 +41,53 @@ try {
     }
 } catch (_) {}
 
+function applyOpenQuizLockState(isLocked) {
+    if (!openQuiz) return;
+    const label = openQuiz.querySelector('span');
+    const icon = openQuiz.querySelector('i');
+    if (isLocked) {
+        openQuiz.classList.add('locked');
+        openQuiz.dataset.blocked = 'true';
+        if (label) label.textContent = 'Assessment Locked';
+        if (icon) icon.className = 'fa-solid fa-lock';
+    } else {
+        openQuiz.classList.remove('locked');
+        openQuiz.dataset.blocked = 'false';
+        if (label) label.textContent = 'Open Quiz';
+        if (icon) icon.className = 'fa-solid fa-door-open';
+    }
+}
+
+async function refreshOpenQuizLockStatus() {
+    if (!openQuiz) return;
+    let classCode = openQuiz.dataset.classCode || '';
+    let contentId = openQuiz.dataset.contentId || '';
+    if (!classCode || !contentId) {
+        const parts = (window.location.pathname || '').split('/').filter(Boolean);
+        const idx = parts.findIndex(p => p.toLowerCase() === 'studentassessment');
+        if (idx >= 0 && parts.length >= idx + 3) {
+            classCode = parts[idx + 1];
+            contentId = parts[idx + 2];
+        }
+    }
+    if (!classCode || !contentId) return;
+
+    try {
+        const res = await fetch(`/StudentAssessment/${encodeURIComponent(classCode)}/${encodeURIComponent(contentId)}/quiz-lock-status?ts=${Date.now()}`, {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' }
+        });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => null);
+        if (data && data.success === true) {
+            applyOpenQuizLockState(data.isLocked === true);
+        }
+    } catch (_) {
+        // Keep current button state when lock-status check fails.
+    }
+}
+
 
 // --- PAGE SELECTION + NAVIGATION ---
 let currentPage = 'subjects';
@@ -88,7 +135,8 @@ actions.forEach((action) => {
 });
 
 // --- OPEN QUIZ: redirect to StudentAnswerAssessment ---
-openQuiz?.addEventListener('click', () => {
+openQuiz?.addEventListener('click', async () => {
+    await refreshOpenQuizLockStatus();
     const blocked = openQuiz?.dataset.blocked === 'true';
     if (blocked) {
         showToast('Assessment locked by admin');
@@ -340,4 +388,6 @@ postPublicCommentBtn && postPublicCommentBtn.addEventListener('click', function 
 });
 
 loadComments();
+refreshOpenQuizLockStatus();
+window.addEventListener('pageshow', () => { refreshOpenQuizLockStatus(); });
 
