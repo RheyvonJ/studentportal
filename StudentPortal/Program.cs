@@ -1,6 +1,7 @@
 using StudentPortal.Services;
 using BCrypt.Net;
 using System.Net;
+using Microsoft.AspNetCore.HttpOverrides;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Conventions;
  using StudentPortal.Models;
@@ -12,6 +13,7 @@ var options = new WebApplicationOptions
     WebRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")
 };
 var builder = WebApplication.CreateBuilder(options);
+builder.Configuration["AllowedHosts"] = "*";
 
 // Load local-only overrides (secrets) if present.
 // These files are gitignored via appsettings.*.local.json.
@@ -57,11 +59,23 @@ builder.Services.AddSession(options =>
 
 // ✅ Add MVC
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto |
+        ForwardedHeaders.XForwardedHost;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
+var isRailway =
+    !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("RAILWAY_ENVIRONMENT")) ||
+    !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("RAILWAY_PUBLIC_DOMAIN"));
 
 // ✅ Seed default admin user
 using (var scope = app.Services.CreateScope())
@@ -77,7 +91,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+app.UseForwardedHeaders();
+if (!isRailway)
+    app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
