@@ -1,0 +1,1471 @@
+@import url('/css/Shared/BottomBar.css');
+
+/* ====================== ROOT VARIABLES ====================== */
+:root {
+    --bottom-h: 64px;
+    --accent: #006b99;
+    --accent-light: #1e3a8a;
+    --card-text: #0b213a;
+    --bg: #eef2f7;
+    --border-light: rgba(16, 24, 40, 0.06);
+    --shadow-soft: 0 6px 16px rgba(16, 24, 40, 0.06);
+    --left-w: 260px;
+    --gap: 32px;
+    font-family: Inter, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* ====================== GLOBAL STYLES ====================== */
+html, body {
+    height: 100%;
+    margin: 0;
+    background: linear-gradient(135deg, #eef2f7 0%, #e6ecf5 60%, #f7f9fc 100%);
+    color: var(--card-text);
+}
+
+body {
+    overflow-y: hidden;
+}
+
+/* ====================== LAYOUT ====================== */
+.class-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+    gap: 30px;
+    position: relative;
+}
+
+/* Fine alignment parity with AdminTask page.
+   Use stronger selectors because AdminTask.css is loaded after this file. */
+#studentTaskPage.student-class-shell.admin-class-page.admin-task-page.student-task-page .admin-class-view-container > .admin-class-topbar {
+    margin-top: 16px;
+    margin-left: -5px;
+}
+
+#studentTaskPage.student-class-shell.admin-class-page.admin-task-page.student-task-page .class-info.aae-profile-card,
+#studentTaskPage.student-class-shell.admin-class-page.admin-task-page.student-task-page .admin-class-right-column {
+    margin-top: 4px;
+    margin-left: -5px;
+}
+
+/* StudentTask: avoid left-edge clipping from shared overflow-x:hidden wrappers. */
+.slsp-shell .slsp-main:has(#studentTaskPage.student-class-shell.student-task-page) .slsp-content {
+    overflow-x: visible;
+}
+
+#studentTaskPage.student-class-shell.admin-class-page.admin-task-page.student-task-page > .class-container.admin-class-view-container,
+#studentTaskPage.student-class-shell.admin-class-page.admin-task-page.student-task-page .class-container {
+    overflow-x: visible;
+}
+
+/* ====================== LEFT PANEL — SUBMIT CONTAINER ====================== */
+.submit-container {
+    position: fixed;
+    top: 20px;
+    left: 40px;
+    width: 23.5%;
+    height: calc(100vh - 110px);
+    background: #f3f6fb;
+    border-radius: 14px;
+    box-shadow: 0 6px 20px rgba(16, 24, 40, 0.08);
+    padding: 20px;
+    padding-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+    padding-right: 22px;
+    box-sizing: border-box;
+}
+
+.submit-container.resubmitting {
+    padding-bottom: 20px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.submit-container.resubmitting::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+.submit-container.resubmitting .submit-container-middle {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.submit-container.resubmitting .submit-container-middle::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+/* Ensure right-side gap and consistent widths */
+.status-card,
+.private-comment,
+.update-btn {
+    box-sizing: border-box;
+    width: 100%;
+    margin-right: 0;
+}
+
+.submit-container-top {
+    flex-shrink: 0;
+}
+
+.grade-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+    color: #0b213a;
+    border: 1px solid rgba(16,24,40,0.08);
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-top: 6px;
+}
+
+.status-card {
+    background: #ffffff;
+    border: 1px solid rgba(16,24,40,0.06);
+    box-shadow: var(--shadow-soft);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.status-card.submitted {
+    border-left: 5px solid #22c55e;
+}
+
+.status-title {
+    font-weight: 700;
+    color: #0b213a;
+}
+
+.status-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.status-badge {
+    width: max-content;
+    background: #ecfccb;
+    color: #166534;
+    border: 1px solid rgba(22,101,52,0.15);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.submit-container-middle {
+    flex-grow: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+    padding-right: 4px;
+}
+
+.submit-container-bottom {
+    flex-shrink: 0;
+    margin-top: auto;
+}
+
+/* Header */
+.submit-header {
+    display: flex;
+    justify-content: space-between; /* header left, counter right */
+    align-items: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0b213a;
+    margin: 0;
+}
+
+.submit-container-top .submit-header .point-counter {
+    background: #e0e7ff; /* light blue box */
+    color: #3730a3; /* dark text */
+    padding: 2px 8px; /* space inside the box */
+    border-radius: 6px; /* rounded corners */
+    font-size: 0.95rem;
+    font-weight: 600;
+    min-width: 36px; /* optional: width for alignment */
+    text-align: center;
+}
+
+/* ====================== ATTACHMENT AREA ====================== */
+.attachment-area {
+    background: #fff;
+    border: 1px dashed #94a3b8;
+    border-radius: 12px;
+    padding: 32px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #0b213a;
+    font-weight: 500;
+    margin: 10px 0 16px 0;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.attach-label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: #0b213a;
+}
+
+    .attach-label:hover {
+        color: var(--accent);
+    }
+
+/* ====================== PRIVATE COMMENT BUTTON ====================== */
+.private-comment {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #475569;
+    transition: all 0.2s ease;
+    margin: 15px 0;
+    flex-shrink: 0;
+}
+
+    .private-comment:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+    }
+
+/* Comment box */
+.comment-box {
+    position: relative; /* required for absolute positioning of the close button */
+    background: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    width: 360px;
+    max-height: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ====================== BUTTONS ====================== */
+.submit-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    flex-shrink: 0;
+}
+
+.btn {
+    border: none;
+    padding: 10px 0;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(16, 24, 40, 0.06);
+}
+
+.submit-btn {
+    background: var(--accent);
+    color: #fff;
+    transition: transform 0.2s ease;
+}
+
+    .submit-btn:hover {
+        background: #00577c;
+    }
+
+.mark-done-btn {
+    background: #006b99;
+    color: #fff;
+    transition: transform 0.2s ease;
+}
+
+    .mark-done-btn:hover {
+        background: #00577c;
+    }
+
+.back-button {
+    margin-top: auto;
+    align-self: flex-start;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s ease;
+}
+
+    .back-button:hover {
+        background: #00577c;
+    }
+
+.update-btn {
+    border: none;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(16, 24, 40, 0.06);
+    background: #f8fafc;
+    color: #0b213a;
+    border: 1px solid rgba(16,24,40,0.06);
+    transition: all 0.2s ease;
+}
+
+.update-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+/* ====================== RESPONSIVE ====================== */
+@media (max-width: 900px) {
+    .submit-container {
+        width: 240px;
+        left: 20px;
+        padding: 16px;
+    }
+}
+
+@media (max-width: 600px) {
+    .submit-container {
+        position: static;
+        width: 100%;
+        height: auto;
+        box-shadow: none;
+        border-radius: 0;
+    }
+}
+
+/* RIGHT COLUMN */
+.right-column-task {
+    display: flex;
+    flex-direction: column; /* stack children vertically */
+    gap: 20px; /* space between task and comment container */
+    margin-left: calc(23.5% + 30px);
+    margin-top: -20px;
+    padding-right: 0;
+    width: calc(100% - (23.5% + 30px));
+}
+
+/* StudentClass-style left panel blocks */
+.class-info-top { width: 100%; }
+.class-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 72px;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 8px 2px 8px 0;
+    box-sizing: border-box;
+}
+.profile-initials {
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    background: linear-gradient(145deg, #0a2342, #1f4f84);
+    color: #fff;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.teacher-details .teacher-name {
+    font-weight: 700;
+    color: #1e3a5f;
+    font-size: 0.98rem;
+    line-height: 1.2;
+}
+.class-info-middle-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 2px 4px;
+    flex-wrap: wrap;
+}
+.class-info-middle-top .subject-code,
+.class-info-middle-top .class-code {
+    flex: 0 0 100%;
+}
+.code-value {
+    font-weight: 700;
+    color: #1e3a5f;
+}
+
+/* Exact StudentClass-like layout for class-info */
+.student-class-shell .class-container {
+    display: grid;
+    grid-template-columns: minmax(290px, 370px) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    padding: 8px 0 18px;
+}
+
+.student-class-shell .student-task-work-panel.submit-container,
+.student-class-shell #submitContainer.submit-container {
+    position: static;
+    top: auto;
+    left: auto;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    padding: 12px 0 0;
+    margin-top: 10px;
+    border-top: 1px solid rgba(16, 45, 82, 0.12);
+    overflow: visible;
+    box-shadow: none;
+    background: transparent;
+}
+
+.student-class-shell .right-column-task {
+    margin-left: 0;
+    margin-top: 0;
+    width: 100%;
+    gap: 12px;
+}
+
+.student-class-shell .task-container,
+.student-class-shell .public-comment-container {
+    width: 100%;
+    margin-left: 0;
+}
+
+@media (max-width: 1024px) {
+    .student-class-shell .class-container {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .student-class-shell .student-task-work-panel.submit-container,
+    .student-class-shell #submitContainer.submit-container {
+        position: static;
+    }
+}
+
+/* TASK CARD */
+.task-container {
+    position: relative;
+    height: calc(100vh - 150px); /* fits viewport without overlapping bottom-bar */
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    width: calc(100% - 30px);
+    margin-left: 30px;
+    box-sizing: border-box;
+}
+
+.task-scrollable {
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(100vh - 260px);
+}
+
+.task-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 8px;
+}
+
+.task-description {
+    text-align: justify;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    color: #334155;
+}
+
+/* ATTACHMENTS */
+.attachments {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.attachment-box {
+    background: #FF9809;
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+    .attachment-box:hover {
+        background: #f19008;
+    }
+
+
+/* ====================== TASK BOTTOM ====================== */
+.task-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    background: #fff;
+    padding: 0px 24px 10px;
+    border-radius: 0 0 14px 14px;
+    box-shadow: 0 -2px 8px rgba(16, 24, 40, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+    .task-bottom p {
+        padding-left: 10px;
+        margin: -10px;
+        margin-top: 13px;
+    }
+
+.posted-date {
+    font-size: 0.85rem;
+    color: #64748b;
+    text-align: left;
+    padding-top: 5px;
+}
+
+#deadlineInput {
+    margin-left: 8px;
+    padding: 4px;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    color: #1e293b;
+    background: #fff;
+}
+
+/* ====================== CONFIRM MODALS ====================== */
+#confirmModal,
+#submitConfirmModal,
+#unsubmitConfirmModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    display: none; /* hidden by default */
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    pointer-events: none; /* prevent accidental clicks */
+}
+
+    #confirmModal[aria-hidden="false"],
+    #submitConfirmModal[aria-hidden="false"],
+    #unsubmitConfirmModal[aria-hidden="false"] {
+        display: flex; /* only show when aria-hidden="false" */
+        pointer-events: auto;
+    }
+
+/* Force confirm modals to overlay and be clickable when visible */
+.confirm-modal[aria-hidden="false"] {
+    display: flex !important;
+    pointer-events: auto !important;
+    z-index: 1000;
+}
+
+.confirm-box {
+    background: #f3f6fb;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    text-align: center;
+    width: 250px;
+}
+
+    .confirm-box p {
+        font-size: 0.95rem;
+        color: #0b213a;
+        margin-bottom: 18px;
+    }
+
+.confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+    .confirm-actions .btn {
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+
+    .confirm-actions .yes,
+    .confirm-actions .no {
+        background: #182b5c;
+        color: #fff;
+        transform: scale(1.02);
+    }
+
+/* ====================== ATTACHMENT LIST MODAL ====================== */
+#attachmentListModal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    background: rgba(16,24,40,0.5);
+    z-index: 400;
+}
+
+    #attachmentListModal[aria-hidden="false"] {
+        display: flex;
+    }
+
+.attachment-list-box {
+    background: #fff;
+    padding: 20px;
+    width: 360px;
+    max-height: 480px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+    .attachment-list-box .attachment-box {
+        margin: 4px 0;
+    }
+
+#closeAttachmentList {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    color: #334155;
+}
+
+    #closeAttachmentList:hover {
+        color: #1e293b;
+    }
+
+
+/* ==========================================================
+   RESULT CONTAINER CSS
+   ========================================================== */
+
+/* Container */
+#resultContainer {
+    position: fixed;
+    top: 20px;
+    left: 40px;
+    width: 23.5%;
+    height: calc(100vh - 110px);
+    background: #f3f6fb;
+    border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.06);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Top section */
+.result-container-top {
+    margin-bottom: 16px;
+}
+
+    .result-container-top .submit-header {
+        font-size: 1.5rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .result-container-top .submit-header .point-counter {
+            background: #e0e7ff; /* light blue box */
+            color: #3730a3; /* dark text */
+            padding: 2px 8px; /* space inside the box */
+            border-radius: 6px; /* rounded corners */
+            font-size: 0.95rem;
+            font-weight: 600;
+            min-width: 36px; /* optional: width for alignment */
+            text-align: center;
+        }
+
+/* Middle section */
+.result-container-middle {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: -25px;
+}
+
+    /* Attachment list button */
+    .result-container-middle .attachment-list-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background-color: #e2e8f0;
+        padding: 10px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+        .result-container-middle .attachment-list-btn:hover {
+            background-color: #cbd5e1;
+        }
+
+    .result-container-middle .attachment-list-label {
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+.instructor-remarks-container {
+    margin: 12px 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+#instructorRemarks {
+    min-height: 80px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    resize: none;
+    font-size: 0.9rem;
+    color: #334155;
+    background-color: #f8fafc;
+}
+
+/* Unsubmit button */
+.result-container-middle .unsubmit-btn {
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+    .result-container-middle .unsubmit-btn:hover {
+        background-color: #f87171;
+    }
+
+/* Bottom section */
+.result-container-bottom {
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+    /* Back button */
+    .result-container-bottom .back-button {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.2s ease;
+    }
+
+        .result-container-bottom .back-button:hover {
+            background: #00577c;
+        }
+
+    /* Icons inside buttons */
+    .result-container-middle i,
+    .result-container-bottom i {
+        font-size: 1rem;
+    }
+
+/* Hide all scrollbars but keep scroll functionality */
+*::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+}
+
+* {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+/* ====================== WORK REFERENCES ====================== */
+.references-container {
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-soft);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 260px;
+    overflow: hidden;
+}
+
+.references-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.references-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    max-height: 140px;
+    padding-right: 4px;
+}
+
+.reference-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f7fafc;
+    border: 1px solid rgba(16,24,40,0.06);
+    border-radius: 10px;
+    padding: 8px 10px;
+}
+
+.reference-item a {
+    color: #0b5cab;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.reference-item a:hover {
+    text-decoration: underline;
+}
+
+.reference-remove {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+}
+
+.reference-inputs {
+    display: flex;
+    gap: 8px;
+}
+
+.reference-inputs input[type="text"],
+.reference-inputs input[type="url"] {
+    flex: 1;
+    height: 32px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(16,24,40,0.12);
+    background: #fff;
+    font-size: 12px;
+}
+
+.add-reference-btn {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.add-reference-btn:hover {
+    background: #00577c;
+}
+
+/* StudentClass-aligned design layer */
+html, body {
+    background: #f8fafc;
+}
+
+.class-container {
+    gap: 16px;
+    padding: 8px 0 18px;
+    align-items: flex-start;
+}
+
+.submit-container {
+    background: #ffffff;
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.submit-header,
+.task-title,
+.public-comment-header,
+.status-title {
+    color: #1e3a5f;
+}
+
+.status-meta,
+.posted-date {
+    color: #5f6f82;
+}
+
+.task-container,
+.public-comment-container {
+    background: #ffffff;
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.task-bottom {
+    border-top: 1px solid rgba(16, 45, 82, 0.08);
+    box-shadow: none;
+}
+
+.right-column-task {
+    gap: 16px;
+}
+
+/* Final strict card copy from StudentClass */
+.student-class-shell .student-task-work-panel.submit-container,
+.student-class-shell #submitContainer.submit-container {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+    box-shadow: 0 10px 26px rgba(15, 35, 65, 0.1) !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(20, 58, 102, 0.12) !important;
+    padding: 14px !important;
+    overflow: hidden;
+}
+
+.student-class-shell .subject-name {
+    font-size: 1.2rem !important;
+    font-weight: 800 !important;
+    color: #1e3a5f !important;
+    margin: 0 !important;
+    letter-spacing: -0.02em;
+}
+
+.student-class-shell .subject-code,
+.student-class-shell .class-code {
+    font-size: 0.82rem !important;
+    color: #5f6f82 !important;
+    margin: 0 !important;
+}
+
+.student-class-shell .submit-container-top {
+    margin-top: 0 !important;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(15, 35, 65, 0.08);
+}
+
+.student-class-shell.student-task-page #submitContainer .submit-header {
+    font-size: 1.02rem;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.student-class-shell.student-task-page #submitContainer .grade-indicator {
+    margin-top: 8px;
+    width: fit-content;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: #e9f5ff;
+    border: 1px solid rgba(0, 107, 153, 0.2);
+    color: #075985;
+}
+
+.student-class-shell.student-task-page #submitContainer .status-card {
+    margin-top: 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(30, 95, 60, 0.16);
+    background: linear-gradient(180deg, #f0fff6 0%, #f7fff9 100%);
+    padding: 10px 12px;
+}
+
+.student-class-shell.student-task-page #submitContainer .attachment-area {
+    margin-top: 2px;
+    border-radius: 12px;
+    border: 1px dashed rgba(20, 58, 102, 0.28);
+    background: #fbfdff;
+    padding: 10px;
+    cursor: pointer;
+}
+
+.student-class-shell.student-task-page #submitContainer .submit-buttons {
+    margin-top: 12px;
+    gap: 10px;
+}
+
+.student-class-shell.student-task-page #submitContainer .submit-buttons .btn {
+    border-radius: 10px;
+    min-height: 40px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.student-class-shell.student-task-page #submitContainer .attachment-list-btn {
+    margin-top: 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(20, 58, 102, 0.12);
+    background: #ffffff;
+    box-shadow: 0 3px 10px rgba(15, 35, 65, 0.06);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.student-class-shell.student-task-page #submitContainer .attachment-list-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(15, 35, 65, 0.1);
+}
+
+.student-class-shell.student-task-page #submitContainer #resubmissionSection {
+    margin-top: 12px;
+}
+
+.student-class-shell.student-task-page #submitContainer .update-btn {
+    width: 100%;
+    border-radius: 10px;
+    font-weight: 700;
+    min-height: 40px;
+}
+
+.student-class-shell .class-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: #5e738e;
+    margin: 0 2px 2px;
+}
+
+.student-class-shell .class-breadcrumb a {
+    color: #1f4f84;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.student-class-shell .class-breadcrumb a:hover { text-decoration: underline; }
+.student-class-shell .class-breadcrumb .sep { opacity: 0.65; }
+
+/* --- StudentTask page: match StudentClass grid + right rail --- */
+.student-class-shell.student-task-page .task-container {
+    margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+}
+
+.student-class-shell.student-task-page .public-comment-container {
+    margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+}
+
+.student-class-shell.student-task-page .student-task-recent-tasks .recent-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.student-class-shell.student-task-page .student-task-recent-tasks li {
+    display: block;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: none;
+}
+
+.student-class-shell.student-task-page .student-task-recent-tasks a.recent-upload-link,
+.student-class-shell.student-task-page .student-task-recent-tasks .recent-upload-static {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--aae-radius-md);
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid var(--aae-border);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--aae-navy-800);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
+    min-width: 0;
+}
+
+.student-class-shell.student-task-page .student-task-recent-tasks a.recent-upload-link {
+    text-decoration: none;
+    cursor: pointer;
+    color: inherit;
+}
+
+.student-class-shell.student-task-page .student-task-recent-tasks a.recent-upload-link:hover,
+.student-class-shell.student-task-page .student-task-recent-tasks a.recent-upload-link:focus-visible {
+    border-color: rgba(31, 79, 132, 0.28);
+    box-shadow: 0 2px 10px rgba(10, 35, 66, 0.08);
+    transform: translateX(1px);
+    outline: none;
+}
+
+.student-class-shell.student-task-page .student-task-recent-tasks a.recent-upload-link i,
+.student-class-shell.student-task-page .student-task-recent-tasks .recent-upload-static i {
+    color: var(--aae-accent);
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.student-class-shell.student-task-page .student-task-recent-tasks .recent-title {
+    color: var(--aae-navy-900);
+}
+
+.student-class-shell.student-task-page .student-task-recent-tasks li.is-current a.recent-upload-link,
+.student-class-shell.student-task-page .student-task-recent-tasks li.is-current .recent-upload-static {
+    border-radius: var(--aae-radius-md);
+    background: linear-gradient(135deg, rgba(31, 79, 132, 0.12), rgba(31, 79, 132, 0.06));
+    border-color: rgba(31, 79, 132, 0.35);
+    color: var(--aae-navy-900);
+    box-shadow: none;
+}
+
+.student-class-shell.student-task-page .student-task-recent-tasks li.is-current a.recent-upload-link:hover,
+.student-class-shell.student-task-page .student-task-recent-tasks li.is-current a.recent-upload-link:focus-visible {
+    border-radius: var(--aae-radius-md);
+    transform: none;
+}
+
+.slsp-shell .slsp-main:has(.student-class-shell.student-task-page) {
+    padding-right: max(8px, env(safe-area-inset-right, 0px));
+}
+
+/* StudentTask: let task card grow with content (avoid fixed internal scrolling). */
+#studentTaskPage.student-class-shell.student-task-page .task-container {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+}
+
+#studentTaskPage.student-class-shell.student-task-page .task-scrollable {
+    max-height: none !important;
+    overflow: visible !important;
+    flex: 0 0 auto !important;
+}
+
+/* File chips may use <a class="attachment-name"> — override default link blue (loads after AdminTask.css). */
+#studentTaskPage.student-task-page.admin-task-page .aae-file-chip.attachment-box a.attachment-name {
+    color: inherit;
+    text-decoration: none;
+}
+
+#studentTaskPage.student-task-page.admin-task-page .aae-file-chip.attachment-box a.attachment-name:hover,
+#studentTaskPage.student-task-page.admin-task-page .aae-file-chip.attachment-box a.attachment-name:focus-visible {
+    color: var(--aae-navy-900, #0a2342);
+    text-decoration: underline;
+}
+
+/* ==========================================================
+   StudentTask submit-container redesign (same components)
+   ========================================================== */
+#studentTaskPage.student-class-shell.student-task-page #submitContainer.submit-container.student-task-work-panel {
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    border: 1px solid rgba(20, 58, 102, 0.14);
+    border-radius: 18px;
+    box-shadow: 0 16px 36px rgba(10, 35, 66, 0.14);
+    padding: 16px;
+    gap: 12px;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .submit-container-top {
+    margin: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(16, 45, 82, 0.08);
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .submit-header {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    color: #133456;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .grade-indicator {
+    margin-top: 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(30, 64, 175, 0.18);
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+    color: #1e3a8a;
+    padding: 5px 11px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .status-card {
+    margin-top: 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(22, 163, 74, 0.18);
+    background: linear-gradient(180deg, #f0fdf4 0%, #f8fff9 100%);
+    box-shadow: none;
+    padding: 11px 12px;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .status-badge {
+    background: #dcfce7;
+    border-color: rgba(22, 101, 52, 0.2);
+    color: #166534;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .attachment-area {
+    margin: 10px 0 12px;
+    border-radius: 14px;
+    border: 1px dashed rgba(20, 58, 102, 0.34);
+    background: linear-gradient(180deg, #ffffff 0%, #f1f8ff 100%);
+    padding: 16px 12px;
+    min-height: 108px;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .attachment-area:hover {
+    border-color: rgba(31, 79, 132, 0.55);
+    box-shadow: 0 8px 20px rgba(10, 35, 66, 0.1);
+    transform: translateY(-1px);
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .attach-label {
+    font-weight: 700;
+    color: #123b63;
+    font-size: 0.92rem;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .file-name {
+    margin-top: 6px;
+    color: #4a5f78;
+    font-size: 0.86rem;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .file-preview .preview-row {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(20, 58, 102, 0.16);
+    color: #0f2d4a;
+    max-width: 100%;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .file-preview .preview-row .size {
+    color: #51667f;
+    font-size: 0.78rem;
+    margin-left: 4px;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-file-list {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px dashed rgba(20, 58, 102, 0.25);
+    border-radius: 12px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.72);
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 10px;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-file-row {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(20, 58, 102, 0.14);
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: #fff;
+    color: #163c63;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-file-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 0.84rem;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-file-size {
+    color: #4f637a;
+    font-size: 0.77rem;
+    font-weight: 700;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-file-remove {
+    border: 1px solid rgba(20, 58, 102, 0.16);
+    background: #fff;
+    color: #1f4f84;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-file-remove:hover {
+    background: rgba(31, 79, 132, 0.1);
+    border-color: rgba(31, 79, 132, 0.35);
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-private-comment-area,
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-remarks-area {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0 0 10px;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-field-label {
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #5a6f87;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-private-comment-input {
+    width: 100%;
+    min-height: 72px;
+    border-radius: 10px;
+    border: 1px solid rgba(20, 58, 102, 0.18);
+    background: #fff;
+    padding: 9px 10px;
+    color: #163c63;
+    font-size: 0.87rem;
+    line-height: 1.4;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-private-comment-input:focus {
+    outline: none;
+    border-color: rgba(31, 79, 132, 0.44);
+    box-shadow: 0 0 0 3px rgba(31, 79, 132, 0.12);
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .st-remarks-display {
+    border-radius: 10px;
+    border: 1px solid rgba(20, 58, 102, 0.14);
+    background: linear-gradient(180deg, #f8fbff 0%, #f2f7fd 100%);
+    color: #284967;
+    padding: 10px;
+    min-height: 44px;
+    font-size: 0.86rem;
+    line-height: 1.42;
+    white-space: pre-wrap;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .submit-buttons {
+    margin-top: 6px;
+    gap: 9px;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .submit-buttons .btn,
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .update-btn {
+    min-height: 42px;
+    border-radius: 11px;
+    font-weight: 700;
+    box-shadow: 0 7px 16px rgba(10, 35, 66, 0.12);
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .submit-btn {
+    background: linear-gradient(180deg, #0b77ab 0%, #066187 100%);
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .mark-done-btn,
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .update-btn {
+    background: linear-gradient(180deg, #1278a8 0%, #005b82 100%);
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .submit-btn:hover,
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .mark-done-btn:hover,
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .update-btn:hover {
+    filter: brightness(1.03);
+}
+
+/* Update submission should look like a themed secondary action, not another primary submit button. */
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .update-btn {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    color: #1f4f84;
+    border: 1px solid rgba(31, 79, 132, 0.28);
+    box-shadow: 0 6px 14px rgba(10, 35, 66, 0.08);
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .update-btn:hover {
+    background: #f0f7ff;
+    border-color: rgba(31, 79, 132, 0.42);
+    color: #173b61;
+    transform: translateY(-1px);
+    filter: none;
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .attachment-list-btn.private-comment {
+    margin: 10px 0 0;
+    min-height: 42px;
+    border-radius: 11px;
+    border: 1px solid rgba(20, 58, 102, 0.15);
+    background: #ffffff;
+    color: #173b61;
+    box-shadow: 0 6px 14px rgba(10, 35, 66, 0.09);
+}
+
+#studentTaskPage.student-class-shell.student-task-page #submitContainer .attachment-list-btn.private-comment:hover {
+    border-color: rgba(31, 79, 132, 0.34);
+    box-shadow: 0 10px 20px rgba(10, 35, 66, 0.12);
+}

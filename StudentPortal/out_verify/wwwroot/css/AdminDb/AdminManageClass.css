@@ -1,0 +1,1928 @@
+@import url('/css/Shared/BottomBar.css');
+
+/* Export floater after Preview/Download — bottom-right, above bottom bar + safe area */
+.admin-manage-export-overlay {
+    position: fixed;
+    left: auto;
+    right: max(10px, env(safe-area-inset-right, 0px));
+    transform: none;
+    bottom: calc(var(--bottom-h, 64px) + 12px + env(safe-area-inset-bottom, 0px));
+    max-width: calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    width: max-content;
+    box-sizing: border-box;
+    background: #fff;
+    border: 1px solid rgba(16, 24, 40, 0.12);
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(16, 24, 40, 0.12);
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+    z-index: 10050;
+}
+
+.admin-manage-export-overlay .btn.small {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+@media (max-width: 420px) {
+    .admin-manage-export-overlay {
+        left: auto;
+        right: max(10px, env(safe-area-inset-right, 0px));
+        width: min(100%, max-content);
+        max-width: calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-manage-export-overlay .btn.small {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+:root {
+    --bottom-h: 64px;
+    --accent: #006b99;
+    --accent-strong: #00567a;
+    --muted: #64748b;
+    --bg: #eef2f7;
+    --card-shadow: 0 8px 40px rgba(0, 0, 0, 0.04);
+    --shadow-soft: 0 6px 16px rgba(16, 24, 40, 0.06);
+    font-family: Inter, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* Embedded in _StudentLayout: shell provides background; avoid overriding grid .class-container */
+.slsp-content .admin-manage-class-page {
+    color: #0b213a;
+}
+
+/*
+ * Manage Class: keep .slsp-main full-width so the seating chart / lists are not pushed sideways.
+ * On desktop, when the nav is open, indent only the portal header (same motion as the default shell)
+ * so the header clears the sidebar while the page body stays under the overlay.
+ */
+.slsp-shell:has(#adminManageClassPage) .slsp-main {
+    margin-left: 0 !important;
+}
+
+.slsp-shell:has(#adminManageClassPage) .slsp-main-header {
+    transition: margin-left 0.3s ease, width 0.3s ease;
+    box-sizing: border-box;
+}
+
+.slsp-shell:has(#adminManageClassPage).sidebar-collapsed .slsp-main-header {
+    margin-left: 0;
+    width: 100%;
+}
+
+.slsp-shell:has(#adminManageClassPage):not(.sidebar-collapsed) .slsp-main-header {
+    margin-left: var(--slsp-sidebar-w);
+    width: calc(100% - var(--slsp-sidebar-w));
+}
+
+/* Mobile drawer: shell stays collapsed; never offset the header */
+@media (max-width: 900px) {
+    .slsp-shell:has(#adminManageClassPage) .slsp-main-header {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+}
+
+/*
+ * Mobile / narrow tablet: extra horizontal inset so Manage Class doesn’t hug the viewport
+ * (especially the right edge). Only adjusts left/right — keeps default vertical/bottom padding.
+ */
+@media (max-width: 1024px) {
+    /* Slimmer side gutters so cards use more of the viewport (safe-area still respected) */
+    .slsp-shell:has(#adminManageClassPage) .slsp-main {
+        padding-left: max(8px, env(safe-area-inset-left, 0px));
+        padding-right: max(8px, env(safe-area-inset-right, 0px));
+        box-sizing: border-box;
+    }
+
+    .slsp-shell:has(#adminManageClassPage) .slsp-content {
+        padding-left: 0;
+        padding-right: 0;
+        box-sizing: border-box;
+    }
+}
+
+/* Slightly stronger depth when the drawer sits over the seating chart (desktop) */
+.slsp-shell:has(#adminManageClassPage):not(.sidebar-collapsed) .slsp-sidebar {
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.1),
+        0 20px 50px rgba(0, 31, 63, 0.28);
+}
+
+/* Single column: class-info sidebar removed */
+.admin-manage-class-page .class-container.admin-manage-class-container {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+/* --- Top bar: full-width breadcrumb (matches Admin Class) --- */
+.admin-manage-class-container > .admin-class-topbar {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(210px, 280px) minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+    margin: 0 0 10px;
+    padding: 0 2px;
+}
+
+.admin-manage-class-container > .admin-class-topbar.admin-class-topbar--breadcrumb-only {
+    grid-template-columns: 1fr;
+}
+
+.admin-manage-class-container .admin-class-topbar-right {
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    row-gap: 4px;
+    padding: 2px 0;
+}
+
+.admin-manage-class-container .admin-class-topbar-right .sep {
+    flex-shrink: 0;
+}
+
+.admin-manage-class-container .admin-class-topbar-right.aae-breadcrumb {
+    font-size: 0.8125rem;
+    color: var(--muted);
+    padding: 0;
+}
+
+.admin-manage-class-container .admin-class-topbar-right.aae-breadcrumb a {
+    color: #1f4f84;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.admin-manage-class-container .admin-class-topbar-right.aae-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.admin-manage-bc-current {
+    color: #0f223b;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+/* Main column: toolbar starts flush under header row */
+.admin-manage-class-content.class-content {
+    padding-top: 0;
+    gap: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.admin-manage-class-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.admin-manage-class-page .seat-grid-container {
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    max-height: min(70vh, 720px);
+    padding-left: 14px;
+    padding-right: 14px;
+    box-sizing: border-box;
+    /* Don’t let inner max-content seating grid widen this card past the column */
+    overflow-x: clip;
+    overflow-y: visible;
+}
+
+/* Override legacy `.column-container { width: calc(100% - 80px) }` — breaks narrow / flex layouts */
+.admin-manage-class-page .column-container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-top: 0;
+    box-sizing: border-box;
+}
+
+/* Toolbar: allow wrapping so buttons don’t force horizontal overflow */
+.admin-manage-class-page .seat-grid-container .top-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+    row-gap: 12px;
+    min-width: 0;
+}
+
+.admin-manage-class-page .seat-grid-container .top-left {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.admin-manage-class-page .seat-grid-container .top-right {
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* Icon-only meet actions — keeps schedule label + export aligned on one row */
+.admin-manage-class-page .seat-grid-container .top-right .btn.toolbar-icon-only {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.admin-manage-class-page .admin-manage-toolbar-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent-strong);
+}
+
+/* Class list + join requests: flex children must shrink; long IDs/emails must wrap */
+.admin-manage-class-page .class-list-container,
+.admin-manage-class-page .class-request-container {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+.admin-manage-class-page .class-list {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.admin-manage-class-page .student-card {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+/* Desktop: seat handles per-student actions; hide list ⋯ */
+.admin-manage-class-page .student-card-more {
+    display: none;
+}
+
+.admin-manage-class-page .student-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+.admin-manage-class-page .student-card .student-status:empty {
+    display: none;
+}
+
+.admin-manage-class-page .student-info {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.admin-manage-class-page .student-email,
+.admin-manage-class-page .student-id {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+}
+
+.admin-manage-class-page .no-students {
+    overflow-wrap: anywhere;
+}
+
+.admin-manage-class-page .request-item,
+.admin-manage-class-page .request-card,
+.admin-manage-class-page .join-request {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+.admin-manage-class-page .request-info {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.admin-manage-class-page .request-meta {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+}
+
+.admin-manage-class-page .list-header {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.admin-manage-class-page .list-header h3 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.admin-manage-class-page .search-box {
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 auto;
+}
+
+.admin-manage-class-page .search-box input {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.admin-manage-class-page .top-left {
+    min-width: 0;
+}
+
+/* Horizontal scroll for wide seating grids on narrow screens */
+.admin-manage-seating-scroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    /* Global file hides scrollbars on *; show a thin bar here so users can scroll seats on mobile */
+    scrollbar-width: thin;
+    -ms-overflow-style: auto;
+}
+
+.admin-manage-seating-scroll::-webkit-scrollbar {
+    display: block;
+    height: 8px;
+}
+
+.admin-manage-seating-scroll::-webkit-scrollbar-thumb {
+    background: rgba(15, 34, 59, 0.28);
+    border-radius: 999px;
+}
+
+.admin-manage-seating-scroll::-webkit-scrollbar-track {
+    background: rgba(15, 34, 59, 0.06);
+    border-radius: 999px;
+}
+
+.admin-manage-class-page .admin-manage-seating-scroll .seating-grid {
+    min-height: 0;
+}
+
+/* Seating cells: status was position:absolute and overflowed small 1:1 tiles — keep badge in-flow */
+/* Grid: avatar centered in upper region, status row pinned to bottom of the seat box */
+.admin-manage-class-page .admin-manage-seat-grid .seat.filled {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    justify-items: center;
+    align-items: center;
+    padding: 8px 6px 10px;
+    gap: 6px;
+    overflow: hidden;
+    box-sizing: border-box;
+    cursor: grab;
+}
+
+.admin-manage-class-page .admin-manage-seat-grid .seat.filled:active {
+    cursor: grabbing;
+}
+
+.admin-manage-class-page .admin-manage-seat-grid .seat.dragging {
+    opacity: 0.55;
+    transform: none !important;
+}
+
+.admin-manage-class-page .admin-manage-seat-grid .seat.drag-over {
+    outline: 2px solid rgba(0, 122, 255, 0.55);
+    outline-offset: 2px;
+}
+
+.admin-manage-class-page .admin-manage-seat-grid .seat.empty.drag-over {
+    border-color: rgba(0, 122, 255, 0.55);
+    background: rgba(0, 122, 255, 0.06);
+}
+
+.admin-manage-class-page .admin-manage-seat-grid .seat.filled .avatar {
+    grid-row: 1;
+    align-self: center;
+    justify-self: center;
+}
+
+/* One axis + aspect-ratio keeps a true circle (width/height % can resolve differently and look oblong) */
+.admin-manage-class-page .admin-manage-seat-grid .seat .avatar {
+    margin-bottom: 0;
+    flex-shrink: 0;
+    width: clamp(32px, 42%, 48px);
+    height: auto;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    box-sizing: border-box;
+    overflow: hidden;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(10px, 2.6vw, 14px);
+}
+
+.admin-manage-class-page .admin-manage-seat-grid .seat-status {
+    grid-row: 2;
+    position: static;
+    bottom: auto;
+    right: auto;
+    margin-top: 0;
+    align-self: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 3px 7px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    line-height: 1.25;
+    box-shadow: none;
+}
+
+/* Enrollment / default status (e.g. ACTIVE) — readable contrast when not present/absent/late */
+.admin-manage-class-page .admin-manage-seat-grid .seat.filled:not(.present):not(.absent):not(.late) .seat-status {
+    background: rgba(15, 34, 59, 0.1);
+    color: #334155;
+}
+
+.admin-manage-class-page .admin-manage-seat-grid .seat.present .seat-status,
+.admin-manage-class-page .admin-manage-seat-grid .seat.absent .seat-status,
+.admin-manage-class-page .admin-manage-seat-grid .seat.late .seat-status {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.admin-manage-class-page .section-info {
+    padding-top: 6px;
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.admin-manage-class-page .section-info .section-name,
+.admin-manage-class-page .section-info .student-count {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@media (max-width: 1024px) {
+    .admin-manage-class-page.student-class-shell {
+        max-width: 100%;
+        overflow-x: clip;
+    }
+
+    /* Avoid stable gutter eating scarce width on phones/tablets */
+    .admin-manage-class-page .admin-manage-seating-scroll {
+        scrollbar-gutter: auto;
+    }
+
+    /* Must override the desktop 2-col rule (higher specificity than StudentClass 1fr) */
+    .admin-manage-class-page .class-container.admin-manage-class-container {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        justify-items: stretch;
+    }
+
+    /* Grid/flex defaults: min-width:auto prevents shrinking — allow columns to fit the viewport */
+    .admin-manage-class-page .class-container.admin-manage-class-container > * {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .admin-manage-class-page .admin-manage-class-content {
+        min-width: 0;
+    }
+
+    .admin-manage-class-page .admin-manage-class-inner {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .admin-manage-class-container > .admin-class-topbar {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        align-items: stretch;
+        margin-bottom: 8px;
+    }
+}
+
+/* Tablet / large phone */
+@media (max-width: 768px) {
+    /* Hide seating chart on small screens; class list uses ⋯ for the same actions */
+    .admin-manage-class-page .admin-manage-desktop-seating-only {
+        display: none !important;
+    }
+
+    /* Toolbar card no longer needs a tall scroll region without the grid */
+    .admin-manage-class-page.admin-manage-class-page .seat-grid-container {
+        max-height: none !important;
+    }
+
+    .admin-manage-class-page .student-card-more {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        min-height: 40px;
+        padding: 0 10px;
+        border: none;
+        border-radius: 10px;
+        background: rgba(16, 24, 40, 0.06);
+        color: var(--accent);
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .admin-manage-class-page .student-card-more:active {
+        background: rgba(16, 24, 40, 0.1);
+    }
+
+    /* Horizontal inset comes from .slsp-main + .slsp-content rules above; avoid double padding */
+    .admin-manage-class-page.student-class-shell {
+        padding-left: 0;
+        padding-right: 0;
+        padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .admin-manage-class-page .admin-class-topbar-right {
+        flex-wrap: wrap;
+        row-gap: 6px;
+        font-size: 0.8125rem;
+        line-height: 1.35;
+    }
+
+    .admin-manage-class-page .admin-class-topbar-right a,
+    .admin-manage-class-page .admin-class-topbar-right .admin-manage-bc-current {
+        word-break: break-word;
+    }
+
+    .admin-manage-class-page .seat-grid-container {
+        border-radius: 12px;
+        padding-left: max(10px, env(safe-area-inset-left, 0px));
+        padding-right: max(10px, env(safe-area-inset-right, 0px));
+    }
+
+    .admin-manage-class-page .column-container {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        margin-top: 12px;
+    }
+
+    .admin-manage-class-page .class-list-container,
+    .admin-manage-class-page .class-request-container {
+        padding: 14px 12px 16px 12px;
+    }
+
+    /* Prefer horizontal scroll for seats on touch without trapping vertical page scroll */
+    .admin-manage-class-page .admin-manage-seating-scroll {
+        touch-action: pan-x pan-y;
+    }
+}
+
+@media (max-width: 900px) {
+    .admin-manage-class-page .top-bar {
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    .admin-manage-class-page .top-right {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-manage-class-page .seat-grid-container {
+        padding: 12px max(10px, env(safe-area-inset-right, 0px)) 16px max(10px, env(safe-area-inset-left, 0px));
+        max-height: min(56vh, 520px);
+    }
+
+    .admin-manage-class-page .section-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    /* Fixed minimum cell size so grid scrolls horizontally instead of crushing seats */
+    .admin-manage-class-page .admin-manage-seating-scroll .seating-grid {
+        grid-template-columns: repeat(var(--seat-cols, 6), minmax(56px, 72px));
+        width: max-content;
+        max-width: none;
+        box-sizing: border-box;
+    }
+
+    .admin-manage-class-page .column-container {
+        flex-direction: column;
+        gap: 14px;
+    }
+}
+
+@media (max-width: 560px) {
+    .admin-manage-class-page .top-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-manage-class-page .top-left,
+    .admin-manage-class-page .top-right {
+        width: 100%;
+    }
+
+    .admin-manage-class-page .top-right {
+        justify-content: stretch;
+    }
+
+    .admin-manage-class-page .top-right .btn.small {
+        flex: 1 1 auto;
+        min-width: 0;
+        justify-content: center;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .admin-manage-class-page .grid-controls {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .admin-manage-class-page .meet-schedule-label {
+        flex: 1 1 100%;
+        justify-content: center;
+        max-width: none;
+        margin-left: 0;
+    }
+
+    .admin-manage-class-page .meet-schedule-label .meet-schedule-text {
+        align-items: center;
+        text-align: center;
+    }
+
+    .admin-manage-class-page .list-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .admin-manage-class-page .search-box {
+        width: 100%;
+    }
+
+    .admin-manage-class-page .search-box input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+/* Narrow phones — typography, touch targets, seating height (after 640 so it wins) */
+@media (max-width: 480px) {
+    .admin-manage-class-page .admin-manage-toolbar-title {
+        font-size: 0.95rem;
+        line-height: 1.25;
+    }
+
+    .admin-manage-class-page .aae-subject-title {
+        font-size: 1rem;
+        word-wrap: break-word;
+    }
+
+    .admin-manage-class-page .seat-grid-container {
+        max-height: min(52dvh, 480px);
+    }
+
+    .admin-manage-class-page .admin-manage-seating-scroll {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        max-height: min(48dvh, 420px);
+    }
+
+    .admin-manage-class-page .top-right .btn.small {
+        min-height: 44px;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .admin-manage-class-page .grid-controls input[type="number"] {
+        min-height: 40px;
+        box-sizing: border-box;
+    }
+}
+
+.seat-grid-container {
+    margin: 20px auto 10px;
+    width: 100%;
+    max-width: min(1280px, 100%);
+    min-width: 0;
+    box-sizing: border-box;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--card-shadow);
+    padding: 16px 20px 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    max-height: 80vh;
+}
+
+/* Top Bar (Sticky Inside Container) */
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+}
+
+.top-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.back-button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.2s ease;
+}
+
+    .back-button:hover {
+        transform: scale(1.02);
+    }
+
+.page-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent-strong);
+}
+
+.top-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.grid-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 6px;
+}
+.grid-controls .grid-field {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+.grid-controls input[type="number"] {
+    width: 56px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(16, 24, 40, 0.1);
+    font-weight: 600;
+    text-align: center;
+}
+.grid-controls .input-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translate(-50%, -6px);
+    background: rgba(17, 25, 40, 0.92);
+    color: #fff;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+    z-index: 1200;
+}
+.grid-controls .grid-field:hover .input-tooltip,
+.grid-controls .grid-field input:focus + .input-tooltip {
+    opacity: 1;
+    transform: translate(-50%, -10px);
+}
+.grid-controls .times {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+/* Scheduled meeting time (toolbar) — chip/box next to grid controls */
+.admin-manage-class-page .meet-schedule-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    margin-left: 2px;
+    background: linear-gradient(180deg, #f4f6fa 0%, #ffffff 100%);
+    border: 1px solid rgba(31, 79, 132, 0.22);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(10, 35, 66, 0.06);
+    font-size: 0.8125rem;
+    line-height: 1.25;
+    color: #143a66;
+    max-width: min(100%, 280px);
+    box-sizing: border-box;
+}
+
+.admin-manage-class-page .meet-schedule-label > .fa-regular,
+.admin-manage-class-page .meet-schedule-label > .fa-solid {
+    color: #1f4f84;
+    font-size: 1rem;
+    flex-shrink: 0;
+    opacity: 0.95;
+}
+
+.admin-manage-class-page .meet-schedule-label .meet-schedule-text {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 0;
+    text-align: left;
+}
+
+.admin-manage-class-page .meet-schedule-label .meet-schedule-key {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+}
+
+.admin-manage-class-page .meet-schedule-label .meet-schedule-datetime {
+    font-weight: 700;
+    color: #0b213a;
+    white-space: nowrap;
+}
+
+.sr-only {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+    .btn.primary {
+        background: var(--accent);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(24, 43, 92, 0.15);
+    }
+
+        .btn.primary:hover {
+            transform: scale(1.01);
+        }
+
+/* SECTION INFO */
+.section-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+    .section-info h3 {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--accent);
+    }
+
+.student-count {
+    font-size: 14px;
+    color: #465b8b;
+}
+
+/* SEATING GRID */
+.seating-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--seat-cols, 6), 1fr);
+    gap: 14px;
+    padding-top: 12px;
+    overflow-y: auto;
+    flex-grow: 1; /* fill remaining space below top-bar */
+}
+
+.seat {
+    background: #f3f6fb;
+    border-radius: 10px;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(16, 24, 40, 0.06);
+    transition: 0.15s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.seat.filled {
+    cursor: grab;
+}
+
+.seat.filled:active {
+    cursor: grabbing;
+}
+
+.seat.dragging {
+    opacity: 0.55;
+    transform: none !important;
+    box-shadow: 0 8px 18px rgba(16, 24, 40, 0.12) !important;
+}
+
+.seat.drag-over {
+    outline: 2px solid rgba(0, 122, 255, 0.55);
+    outline-offset: 2px;
+}
+
+.seat.empty.drag-over {
+    border-color: rgba(0, 122, 255, 0.55);
+    background: rgba(0, 122, 255, 0.06);
+}
+
+    .seat:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(16, 24, 40, 0.08);
+    }
+
+    .seat.dragging:hover,
+    .seat.drag-over:hover {
+        transform: none;
+    }
+
+/* Empty seat styling (broken lines) */
+.seat.empty {
+    background: transparent;
+    border: 2px dashed rgba(16, 24, 40, 0.22);
+    box-shadow: none;
+}
+
+    .seat img {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 4px;
+    }
+
+.seat .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: #fff;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.seat .status-bar {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    height: auto;
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    pointer-events: none;
+}
+.seat.present .status-bar { background: #16a34a; color: #fff; }
+.seat.absent .status-bar  { background: #dc2626; color: #fff; }
+.seat.late .status-bar    { background: #f59e0b; color: #fff; }
+
+.seat-name {
+    font-size: 12px;
+    color: var(--accent);
+}
+
+/* Seat status badge (used by focus mode) */
+.seat-status {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 999px;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    pointer-events: none;
+}
+
+.seat.present .seat-status {
+    background: #16a34a;
+    color: #fff;
+    border: none;
+}
+.seat.absent .seat-status {
+    background: #dc2626;
+    color: #fff;
+    border: none;
+}
+.seat.late .seat-status {
+    background: #f59e0b;
+    color: #fff;
+    border: none;
+}
+
+/* COLUMN CONTAINER (Manage Class only — was calc(100% - 80px), caused misalignment on narrow viewports) */
+.column-container {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    width: 100%;
+    max-width: min(1280px, 100%);
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+/* CLASS LIST CONTAINER */
+.class-list-container {
+    flex: 1;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--shadow-soft);
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+}
+
+    .list-header h3 {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--accent);
+    }
+
+.search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+    .search-box input {
+        padding: 8px 30px 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(16, 24, 40, 0.1);
+        font-size: 14px;
+    }
+
+    .search-box i {
+        position: absolute;
+        right: 10px;
+        color: var(--muted);
+        font-size: 14px;
+    }
+
+.class-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.student-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 10px 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    position: relative;
+    transition: transform .12s ease, box-shadow .15s ease, border-color .15s ease;
+    overflow: visible;
+}
+
+.student-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+}
+
+.student-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(16,24,40,0.12);
+    border-color: rgba(16,24,40,0.12);
+}
+
+.student-photo {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #e8edf5;
+    border: 1px solid rgba(16, 24, 40, 0.1);
+}
+
+/* Initial-based avatar */
+.avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(16,24,40,0.06);
+}
+
+.student-info {
+    flex: 1;
+    margin-left: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.student-name {
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.student-email,
+.student-id {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* --- Student Status Tags (list view) --- */
+.student-status {
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 3px 8px;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.student-status .fa-solid { display: none; }
+.student-status .att-text { display: none; }
+
+.status-present {
+    background: #16a34a;
+}
+.status-absent {
+    background: #dc2626;
+}
+.status-late {
+    background: #f59e0b;
+}
+
+/* Unenroll Button */
+.unenroll-btn {
+    background: none;
+    border: none;
+    color: #b91c1c;
+    font-size: 16px;
+    cursor: pointer;
+    position: relative;
+}
+
+    .unenroll-btn::after {
+        content: "More";
+        position: absolute;
+        left: 110%;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: #fff;
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        z-index: 15000;
+    }
+
+    .unenroll-btn:hover::after {
+        opacity: 1;
+    }
+
+/* Student and Attendance Menus */
+.student-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid rgba(16, 24, 40, 0.08);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(10, 20, 40, 0.08);
+    min-width: 180px;
+    z-index: 12000;
+    padding: 6px;
+}
+
+.student-menu .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #23385f;
+}
+
+.student-menu .menu-item:hover {
+    background: rgba(16,24,40,0.06);
+}
+
+.student-menu .menu-divider {
+    height: 1px;
+    background: rgba(16,24,40,0.08);
+    margin: 6px 0;
+}
+
+.attendance-menu {
+    position: fixed;
+    background: #fff;
+    border: 1px solid rgba(16, 24, 40, 0.08);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(10, 20, 40, 0.08);
+    min-width: 160px;
+    z-index: 12001;
+    padding: 6px;
+}
+
+.attendance-menu .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.attendance-menu .menu-item.present { color: #16a34a; }
+.attendance-menu .menu-item.absent  { color: #dc2626; }
+.attendance-menu .menu-item.late    { color: #f59e0b; }
+
+.attendance-menu .menu-item:hover {
+    background: rgba(16,24,40,0.06);
+}
+
+/* Remove legacy inline attendance buttons if any remain */
+.student-card .actions,
+.student-card .actions .mark-present,
+.student-card .actions .mark-absent,
+.student-card .actions .mark-late,
+.student-card .actions .unenroll {
+    display: none !important;
+}
+
+/* REQUEST CONTAINER */
+.class-request-container {
+    flex: 1;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--shadow-soft);
+    padding: 20px 24px 30px;
+    display: flex;
+    flex-direction: column;
+}
+
+.request-header {
+    border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+    margin-bottom: 14px;
+}
+
+    .request-header h3 {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--accent);
+    }
+
+.request-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Card styles for join requests (supports both server and client-rendered) */
+.request-item,
+.request-card,
+.join-request {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(16,24,40,0.06);
+    border: 1px solid rgba(16,24,40,0.06);
+    transition: transform .12s ease, box-shadow .15s ease;
+}
+
+.request-item:hover,
+.request-card:hover,
+.join-request:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16,24,40,0.10);
+}
+
+.request-photo {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.request-info {
+    flex: 1;
+    margin-left: 10px;
+}
+
+.request-name {
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.request-meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.join-info {
+    flex: 1;
+    margin-left: 10px;
+}
+
+.request-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* Button styles (support server-rendered .btn.accept/.btn.deny and client .approve-btn/.reject-btn) */
+.btn.accept,
+.approve-btn {
+    background: #1fa971;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(31,169,113,0.24);
+}
+
+.btn.deny,
+.reject-btn {
+    background: #d9534f;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(217,83,79,0.24);
+}
+
+.btn.accept:hover,
+.approve-btn:hover {
+    filter: brightness(1.05);
+}
+
+.btn.deny:hover,
+.reject-btn:hover {
+    filter: brightness(1.05);
+}
+
+/* ======================================================
+   Focus Mode: progress bar + modal
+   ====================================================== */
+
+#focus-progress,
+.focus-progress {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fbfdff;
+    border-radius: 10px;
+    border: 1px solid rgba(16,24,40,0.04);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+.progress-text {
+    font-size: 13px;
+    color: #25334a;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 10px;
+    background: #e6eef8;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 260ms ease;
+    border-radius: 6px;
+}
+
+/* Focus modal overlay */
+#focus-modal,
+.focus-modal {
+    display: none; /* hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+    /* Modal content box */
+    .focus-modal-content,
+    #focus-modal .focus-modal-content {
+        background: #fff;
+        border-radius: 14px;
+        padding: 14px 16px 10px;
+        width: 320px;
+        height: 320px;
+        text-align: center;
+        position: relative;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+/* Close x */
+#close-focus-modal,
+#close-unenroll-modal,
+#close-meet-modal,
+#close-manage-meeting-modal,
+#end-meet-confirm-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #64748b;
+    transition: color 0.2s;
+    background: transparent;
+    border: none;
+    line-height: 1;
+    padding: 0;
+}
+
+#close-meet-modal:hover,
+#end-meet-confirm-close:hover {
+    color: #0f172a;
+}
+
+/* Create / End meeting — shared dialog chrome */
+.admin-manage-class-page #meet-modal.meet-dialog-overlay,
+.admin-manage-class-page #end-meet-confirm-modal.meet-dialog-overlay {
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.admin-manage-class-page #meet-modal .focus-modal-content.meet-dialog-content,
+.admin-manage-class-page #end-meet-confirm-modal .focus-modal-content.meet-dialog-content {
+    width: min(100%, 400px);
+    max-width: 400px;
+    min-height: unset;
+    height: auto;
+    padding: 24px 24px 20px;
+    align-items: stretch;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 0;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.14);
+    border: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+.admin-manage-class-page #end-meet-confirm-modal .meet-dialog-content--confirm {
+    padding-bottom: 22px;
+}
+
+.meet-dialog-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding-right: 28px;
+}
+
+.meet-dialog-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, rgba(0, 31, 63, 0.08) 0%, rgba(0, 31, 63, 0.14) 100%);
+    color: #0a2342;
+    font-size: 1.15rem;
+}
+
+.meet-dialog-icon--danger {
+    background: linear-gradient(145deg, rgba(185, 28, 28, 0.12) 0%, rgba(185, 28, 28, 0.06) 100%);
+    color: #b91c1c;
+}
+
+.meet-dialog-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.35;
+    margin: 4px 0 0;
+    text-align: left;
+}
+
+.meet-dialog-body {
+    margin-top: 0;
+}
+
+.meet-dialog-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.meet-dialog-field {
+    margin: 0;
+}
+
+.meet-dialog-label {
+    display: block;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.meet-dialog-optional {
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+    color: #94a3b8;
+    font-size: 0.75rem;
+}
+
+.meet-dialog-input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.9375rem;
+    color: #0f172a;
+    background: #f8fafc;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    box-sizing: border-box;
+}
+
+.meet-dialog-input:hover {
+    border-color: #cbd5e1;
+    background: #fff;
+}
+
+.meet-dialog-input:focus {
+    outline: none;
+    border-color: #0a2342;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(10, 35, 66, 0.12);
+}
+
+.meet-dialog-desc {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: #475569;
+    text-align: left;
+}
+
+.meet-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    margin-top: 22px;
+    flex-wrap: wrap;
+}
+
+.admin-manage-class-page .meet-dialog-btn-secondary {
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+}
+
+.admin-manage-class-page .meet-dialog-btn-secondary:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+@media (max-width: 420px) {
+    .admin-manage-class-page .meet-dialog-footer {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .admin-manage-class-page .meet-dialog-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Manage meeting modal */
+#manage-meeting-modal.focus-modal {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+#manage-meeting-modal.show {
+    display: flex !important;
+}
+
+.manage-meeting-content {
+    width: 340px;
+    min-height: 200px;
+    padding: 20px 24px 24px;
+}
+
+.manage-meeting-content .focus-name {
+    margin-bottom: 16px;
+}
+
+.meeting-duration-box {
+    background: #f1f5f9;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.meeting-duration-label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+.meeting-duration-value {
+    font-size: 28px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-strong);
+}
+
+.manage-meeting-buttons {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.manage-meeting-buttons .btn {
+    width: 100%;
+    justify-content: center;
+}
+
+/* Student photo in modal */
+.focus-photo,
+#focus-photo {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 6px auto 10px;
+    display: block;
+    box-shadow: 0 6px 18px rgba(16,24,40,0.08);
+}
+
+.focus-initials {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: #fff;
+    font-weight: 800;
+    font-size: 36px;
+    margin: 6px auto 10px;
+    box-shadow: 0 6px 18px rgba(16,24,40,0.08);
+}
+
+/* Student name */
+.focus-name,
+#focus-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent-strong);
+    margin-bottom: 6px;
+}
+
+/* Buttons row */
+.focus-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 6px;
+}
+
+/* Danger / Success / Warning button styles */
+.btn.small {
+    padding: 8px 10px;
+    font-size: 14px;
+    border-radius: 8px;
+}
+
+.btn.success {
+    background: #16a34a;
+    color: #fff;
+}
+
+.btn.danger {
+    background: #dc2626;
+    color: #fff;
+}
+
+.btn.warning {
+    background: #f59e0b;
+    color: #fff;
+}
+
+.btn.success:hover {
+    background: #13833c;
+}
+
+.btn.danger:hover {
+    background: #b91c1c;
+}
+
+.btn.warning:hover {
+    background: #d97706;
+}
+
+/* When focus-mode is active, blur only the class-container (not .slsp-shell.page — that would blur modals inside main) */
+.focus-mode-active .admin-manage-class-page .class-container {
+    filter: blur(6px);
+    transition: filter 180ms ease;
+}
+
+/* TOAST — above .slsp-shell.is-loading */
+.toast {
+    position: fixed;
+    top: 1.2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 0.8rem 1.4rem;
+    border-radius: 0.6rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 21050;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+    .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(5px);
+    }
+
+/* Responsive tweaks */
+@media (max-width: 900px) {
+    /* Do not override --seat-cols on Manage Class (see .admin-manage-seat-grid) */
+    .seating-grid:not(.admin-manage-seat-grid) {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    }
+
+    .column-container {
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .class-list-container, .class-request-container {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .focus-modal-content,
+    #focus-modal .focus-modal-content {
+        max-width: 92%;
+    }
+}
+
+/* Hide scrollbars for all elements */
+* {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+    *::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+    }

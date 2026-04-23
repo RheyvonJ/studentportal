@@ -1,0 +1,777 @@
+@import url('/css/Shared/BottomBar.css');
+:root {
+    --bottom-h: 64px;
+    --accent: #006b99;
+    --accent-light: #1e3a8a;
+    --card-text: #0b213a;
+    --bg: #eef2f7;
+    --border-light: rgba(16, 24, 40, 0.06);
+    --shadow-soft: 0 6px 16px rgba(16, 24, 40, 0.06);
+    --left-w: 260px;
+    --gap: 32px;
+    font-family: Inter, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    background: #f3f6fb;
+}
+
+/* Legacy pages: lock body scroll (inner .class-container scrolled). App shell scrolls .slsp-content. */
+body {
+    overflow-y: hidden;
+}
+body:has(.slsp-shell) {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* --- PAGE LAYOUT --- */
+.class-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px;
+    gap: 30px;
+    position: relative;
+}
+
+/* LEFT SECTION (fixed sidebar) */
+.submit-container {
+    position: fixed;
+    top: 20px;
+    left: 40px;
+    width: 23.5%;
+    height: calc(100vh - 110px);
+    background: #f3f6fb;
+    border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.06);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.submit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0b213a;
+}
+
+/* Restore original Material layout classes */
+.class-info {
+    position: fixed;
+    top: 20px;
+    left: 40px;
+    width: 23.5%;
+    min-width: 260px;
+    height: calc(100vh - 110px);
+    background: #f3f6fb;
+    border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.06);
+    padding: 20px;
+    padding-bottom: 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Subject info */
+.subject-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.subject-code,
+.class-code {
+    font-size: 0.9rem;
+    color: #4a5568;
+    margin: 4px 0;
+}
+
+/* Instructor Section */
+.instructor-profile {
+    display: flex;
+    align-items: center;
+    margin: 16px 0;
+}
+
+.instructor-profile-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 700;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.instructor-profile-name {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.instructor-role {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+/* Recent Material */
+.recent-material {
+    flex-grow: 1; /* takes remaining space without moving others */
+    overflow-y: auto; /* scrolls only inside this section */
+    margin-top: 10px;
+    padding-right: 4px;
+}
+
+    .recent-material h3 {
+        font-size: 0.95rem;
+        color: var(--accent);
+        margin-bottom: 8px;
+    }
+
+    .recent-material ul {
+        list-style: none;
+        padding: 0;
+    }
+
+    .recent-material li {
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #1e293b;
+    }
+
+.back-button {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+    .back-button:hover {
+        background: #00577c;
+    }
+
+.right-column {
+    margin-top: -20px;
+    padding-right: 10px;
+    width: 70%;
+}
+
+.material-container {
+    position: relative;
+    height: calc(100vh - 150px);
+    background: #fff;
+    color: #0b213a;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
+    border: 1px solid rgba(10, 20, 40, 0.06);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow-x: hidden;
+    width: calc(100% - 30px);
+    margin-left: 30px;
+    box-sizing: border-box;
+}
+
+.material-scrollable {
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(100vh - 240px);
+}
+
+.material-name {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 8px;
+}
+
+.material-description {
+    text-align: justify;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    color: #334155;
+}
+
+.attachments {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.attachment-box {
+    background: #FF9809;
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+    .attachment-box:hover {
+        background: #f19008;
+    }
+
+/* Announcement / material: section heading for attachments */
+.attachments-section h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0b213a;
+    margin: 20px 0 10px;
+}
+
+.attachments-section .no-files {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.attachment-box .attachment-link {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.attachment-box .attachment-link:hover {
+    text-decoration: underline;
+}
+
+.attachment-box .attachment-name {
+    font-weight: 600;
+    word-break: break-word;
+}
+
+/* Library search button */
+.library-search {
+    position: absolute;
+    bottom: 80px;
+    left: 20px;
+    z-index: 5;
+}
+
+.library-btn {
+    background: var(--accent);
+    color: #fff;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(16, 24, 40, 0.2);
+    transition: all 0.3s ease;
+}
+
+    .library-btn:hover {
+        background: #00577c;
+        transform: scale(1.06);
+    }
+
+/* Remove global scrollbar hiding so page can scroll */
+
+.material-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #fff;
+    padding: 0px 24px 10px;
+    border-radius: 0 0 14px 14px;
+    box-shadow: 0 -2px 8px rgba(16, 24, 40, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.posted-date {
+    font-size: 0.85rem;
+    color: #64748b;
+    text-align: left;
+    padding-top: 5px;
+}
+
+.right-column-task {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-left: calc(23.5% + 30px);
+    margin-top: -20px;
+    padding-right: 0;
+    width: calc(100% - (23.5% + 30px));
+    box-sizing: border-box;
+}
+
+/* StudentClass-style left panel blocks */
+.class-info-top { width: 100%; }
+.class-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 72px;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 8px 2px 8px 0;
+    box-sizing: border-box;
+}
+.profile-initials {
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    background: linear-gradient(145deg, #0a2342, #1f4f84);
+    color: #fff;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.teacher-details .teacher-name {
+    font-weight: 700;
+    color: #1e3a5f;
+    font-size: 0.98rem;
+    line-height: 1.2;
+}
+.teacher-details .teacher-meta {
+    font-size: 0.85rem;
+    color: #5f6f82;
+    margin-top: 2px;
+    line-height: 1.3;
+}
+.teacher-details .room-location {
+    font-size: 0.82rem;
+    color: #5f6f82;
+    margin-top: 2px;
+    line-height: 1.3;
+}
+.class-info-middle-top {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 2px 4px;
+    flex-wrap: wrap;
+}
+.class-info-middle-top .subject-code,
+.class-info-middle-top .class-code {
+    flex: 0 0 100%;
+}
+.class-info-middle {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 2px;
+}
+.code-value {
+    font-weight: 700;
+    color: #1e3a5f;
+}
+
+/* Exact StudentClass-like layout for class-info */
+.student-class-shell .class-container {
+    display: grid;
+    grid-template-columns: minmax(290px, 370px) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    padding: 8px 0 18px;
+    /* Beat StudentDb.css `.class-container { height: 100vh; overflow-y: auto }` — nested full-vh breaks mobile shell */
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+}
+
+/* StudentAnnouncement: back control spans full grid width, top-left */
+.student-class-shell.student-announcement-page .student-announcement-back-row {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin: 0 0 2px;
+    padding: 0 2px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.student-class-shell.student-announcement-page .student-announcement-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    background: #ffffff;
+    color: #143a66;
+    border: 1px solid rgba(16, 45, 82, 0.12);
+    box-shadow: 0 2px 10px rgba(16, 24, 40, 0.06);
+    transition: box-shadow 0.18s ease, transform 0.12s ease, border-color 0.18s ease;
+}
+
+.student-class-shell.student-announcement-page .student-announcement-back-btn:hover {
+    border-color: rgba(31, 79, 132, 0.22);
+    box-shadow: 0 4px 14px rgba(16, 24, 40, 0.08);
+}
+
+.student-class-shell.student-announcement-page .student-announcement-back-btn:active {
+    transform: scale(0.99);
+}
+
+@media (max-width: 1024px) {
+    .student-class-shell.student-announcement-page .student-announcement-back-row {
+        padding: 0;
+    }
+}
+
+.student-class-shell .class-info {
+    position: sticky;
+    top: 12px;
+    left: auto;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+    padding: 14px;
+    padding-bottom: 14px;
+}
+
+.student-class-shell .right-column-task {
+    margin-left: 0;
+    margin-top: 0;
+    width: 100%;
+    gap: 12px;
+}
+
+.student-class-shell .material-container,
+.student-class-shell .task-container,
+.student-class-shell .public-comment-container {
+    width: 100%;
+    margin-left: 0;
+}
+
+@media (max-width: 1024px) {
+    .student-class-shell .class-container {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .student-class-shell .class-info {
+        position: static;
+    }
+}
+
+.task-container {
+    position: relative;
+    margin: 0 0 20px 0;
+    height: calc(100vh - 110px);
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.task-scrollable {
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(100vh - 260px);
+    scrollbar-width: thin;
+}
+
+.task-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 8px;
+}
+
+.task-description {
+    text-align: justify;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    color: #334155;
+}
+
+.task-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    background: #fff;
+    padding: 0px 24px 10px;
+    border-radius: 0 0 14px 14px;
+    box-shadow: 0 -2px 8px rgba(16, 24, 40, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Hide scrollbars everywhere */
+* {
+    scrollbar-width: none;
+}
+
+    *::-webkit-scrollbar {
+        display: none;
+    }
+
+/* StudentClass-aligned design layer */
+html, body {
+    background: #f8fafc;
+}
+
+.class-container {
+    gap: 16px;
+    padding: 8px 0 18px;
+    align-items: flex-start;
+}
+
+.class-info {
+    background: #ffffff;
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.subject-name,
+.instructor-profile-name,
+.submit-header,
+.task-title,
+.material-name,
+.public-comment-header {
+    color: #1e3a5f;
+}
+
+.subject-code,
+.class-code,
+.posted-date {
+    color: #5f6f82;
+}
+
+.instructor-profile-image {
+    background: linear-gradient(145deg, #0a2342, #1f4f84);
+    box-shadow: 0 4px 10px rgba(20, 58, 102, 0.18);
+}
+
+.material-container,
+.task-container,
+.public-comment-container {
+    background: #ffffff;
+    border-radius: 14px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.task-bottom,
+.material-bottom {
+    border-top: 1px solid rgba(16, 45, 82, 0.08);
+    box-shadow: none;
+}
+
+.right-column-task {
+    gap: 16px;
+}
+
+/* Final strict card copy from StudentClass */
+.student-class-shell .class-info {
+    background: #ffffff !important;
+    border-radius: 14px !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+    padding: 14px !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.student-class-shell .subject-name {
+    font-size: 1.2rem !important;
+    font-weight: 800 !important;
+    color: #1e3a5f !important;
+    margin: 0 !important;
+    letter-spacing: -0.02em;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.student-class-shell .subject-code,
+.student-class-shell .class-code {
+    font-size: 0.82rem !important;
+    color: #5f6f82 !important;
+    margin: 0 !important;
+}
+
+.student-class-shell .recent-material h3 {
+    font-size: 0.9rem !important;
+    color: #1e3a5f !important;
+    margin: 0 0 6px !important;
+}
+
+.student-class-shell .recent-material ul {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: grid;
+    gap: 6px;
+}
+
+.student-class-shell .recent-material li {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    color: #1e3a5f !important;
+    font-size: 0.84rem !important;
+    margin: 0 !important;
+}
+
+.student-class-shell .class-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: #5e738e;
+    margin: 0 2px 2px;
+}
+
+.student-class-shell .class-breadcrumb a {
+    color: #1f4f84;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.student-class-shell .class-breadcrumb a:hover { text-decoration: underline; }
+.student-class-shell .class-breadcrumb .sep { opacity: 0.65; }
+
+/* --- Mobile: fix stacked class panel + breadcrumb + material (no nested 100vh overlap) --- */
+@media (max-width: 900px) {
+    .student-class-shell .class-info-middle-top {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        align-content: flex-start;
+        gap: 8px;
+        padding: 4px 2px 10px;
+        width: 100%;
+    }
+
+    .student-class-shell .class-info-middle-top .subject-name {
+        width: 100%;
+        margin: 0 0 2px !important;
+        line-height: 1.25;
+    }
+
+    .student-class-shell .class-info-middle-top .subject-code,
+    .student-class-shell .class-info-middle-top .class-code {
+        flex: none;
+        width: 100%;
+        margin: 0 !important;
+        line-height: 1.45;
+    }
+
+    .student-class-shell .recent-material {
+        flex-grow: 0;
+        max-height: 220px;
+        margin-top: 8px;
+    }
+
+    .student-class-shell .right-column-task {
+        width: 100%;
+        margin: 0;
+        gap: 10px;
+    }
+
+    .student-class-shell .class-breadcrumb {
+        flex-wrap: wrap;
+        row-gap: 4px;
+        margin: 0 0 4px;
+        padding: 8px 4px 10px;
+        line-height: 1.45;
+        border-bottom: 1px solid rgba(16, 45, 82, 0.08);
+    }
+
+    .student-class-shell .material-container {
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        overflow: visible;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .student-class-shell .material-scrollable {
+        max-height: none;
+        overflow-y: visible;
+        padding: 18px 16px 12px;
+        flex: 1 1 auto;
+    }
+
+    .student-class-shell .material-name {
+        margin-bottom: 10px;
+        line-height: 1.3;
+    }
+
+    /* Flow footer + library button instead of absolute (prevents overlap with body text) */
+    .student-class-shell .library-search {
+        position: static;
+        margin: 0 16px 12px;
+        order: 0;
+    }
+
+    .student-class-shell .material-container .task-bottom {
+        position: relative;
+        left: auto;
+        bottom: auto;
+        width: 100%;
+        height: auto;
+        min-height: 48px;
+        margin-top: auto;
+        padding: 12px 16px 16px;
+        box-sizing: border-box;
+        border-radius: 0 0 14px 14px;
+        box-shadow: none;
+        border-top: 1px solid rgba(16, 45, 82, 0.08);
+    }
+
+    .student-class-shell .public-comment-container {
+        height: auto !important;
+        max-height: none !important;
+        min-height: 0;
+        overflow: visible !important;
+        margin-left: 0 !important;
+        width: 100% !important;
+        margin-bottom: calc(24px + env(safe-area-inset-bottom, 0));
+    }
+}

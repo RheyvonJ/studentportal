@@ -1,0 +1,240 @@
+/* Live student notifications: bell + panel (polls server; no page refresh) */
+
+.stu-live-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ff3b30;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 18px;
+    text-align: center;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+}
+
+.slsp-notif-btn.stu-live-bell {
+    position: relative;
+}
+
+.stu-live-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 31, 63, 0.32);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: 12490;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.stu-live-backdrop.is-open {
+    display: block;
+    opacity: 1;
+}
+
+.stu-live-panel {
+    position: fixed;
+    z-index: 12500;
+    top: 56px;
+    right: 16px;
+    width: min(380px, calc(100vw - 24px));
+    max-height: min(520px, calc(100vh - 80px - env(safe-area-inset-bottom, 0)));
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 31, 63, 0.18);
+    border: 1px solid rgba(0, 31, 63, 0.08);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateY(-6px) scale(0.98);
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.stu-live-panel.is-open {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.stu-live-panel-hd {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(0, 31, 63, 0.08);
+    background: linear-gradient(180deg, #f8fafc, #fff);
+    flex-shrink: 0;
+}
+
+.stu-live-panel-hd h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.stu-live-panel-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stu-live-tool {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 31, 63, 0.1);
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stu-live-tool:hover {
+    background: #f1f5f9;
+}
+
+.stu-live-panel-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 12px 14px;
+}
+
+.stu-live-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stu-live-item {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 4px 10px;
+    padding: 10px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 31, 63, 0.07);
+    background: #fafafa;
+    font-size: 0.82rem;
+    color: #1e293b;
+}
+
+.stu-live-item.is-read {
+    opacity: 0.65;
+}
+
+.stu-live-item .stu-live-ico {
+    grid-row: 1 / span 2;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.8rem;
+}
+
+.stu-live-item .stu-live-txt {
+    grid-column: 2;
+    font-weight: 600;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.stu-live-item .stu-live-when {
+    grid-column: 2;
+    font-size: 0.72rem;
+    color: #94a3b8;
+}
+
+.stu-live-item .stu-live-actions {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-self: center;
+}
+
+.stu-live-item .stu-live-actions button {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 31, 63, 0.1);
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stu-live-item .stu-live-actions button:hover {
+    background: #f1f5f9;
+}
+
+.stu-live-item.task .stu-live-ico {
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+}
+.stu-live-item.assessment .stu-live-ico,
+.stu-live-item.content-assessment-new .stu-live-ico {
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+}
+.stu-live-item.material .stu-live-ico,
+.stu-live-item.content-material-new .stu-live-ico {
+    background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+}
+.stu-live-item.announcement .stu-live-ico {
+    background: linear-gradient(135deg, #0d9488, #14b8a6);
+}
+.stu-live-item.class-approved .stu-live-ico {
+    background: linear-gradient(135deg, #15803d, #22c55e);
+}
+.stu-live-item.class-rejected .stu-live-ico,
+.stu-live-item.class-unenrolled .stu-live-ico {
+    background: linear-gradient(135deg, #b91c1c, #ef4444);
+}
+.stu-live-item.libra-approved .stu-live-ico {
+    background: linear-gradient(135deg, #15803d, #22c55e);
+}
+.stu-live-item.libra-rejected .stu-live-ico,
+.stu-live-item.libra-cancelled .stu-live-ico,
+.stu-live-item.libra-penalty .stu-live-ico {
+    background: linear-gradient(135deg, #b91c1c, #ef4444);
+}
+.stu-live-item.meeting .stu-live-ico,
+.stu-live-item.libra-due-soon .stu-live-ico {
+    background: linear-gradient(135deg, #000033, #1e3a5f);
+}
+
+.stu-live-empty {
+    text-align: center;
+    padding: 28px 16px;
+    color: #94a3b8;
+    font-size: 0.88rem;
+}
+
+@media (max-width: 900px) {
+    .stu-live-panel {
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-height: min(60vh, 420px);
+    }
+}
