@@ -335,6 +335,22 @@ namespace SIA_IPT.Controllers
                 var host = u.Host.ToLowerInvariant();
                 var path = u.AbsolutePath;
 
+                // Deployment-safe handling:
+                // If assessment links were saved as localhost (or same host as current request),
+                // convert to an app-relative URL so they work on Railway/custom domains too.
+                var reqHost = HttpContext?.Request?.Host.Host?.ToLowerInvariant() ?? string.Empty;
+                var isLocalHost =
+                    host == "localhost" ||
+                    host == "127.0.0.1" ||
+                    host == "::1";
+                var isSameHost = !string.IsNullOrWhiteSpace(reqHost) && string.Equals(host, reqHost, System.StringComparison.OrdinalIgnoreCase);
+                if (isLocalHost || isSameHost)
+                {
+                    var relative = path + (string.IsNullOrWhiteSpace(u.Query) ? string.Empty : u.Query);
+                    if (!relative.StartsWith("/")) relative = "/" + relative;
+                    return relative;
+                }
+
                 // Google Forms
                 if (host.Contains("docs.google.com") && path.Contains("/forms/"))
                 {
