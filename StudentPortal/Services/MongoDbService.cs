@@ -3749,6 +3749,38 @@ namespace StudentPortal.Services
             return await _antiCheatLogsCollection.Find(filter).ToListAsync();
         }
 
+        public async Task<long> DeleteAntiCheatLogsForStudentAsync(string classId, string contentId, string studentId, string? studentEmail)
+        {
+            if (string.IsNullOrWhiteSpace(classId) || string.IsNullOrWhiteSpace(contentId))
+                return 0;
+
+            var baseFilter =
+                Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.ClassId, classId)
+                & Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.ContentId, contentId);
+
+            FilterDefinition<StudentPortal.Models.AdminDb.AntiCheatLog> whoFilter;
+
+            if (!string.IsNullOrWhiteSpace(studentId))
+            {
+                whoFilter = Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.StudentId, studentId);
+            }
+            else if (!string.IsNullOrWhiteSpace(studentEmail))
+            {
+                var escaped = Regex.Escape(studentEmail.Trim());
+                whoFilter = Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Regex(
+                    l => l.StudentEmail,
+                    new BsonRegularExpression($"^{escaped}$", "i"));
+            }
+            else
+            {
+                return 0;
+            }
+
+            var filter = baseFilter & whoFilter;
+            var result = await _antiCheatLogsCollection.DeleteManyAsync(filter);
+            return result.DeletedCount;
+        }
+
         /// <summary>
         /// Students whose summed integrity events for this assessment meet or exceed <see cref="AssessmentAntiCheatRules.IntegrityLockThreshold"/>.
         /// </summary>

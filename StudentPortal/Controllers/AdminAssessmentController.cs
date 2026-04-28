@@ -285,13 +285,16 @@ namespace SIA_IPT.Controllers
             var content = await _mongoDb.GetContentByIdAsync(request.AssessmentId);
             if (classItem == null || content == null || content.ClassId != classItem.Id || content.Type != "assessment")
                 return NotFound(new { success = false, message = "Not found" });
+
+            var resolvedContentId = StudentPortal.Utilities.AssessmentAntiCheatRules.ResolveAssessmentContentId(content.Id, request.AssessmentId);
             var user = await _mongoDb.GetUserByIdAsync(request.StudentId);
             var email = user?.Email ?? request.StudentEmail ?? string.Empty;
             var unlockedBy = HttpContext.Session.GetString("UserEmail") ?? string.Empty;
-            await _mongoDb.SetAssessmentUnlockAsync(classItem.Id, classItem.ClassCode ?? request.ClassCode, request.AssessmentId, request.StudentId, email, true, unlockedBy);
+            await _mongoDb.SetAssessmentUnlockAsync(classItem.Id, classItem.ClassCode ?? request.ClassCode, resolvedContentId, request.StudentId, email, true, unlockedBy);
             // Allow the student to submit again after integrity access is restored.
-            await _mongoDb.ResetAssessmentResultAsync(classItem.Id, request.AssessmentId, request.StudentId);
-            var rows = await _mongoDb.GetIntegrityThresholdStudentRowsAsync(classItem.Id, request.AssessmentId);
+            await _mongoDb.ResetAssessmentResultAsync(classItem.Id, resolvedContentId, request.StudentId);
+
+            var rows = await _mongoDb.GetIntegrityThresholdStudentRowsAsync(classItem.Id, resolvedContentId);
             return Json(new { success = true, students = rows });
         }
 
@@ -304,8 +307,10 @@ namespace SIA_IPT.Controllers
             var content = await _mongoDb.GetContentByIdAsync(request.AssessmentId);
             if (classItem == null || content == null || content.ClassId != classItem.Id || content.Type != "assessment")
                 return NotFound(new { success = false, message = "Not found" });
-            await _mongoDb.ClearAssessmentUnlockAsync(classItem.Id, request.AssessmentId, request.StudentId);
-            var rows = await _mongoDb.GetIntegrityThresholdStudentRowsAsync(classItem.Id, request.AssessmentId);
+
+            var resolvedContentId = StudentPortal.Utilities.AssessmentAntiCheatRules.ResolveAssessmentContentId(content.Id, request.AssessmentId);
+            await _mongoDb.ClearAssessmentUnlockAsync(classItem.Id, resolvedContentId, request.StudentId);
+            var rows = await _mongoDb.GetIntegrityThresholdStudentRowsAsync(classItem.Id, resolvedContentId);
             return Json(new { success = true, students = rows });
         }
 
