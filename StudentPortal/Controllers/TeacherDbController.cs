@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using StudentPortal.Models;
 using StudentPortal.Models.ProfessorDb;
 using StudentPortal.Services;
 using System;
@@ -94,6 +95,117 @@ namespace StudentPortal.Controllers.TeacherDb
 
             ViewBag.Role = "Teacher";
             return View("~/Views/TeacherDb/TeacherDb/Index.cshtml", vm);
+        }
+
+        [HttpGet("Settings")]
+        public async Task<IActionResult> Settings()
+        {
+            var professorEmail = HttpContext.Session.GetString("UserEmail") ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(professorEmail))
+            {
+                var returnUrl = $"{Request.Path}{Request.QueryString}";
+                return RedirectToAction("Login", "Account", new { returnUrl });
+            }
+
+            var professorName = HttpContext.Session.GetString("UserName") ?? "Professor";
+            var initials = string.Concat(professorName
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x[0]))
+                .ToUpperInvariant();
+
+            ViewBag.Role = "Teacher";
+            ViewBag.CurrentPage = "settings";
+            ViewBag.AdminName = professorName;
+            ViewBag.AdminInitials = string.IsNullOrWhiteSpace(initials) ? "PR" : initials;
+            ViewBag.AccountEmail = professorEmail;
+            ViewBag.SecurityRole = HttpContext.Session.GetString("UserRole") ?? "Teacher";
+            ViewBag.HasTemporaryPassword = false;
+            try
+            {
+                var professor = await _mongo.GetProfessorByEmailAsync(professorEmail);
+                ViewBag.HasTemporaryPassword = professor?.IsTemporaryPassword == true;
+            }
+            catch { }
+            return View("~/Views/TeacherDb/TeacherDb/Settings.cshtml", new TeacherChangePasswordViewModel());
+        }
+
+        [HttpPost("ChangePassword")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangePassword(TeacherChangePasswordViewModel model)
+        {
+            var professorEmail = (HttpContext.Session.GetString("UserEmail") ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(professorEmail))
+            {
+                var returnUrl = $"{Request.Path}{Request.QueryString}";
+                return RedirectToAction("Login", "Account", new { returnUrl });
+            }
+
+            var professorName = HttpContext.Session.GetString("UserName") ?? "Professor";
+            var initials = string.Concat(professorName
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x[0]))
+                .ToUpperInvariant();
+
+            ViewBag.Role = "Teacher";
+            ViewBag.CurrentPage = "settings";
+            ViewBag.AdminName = professorName;
+            ViewBag.AdminInitials = string.IsNullOrWhiteSpace(initials) ? "PR" : initials;
+            ViewBag.AccountEmail = professorEmail;
+            ViewBag.SecurityRole = HttpContext.Session.GetString("UserRole") ?? "Teacher";
+            ViewBag.HasTemporaryPassword = false;
+
+            if (!ModelState.IsValid)
+            {
+                return View("~/Views/TeacherDb/TeacherDb/Settings.cshtml", model);
+            }
+
+            var professor = await _mongo.GetProfessorByEmailAsync(professorEmail);
+            if (professor == null)
+            {
+                ModelState.AddModelError(string.Empty, "Unable to find your teacher account.");
+                return View("~/Views/TeacherDb/TeacherDb/Settings.cshtml", model);
+            }
+            ViewBag.HasTemporaryPassword = professor.IsTemporaryPassword == true;
+
+            var storedPassword = professor.GetPasswordHash();
+            if (string.IsNullOrWhiteSpace(storedPassword))
+            {
+                ModelState.AddModelError(string.Empty, "Your account has no password configured.");
+                return View("~/Views/TeacherDb/TeacherDb/Settings.cshtml", model);
+            }
+
+            bool currentPasswordIsValid;
+            try
+            {
+                currentPasswordIsValid = BCrypt.Net.BCrypt.Verify(model.CurrentPassword, storedPassword);
+            }
+            catch
+            {
+                currentPasswordIsValid = string.Equals(storedPassword, model.CurrentPassword, StringComparison.Ordinal);
+            }
+
+            if (!currentPasswordIsValid)
+            {
+                ModelState.AddModelError(nameof(model.CurrentPassword), "Current password is incorrect.");
+                return View("~/Views/TeacherDb/TeacherDb/Settings.cshtml", model);
+            }
+
+            if (string.Equals(model.CurrentPassword, model.NewPassword, StringComparison.Ordinal))
+            {
+                ModelState.AddModelError(nameof(model.NewPassword), "New password must be different from current password.");
+                return View("~/Views/TeacherDb/TeacherDb/Settings.cshtml", model);
+            }
+
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+            var changed = await _mongo.UpdateProfessorPasswordByEmailAsync(professorEmail, hashedPassword);
+            if (!changed)
+            {
+                ModelState.AddModelError(string.Empty, "Unable to update password right now. Please try again.");
+                return View("~/Views/TeacherDb/TeacherDb/Settings.cshtml", model);
+            }
+
+            TempData["ToastMessage"] = "Password updated successfully.";
+            return RedirectToAction("Settings");
         }
 
         [HttpGet("GetMyAssignedSubjects")]
