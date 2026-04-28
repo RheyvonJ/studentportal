@@ -1,0 +1,311 @@
+@model StudentPortal.Models.TeacherChangePasswordViewModel
+@{
+    Layout = "_StudentLayout";
+    ViewData["Title"] = "Teacher Settings";
+    ViewBag.CurrentPage = "settings";
+    ViewBag.Role = "Teacher";
+    var accountEmail = ViewBag.AccountEmail?.ToString() ?? "";
+    var securityRole = ViewBag.SecurityRole?.ToString() ?? "Teacher";
+    var hasTemporaryPassword = (ViewBag.HasTemporaryPassword as bool?) == true;
+}
+
+@section Styles {
+    <style>
+        .teacher-settings-wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 1rem clamp(.75rem, 2vw, 1.15rem) calc(96px + env(safe-area-inset-bottom, 0px));
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .teacher-settings-pageTitle {
+            margin: 0 0 .25rem;
+            color: #0a1628;
+            font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+            font-weight: 900;
+            letter-spacing: -.02em;
+        }
+
+        .teacher-settings-pageSubtitle {
+            margin: 0 0 1rem;
+            color: #5b6677;
+            font-size: .95rem;
+            font-weight: 500;
+        }
+
+        .teacher-settings-grid {
+            display: grid;
+            gap: .9rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            margin-bottom: .9rem;
+            align-items: stretch;
+        }
+
+        .teacher-settings-card {
+            background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+            border: 1px solid rgba(0, 31, 63, 0.08);
+            border-radius: 18px;
+            box-shadow: 0 10px 24px rgba(0, 31, 63, 0.08);
+            padding: 1rem;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .teacher-settings-title {
+            margin: 0 0 .25rem;
+            color: #001f3f;
+            font-size: 1.05rem;
+            font-weight: 850;
+            letter-spacing: -.01em;
+        }
+
+        .teacher-settings-subtitle {
+            margin: 0 0 .85rem;
+            color: #5f6b7a;
+            font-size: .9rem;
+        }
+
+        .teacher-settings-field {
+            display: grid;
+            gap: .35rem;
+            margin-bottom: .85rem;
+            width: 100%;
+        }
+
+        .teacher-settings-label {
+            color: #001f3f;
+            font-size: .92rem;
+            font-weight: 600;
+        }
+
+        .teacher-settings-input {
+            width: 100%;
+            display: block;
+            border: 1px solid #cfdaea;
+            border-radius: 12px;
+            padding: .75rem .85rem;
+            font-size: .95rem;
+            background: #ffffff;
+            transition: border-color .2s ease, box-shadow .2s ease;
+            box-sizing: border-box;
+            max-width: 100%;
+            margin: 0;
+        }
+
+        .teacher-settings-input:focus {
+            border-color: #0b2748;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.14);
+        }
+
+        .teacher-settings-error {
+            color: #b00020;
+            font-size: .84rem;
+        }
+
+        .teacher-settings-infoList {
+            margin: .15rem 0 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: .5rem;
+        }
+
+        .teacher-settings-infoList li {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: .8rem;
+            border-bottom: 1px solid #e9eff6;
+            padding: .05rem 0 .45rem;
+            color: #20324a;
+            font-size: .92rem;
+        }
+
+        .teacher-settings-infoList li:last-child {
+            border-bottom: 0;
+            padding-bottom: .1rem;
+        }
+
+        .teacher-settings-badge {
+            display: inline-block;
+            padding: .25rem .58rem;
+            border-radius: 999px;
+            font-size: .77rem;
+            font-weight: 700;
+            background: #edf3fb;
+            color: #001f3f;
+            border: 1px solid #d6e1f0;
+        }
+
+        .teacher-settings-badge.warning {
+            background: #fff2cc;
+            color: #7a5200;
+        }
+
+        .teacher-settings-submit {
+            width: 100%;
+            display: block;
+            margin-top: .45rem;
+            border: 0;
+            border-radius: 12px;
+            padding: .84rem 1rem;
+            background: linear-gradient(135deg, #001f3f 0%, #0d325d 100%);
+            color: #fff;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 10px 18px rgba(0, 31, 63, 0.22);
+            transition: transform .12s ease, box-shadow .2s ease;
+            box-sizing: border-box;
+        }
+
+        .teacher-settings-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 22px rgba(0, 31, 63, 0.26);
+        }
+
+        .validation-summary-errors {
+            margin-bottom: .85rem;
+            color: #b00020;
+            font-size: .9rem;
+        }
+
+        .teacher-settings-actions {
+            display: grid;
+            gap: .55rem;
+            margin-top: .5rem;
+            width: 100%;
+        }
+
+        .teacher-settings-linkBtn {
+            text-decoration: none;
+            border: 1px solid #d3dfef;
+            border-radius: 12px;
+            padding: .7rem .8rem;
+            color: #001f3f;
+            font-size: .92rem;
+            font-weight: 700;
+            background: #f8fbff;
+            transition: background-color .2s ease, border-color .2s ease, transform .12s ease;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .teacher-settings-linkBtn:hover {
+            background: #edf4ff;
+            border-color: #bdd0e8;
+            transform: translateY(-1px);
+        }
+
+        .teacher-settings-alert {
+            margin-bottom: .9rem;
+            border: 1px solid #b8dfc2;
+            border-radius: 10px;
+            background: #f1fbf3;
+            color: #145f24;
+            padding: .7rem .85rem;
+            font-size: .9rem;
+            font-weight: 600;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .teacher-settings-form {
+            width: 100%;
+        }
+
+        @@media (max-width: 640px) {
+            .teacher-settings-wrap {
+                padding-top: .65rem;
+            }
+
+            .teacher-settings-card {
+                border-radius: 14px;
+                padding: .9rem;
+            }
+
+            .teacher-settings-infoList li {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: .35rem;
+            }
+        }
+    </style>
+}
+
+<main class="teacher-settings-wrap">
+    <h1 class="teacher-settings-pageTitle">Settings</h1>
+    <p class="teacher-settings-pageSubtitle">Manage your teacher account and security preferences.</p>
+
+    @if (TempData["ToastMessage"] != null)
+    {
+        <div class="teacher-settings-alert" role="status">@TempData["ToastMessage"]</div>
+    }
+
+    <section class="teacher-settings-grid" aria-label="Account and security overview">
+        <article class="teacher-settings-card">
+            <h2 class="teacher-settings-title">Account overview</h2>
+            <p class="teacher-settings-subtitle">Review the active account you are using in Teacher Portal.</p>
+            <ul class="teacher-settings-infoList">
+                <li><span>Email</span><strong>@accountEmail</strong></li>
+                <li><span>Role</span><span class="teacher-settings-badge">@securityRole</span></li>
+                <li>
+                    <span>Password status</span>
+                    <span class="teacher-settings-badge @(hasTemporaryPassword ? "warning" : "")">
+                        @(hasTemporaryPassword ? "Temporary password" : "Permanent password")
+                    </span>
+                </li>
+            </ul>
+        </article>
+
+        <article class="teacher-settings-card">
+            <h2 class="teacher-settings-title">Quick actions</h2>
+            <p class="teacher-settings-subtitle">Common actions you may need while managing your classes.</p>
+            <div class="teacher-settings-actions">
+                <a class="teacher-settings-linkBtn" href="@Url.Content("~/teacherdb/TeacherDb")">Go to dashboard</a>
+                <a class="teacher-settings-linkBtn" href="@Url.Content("~/teacherdb/TeacherDb/Schedule")">View my schedule</a>
+                <a class="teacher-settings-linkBtn" href="@Url.Action("Logout", "Account")">Sign out of this account</a>
+            </div>
+        </article>
+    </section>
+
+    <section class="teacher-settings-card" aria-label="Change password">
+        <h2 class="teacher-settings-title">Change password</h2>
+        <p class="teacher-settings-subtitle">Use a strong password with at least 8 characters and keep it private.</p>
+
+        <div asp-validation-summary="ModelOnly"></div>
+        <form asp-controller="TeacherDb" asp-action="ChangePassword" method="post" class="teacher-settings-form">
+            @Html.AntiForgeryToken()
+
+            <div class="teacher-settings-field">
+                <label asp-for="CurrentPassword" class="teacher-settings-label">Current password</label>
+                <input asp-for="CurrentPassword" class="teacher-settings-input" autocomplete="current-password" />
+                <span asp-validation-for="CurrentPassword" class="teacher-settings-error"></span>
+            </div>
+
+            <div class="teacher-settings-field">
+                <label asp-for="NewPassword" class="teacher-settings-label">New password</label>
+                <input asp-for="NewPassword" class="teacher-settings-input" autocomplete="new-password" />
+                <span asp-validation-for="NewPassword" class="teacher-settings-error"></span>
+            </div>
+
+            <div class="teacher-settings-field">
+                <label asp-for="ConfirmPassword" class="teacher-settings-label">Confirm password</label>
+                <input asp-for="ConfirmPassword" class="teacher-settings-input" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="teacher-settings-error"></span>
+            </div>
+
+            <button class="teacher-settings-submit" type="submit">Save new password</button>
+        </form>
+    </section>
+
+    <section class="teacher-settings-card" aria-label="Security recommendations" style="margin-top:1rem;">
+        <h2 class="teacher-settings-title">Security recommendations</h2>
+        <ul class="teacher-settings-infoList">
+            <li><span>Use a unique password</span><strong>Recommended</strong></li>
+            <li><span>Do not share credentials</span><strong>Required</strong></li>
+            <li><span>Sign out on shared devices</span><strong>Required</strong></li>
+        </ul>
+    </section>
+</main>

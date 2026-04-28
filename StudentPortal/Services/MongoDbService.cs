@@ -1244,6 +1244,87 @@ namespace StudentPortal.Services
             await _users.UpdateOneAsync(filter, update);
         }
 
+        public async Task<bool> UpdateProfessorPasswordByEmailAsync(string email, string hashedPassword)
+        {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(hashedPassword))
+                return false;
+
+            var normalized = email.Trim().ToLowerInvariant();
+            long touched = 0;
+
+            // Update professor source collection in Enrollment DB.
+            try
+            {
+                var bsonCollection = _professorDatabase.GetCollection<BsonDocument>(_professorCollectionName);
+                var regex = new BsonRegularExpression($"^{Regex.Escape(normalized)}$", "i");
+                var filter = Builders<BsonDocument>.Filter.Or(
+                    Builders<BsonDocument>.Filter.Regex("email", regex),
+                    Builders<BsonDocument>.Filter.Regex("Email", regex)
+                );
+
+                var update = Builders<BsonDocument>.Update
+                    .Set("passwordHash", hashedPassword)
+                    .Set("PasswordHash", hashedPassword)
+                    .Set("Password", hashedPassword)
+                    .Set("isTemporaryPassword", false)
+                    .Set("IsTemporaryPassword", false)
+                    .Set("tempPasswordExpiresAt", BsonNull.Value)
+                    .Set("TempPasswordExpiresAt", BsonNull.Value);
+
+                var result = await bsonCollection.UpdateOneAsync(filter, update);
+                touched += result.ModifiedCount + result.MatchedCount;
+            }
+            catch
+            {
+                // Best effort: continue to mirror updates in portal collections below.
+            }
+
+            // Keep Teachers mirror collection in sync when present.
+            foreach (var teachersCollectionName in new[] { "Teachers", "teachers", "TEACHERS" })
+            {
+                try
+                {
+                    var teachers = _database.GetCollection<BsonDocument>(teachersCollectionName);
+                    var regex = new BsonRegularExpression($"^{Regex.Escape(normalized)}$", "i");
+                    var filter = Builders<BsonDocument>.Filter.Or(
+                        Builders<BsonDocument>.Filter.Regex("email", regex),
+                        Builders<BsonDocument>.Filter.Regex("Email", regex)
+                    );
+
+                    var update = Builders<BsonDocument>.Update
+                        .Set("passwordHash", hashedPassword)
+                        .Set("PasswordHash", hashedPassword)
+                        .Set("Password", hashedPassword)
+                        .Set("isTemporaryPassword", false)
+                        .Set("IsTemporaryPassword", false)
+                        .Set("tempPasswordExpiresAt", BsonNull.Value)
+                        .Set("TempPasswordExpiresAt", BsonNull.Value);
+
+                    var result = await teachers.UpdateManyAsync(filter, update);
+                    touched += result.ModifiedCount + result.MatchedCount;
+                }
+                catch
+                {
+                    // Collection might not exist; ignore and continue.
+                }
+            }
+
+            // Keep portal Users collection password in sync for login tracking.
+            try
+            {
+                var userFilter = Builders<User>.Filter.Regex(u => u.Email, new BsonRegularExpression($"^{Regex.Escape(normalized)}$", "i"));
+                var userUpdate = Builders<User>.Update.Set(u => u.Password, hashedPassword);
+                var userResult = await _users.UpdateOneAsync(userFilter, userUpdate);
+                touched += userResult.ModifiedCount + userResult.MatchedCount;
+            }
+            catch
+            {
+                // Ignore; professor source update above is primary.
+            }
+
+            return touched > 0;
+        }
+
         public async Task UpdateUserLoginStatusAsync(string email, int? failedAttempts, DateTime? lockoutEndTime)
         {
             var filter = Builders<User>.Filter.Eq(u => u.Email, email);
@@ -3666,6 +3747,38 @@ namespace StudentPortal.Services
             var filter = Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.ClassId, classId)
                        & Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.ContentId, contentId);
             return await _antiCheatLogsCollection.Find(filter).ToListAsync();
+        }
+
+        public async Task<long> DeleteAntiCheatLogsForStudentAsync(string classId, string contentId, string studentId, string? studentEmail)
+        {
+            if (string.IsNullOrWhiteSpace(classId) || string.IsNullOrWhiteSpace(contentId))
+                return 0;
+
+            var baseFilter =
+                Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.ClassId, classId)
+                & Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.ContentId, contentId);
+
+            FilterDefinition<StudentPortal.Models.AdminDb.AntiCheatLog> whoFilter;
+
+            if (!string.IsNullOrWhiteSpace(studentId))
+            {
+                whoFilter = Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Eq(l => l.StudentId, studentId);
+            }
+            else if (!string.IsNullOrWhiteSpace(studentEmail))
+            {
+                var escaped = Regex.Escape(studentEmail.Trim());
+                whoFilter = Builders<StudentPortal.Models.AdminDb.AntiCheatLog>.Filter.Regex(
+                    l => l.StudentEmail,
+                    new BsonRegularExpression($"^{escaped}$", "i"));
+            }
+            else
+            {
+                return 0;
+            }
+
+            var filter = baseFilter & whoFilter;
+            var result = await _antiCheatLogsCollection.DeleteManyAsync(filter);
+            return result.DeletedCount;
         }
 
         /// <summary>

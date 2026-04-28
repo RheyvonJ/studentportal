@@ -172,11 +172,21 @@ namespace SIA_IPT.Controllers
             if (classItem == null || contentItem == null || user == null)
                 return NotFound(new { success = false });
 
-            var logs = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, contentItem.Id);
+            var resolvedContentId = AssessmentAntiCheatRules.ResolveAssessmentContentId(contentItem.Id, contentId);
+            var logs = await _mongoDb.GetAntiCheatLogsAsync(classItem.Id, resolvedContentId);
             var relevant = (logs ?? new List<AntiCheatLog>())
                 .Where(l => (!string.IsNullOrEmpty(user.Id) && l.StudentId == user.Id)
                     || (!string.IsNullOrEmpty(user.Email) && string.Equals(l.StudentEmail, user.Email, System.StringComparison.OrdinalIgnoreCase)))
                 .ToList();
+
+            // If a teacher has restored access, only count events AFTER the unlock moment
+            // so the student's Activity Insights effectively "reset to zero" on unlock.
+            var unlock = await _mongoDb.GetAssessmentUnlockAsync(classItem.Id, resolvedContentId, user.Id ?? string.Empty);
+            if (unlock != null && unlock.Unlocked && unlock.UnlockedAtUtc.HasValue)
+            {
+                var since = unlock.UnlockedAtUtc.Value;
+                relevant = relevant.Where(l => l.LogTimeUtc >= since).ToList();
+            }
 
             int copy = 0, paste = 0, inspect = 0, print = 0, mouse = 0, tabSwitch = 0, openPrograms = 0, screenShareOff = 0;
 
