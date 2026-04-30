@@ -87,9 +87,34 @@ namespace StudentPortal.Controllers.Studentdb
                 }
             }
             
+            var ownerEmailsNeedingLookup = classes
+                .Where(c => string.IsNullOrWhiteSpace(c.InstructorName)
+                    && string.IsNullOrWhiteSpace(c.CreatorName)
+                    && !string.IsNullOrWhiteSpace(c.OwnerEmail))
+                .Select(c => c.OwnerEmail!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var ownerNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            await Task.WhenAll(ownerEmailsNeedingLookup.Select(async ownerEmail =>
+            {
+                try
+                {
+                    var prof = await _mongoDb.GetProfessorByEmailAsync(ownerEmail);
+                    var full = prof?.GetFullName();
+                    if (!string.IsNullOrWhiteSpace(full))
+                    {
+                        lock (ownerNameMap)
+                        {
+                            ownerNameMap[ownerEmail] = full;
+                        }
+                    }
+                }
+                catch { }
+            }));
+
             // Prepare view model with instructor fallback (OwnerEmail -> Professor name) and room/schedule
-            var classContents = new List<StudentPortal.Models.Studentdb.ClassContent>();
-            foreach (var c in classes)
+            var classContents = await Task.WhenAll(classes.Select(async c =>
             {
                 var status = joinedClasses.Contains(c.ClassCode) ? "Approved" : "Pending";
                 string instructorDisplay = !string.IsNullOrWhiteSpace(c.InstructorName) ? c.InstructorName : "";
@@ -99,9 +124,7 @@ namespace StudentPortal.Controllers.Studentdb
                 }
                 if (string.IsNullOrWhiteSpace(instructorDisplay) && !string.IsNullOrWhiteSpace(c.OwnerEmail))
                 {
-                    var prof = await _mongoDb.GetProfessorByEmailAsync(c.OwnerEmail);
-                    var full = prof?.GetFullName();
-                    if (!string.IsNullOrWhiteSpace(full)) instructorDisplay = full;
+                    ownerNameMap.TryGetValue(c.OwnerEmail.Trim(), out instructorDisplay);
                 }
 
                 if (string.IsNullOrWhiteSpace(instructorDisplay)) instructorDisplay = "Instructor";
@@ -115,7 +138,7 @@ namespace StudentPortal.Controllers.Studentdb
                     if (!string.IsNullOrWhiteSpace(scheduleTime)) scheduleTimeDisplay = scheduleTime;
                 }
 
-                classContents.Add(new StudentPortal.Models.Studentdb.ClassContent
+                return new StudentPortal.Models.Studentdb.ClassContent
                 {
                     Title = string.IsNullOrWhiteSpace(c.SubjectName) ? "No title" : c.SubjectName,
                     SubjectCode = c.SubjectCode ?? string.Empty,
@@ -127,15 +150,15 @@ namespace StudentPortal.Controllers.Studentdb
                     Status = status,
                     RoomDisplay = roomDisplay,
                     ScheduleTimeDisplay = scheduleTimeDisplay
-                });
-            }
+                };
+            }));
 
             var model = new StudentPortal.Models.Studentdb.AdminDashboardViewModel
             {
                 UserName = displayName,
                 Avatar = initials,
                 CurrentPage = "home",
-                Classes = classContents
+                Classes = classContents.ToList()
             };
 
             return View("~/Views/Studentdb/StudentDb/Index.cshtml", model);

@@ -76,7 +76,7 @@ function navigateWithAnimation(url, message) {
 
     setTimeout(() => {
         window.location.href = url;
-    }, 600);
+    }, 120);
 }
 
 // --- HIDE RADIAL WHEN CLICKING OUTSIDE ---
@@ -125,7 +125,7 @@ function navigateToClassWithTransition(classCode) {
     shell.classList.add('is-loading');
 
     // Minimal card-only animation to give tactile feedback
-    const opts = { duration: 280, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' };
+    const opts = { duration: 140, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' };
     try {
         const cardAnim = Array.from(cards).map((card, i) =>
             card.animate(
@@ -133,14 +133,14 @@ function navigateToClassWithTransition(classCode) {
                     { transform: 'translateY(0)', opacity: 1 },
                     { transform: `translateY(4px)`, opacity: 0.85 }
                 ],
-                { ...opts, duration: 240 }
+                { ...opts, duration: 120 }
             ).finished
         );
-        Promise.allSettled([...cardAnim]).finally(() => { 
-            setTimeout(() => { window.location.href = url; }, 50); 
+        Promise.allSettled([...cardAnim]).finally(() => {
+            setTimeout(() => { window.location.href = url; }, 20);
         });
     } catch (_) {
-        setTimeout(() => { window.location.href = url; }, 220);
+        setTimeout(() => { window.location.href = url; }, 90);
     }
 }
 
