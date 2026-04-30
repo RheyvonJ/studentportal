@@ -192,7 +192,7 @@
      */
     window.navigateWithProfessorLoading = function (url, message, delay) {
         if (!url) return;
-        if (delay == null) delay = 600;
+        if (delay == null) delay = 120;
         if (typeof window.ensureToastInBodyForPortal === 'function') {
             window.ensureToastInBodyForPortal();
         }
@@ -253,7 +253,7 @@
         var msg = typeof window.resolveAdminNavToastMessage === 'function'
             ? window.resolveAdminNavToastMessage(path)
             : 'Opening...';
-        window.navigateWithProfessorLoading(path, msg, 600);
+        window.navigateWithProfessorLoading(path, msg, 120);
     });
 
     /**
@@ -298,7 +298,7 @@
                 : window.resolveAdminNavToastMessage(path))
             : 'Opening...';
         if (typeof window.navigateWithProfessorLoading === 'function') {
-            window.navigateWithProfessorLoading(path, msg, 600);
+            window.navigateWithProfessorLoading(path, msg, 120);
         }
     });
 
@@ -339,7 +339,7 @@
             ? window.resolveStudentNavToastMessage(path)
             : 'Opening...';
         if (typeof window.navigateWithProfessorLoading === 'function') {
-            window.navigateWithProfessorLoading(path, msg, 600);
+            window.navigateWithProfessorLoading(path, msg, 120);
         }
     });
 })();

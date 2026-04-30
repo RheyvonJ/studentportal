@@ -30,7 +30,7 @@ namespace StudentPortal.Controllers.AdminDb
         public async Task<IActionResult> Index()
         {
             var classes = (await _mongo.GetAllClassesAsync()).ToList();
-            foreach (var c in classes)
+            await Task.WhenAll(classes.Select(async c =>
             {
                 if (!string.IsNullOrWhiteSpace(c.ScheduleId))
                 {
@@ -38,7 +38,7 @@ namespace StudentPortal.Controllers.AdminDb
                     c.RoomDisplay = room;
                     c.ScheduleTimeDisplay = scheduleTime;
                 }
-            }
+            }));
 
             var professorName = HttpContext.Session.GetString("UserName") ?? "Professor";
             var professorEmail = HttpContext.Session.GetString("UserEmail") ?? string.Empty;

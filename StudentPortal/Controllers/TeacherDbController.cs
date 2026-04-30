@@ -76,7 +76,7 @@ namespace StudentPortal.Controllers.TeacherDb
             }
 
             var classes = (await _mongo.GetClassesByOwnerEmailAsync(professorEmail)).ToList();
-            foreach (var c in classes)
+            await Task.WhenAll(classes.Select(async c =>
             {
                 if (!string.IsNullOrWhiteSpace(c.ScheduleId))
                 {
@@ -84,7 +84,7 @@ namespace StudentPortal.Controllers.TeacherDb
                     c.RoomDisplay = room;
                     c.ScheduleTimeDisplay = scheduleTime;
                 }
-            }
+            }));
 
             var vm = new ProfessorDashboardViewModel
             {

@@ -103,7 +103,7 @@ function navigateWithAnimation(url, message) {
     menuOpen = false;
     setTimeout(() => {
         window.location.href = url;
-    }, 600);
+    }, 120);
 }
 
 // --- HIDE RADIAL WHEN CLICKING OUTSIDE ---
@@ -121,7 +121,7 @@ document.querySelectorAll('.class-left[data-href]').forEach(el => {
         const href = el.getAttribute('data-href');
         if (href) {
             showToast('Opening class...');
-            setTimeout(() => window.location.href = href, 350);
+            setTimeout(() => { window.location.href = href; }, 120);
         }
     });
 });
@@ -132,6 +132,9 @@ function openCreateModal(event) {
     event?.stopPropagation();
     if (!createBtn || !modalBackdrop) {
         return;
+    }
+    if (typeof window.__primeCreateModalData === 'function') {
+        window.__primeCreateModalData();
     }
     createBtn.classList.add('selected');
     modalBackdrop?.classList.add('show');
@@ -587,8 +590,10 @@ function setupSectionSelect() {
         setSelected('', '', 'Select Section');
     }
 
-    (async function load() {
-        if (!isTeacherDashboardRole()) return;
+    let teacherSectionsLoaded = false;
+    async function loadTeacherSectionsOnce() {
+        if (!isTeacherDashboardRole() || teacherSectionsLoaded) return;
+        teacherSectionsLoaded = true;
         setSelected('', '', 'Loading...');
         if (optionsContainer) optionsContainer.innerHTML = '';
         const sections = await fetchMyAssignedSections();
@@ -604,7 +609,8 @@ function setupSectionSelect() {
             optionsContainer.appendChild(div);
         });
         setSelected('', '', 'Select Section');
-    })();
+    }
+    window.__loadTeacherSectionsForCreateModal = loadTeacherSectionsOnce;
 
     const refreshSectionsFromProfessorId = async () => {
         if (isTeacherDashboardRole()) return;
@@ -870,12 +876,31 @@ function setupProfessorSubjectSelect() {
     professorIdInput?.addEventListener('change', populateFromProfessorId);
     professorIdInput?.addEventListener('input', debouncedProfessorId);
 
-    // Auto-populate for logged-in Professor or teacher pages without admin filters
-    const hasAdminInputs = !!professorIdInput || !!profEmailInput;
-    if (isTeacherDashboardRole() || (!hasAdminInputs && profSubjectSelect)) {
-        populateMyAssignedSubjects();
+    let teacherSubjectsLoaded = false;
+    async function loadTeacherSubjectsOnce() {
+        const hasAdminInputs = !!professorIdInput || !!profEmailInput;
+        if (teacherSubjectsLoaded) return;
+        if (!(isTeacherDashboardRole() || (!hasAdminInputs && profSubjectSelect))) return;
+        teacherSubjectsLoaded = true;
+        await populateMyAssignedSubjects();
     }
+    window.__loadTeacherSubjectsForCreateModal = loadTeacherSubjectsOnce;
 }
+
+window.__primeCreateModalData = async function () {
+    try {
+        await Promise.all([
+            typeof window.__loadTeacherSectionsForCreateModal === 'function'
+                ? window.__loadTeacherSectionsForCreateModal()
+                : Promise.resolve(),
+            typeof window.__loadTeacherSubjectsForCreateModal === 'function'
+                ? window.__loadTeacherSubjectsForCreateModal()
+                : Promise.resolve()
+        ]);
+    } catch (_) {
+        // Best effort only; modal should still open even if preload fails.
+    }
+};
 
 setupSectionSelect();
 setupProfessorSubjectSelect();
