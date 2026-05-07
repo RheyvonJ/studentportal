@@ -115,7 +115,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const reserveButtons = document.querySelectorAll('.library-reserve-btn');
-            const libraryBaseUrl = '@(ViewBag.LibraryPortalBaseUrl ?? "https://slshslibrary-production-1346.up.railway.app")'.replace(/\/$/, '');
+            const libraryBaseUrl = '@(ViewBag.LibraryPortalBaseUrl ?? "https://slshslibrary.up.railway.app")'.replace(/\/$/, '');
             
             reserveButtons.forEach(button => {
                 button.addEventListener('click', async function() {
@@ -125,7 +125,7 @@
                     if (!bookId) return;
 
                     const returnPath = `/Student/BrowseBooks?bookId=${encodeURIComponent(bookId)}&q=${encodeURIComponent(bookTitle || '')}`;
-                    const url = `${libraryBaseUrl}/Account/Login?ReturnUrl=${encodeURIComponent(returnPath)}`;
+                    const url = `${libraryBaseUrl}${returnPath}`;
                     window.open(url, '_blank', 'noopener,noreferrer');
                     showToast('Redirecting to Library Portal…', 'success');
                 });

@@ -38,7 +38,7 @@ namespace StudentPortal.Controllers
             
             ViewBag.SearchTerm = "";
             ViewBag.UserEmail = userEmail;
-            ViewBag.LibraryPortalBaseUrl = _configuration["LibraryPortal:BaseUrl"] ?? "https://slshslibrary-production.up.railway.app";
+            ViewBag.LibraryPortalBaseUrl = _configuration["LibraryPortal:BaseUrl"] ?? "https://slshslibrary.up.railway.app";
             
             return View(books);
         }
@@ -56,7 +56,7 @@ namespace StudentPortal.Controllers
 
             ViewBag.UserEmail = userEmail;
             ViewBag.SearchTerm = searchTerm ?? "";
-            ViewBag.LibraryPortalBaseUrl = _configuration["LibraryPortal:BaseUrl"] ?? "https://slshslibrary-production.up.railway.app";
+            ViewBag.LibraryPortalBaseUrl = _configuration["LibraryPortal:BaseUrl"] ?? "https://slshslibrary.up.railway.app";
 
             if (string.IsNullOrWhiteSpace(searchTerm))
             {

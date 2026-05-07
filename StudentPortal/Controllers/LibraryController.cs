@@ -39,7 +39,7 @@ namespace StudentPortal.Controllers
             ViewBag.SearchTerm = "";
             ViewBag.UserEmail = userEmail;
             ViewBag.LibraryPortalBaseUrl = _configuration["LibraryPortal:BaseUrl"]
-                ?? "https://slshslibrary-production-1346.up.railway.app";
+                ?? "https://slshslibrary.up.railway.app";
             
             return View(books);
         }
@@ -58,7 +58,7 @@ namespace StudentPortal.Controllers
             ViewBag.UserEmail = userEmail;
             ViewBag.SearchTerm = searchTerm ?? "";
             ViewBag.LibraryPortalBaseUrl = _configuration["LibraryPortal:BaseUrl"]
-                ?? "https://slshslibrary-production-1346.up.railway.app";
+                ?? "https://slshslibrary.up.railway.app";
 
             if (string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -200,7 +200,7 @@ namespace StudentPortal.Controllers
         private string BuildLibraryEbookFetchUrl(string pathOrUrl)
         {
             var baseUrl = (_configuration["LibraryPortal:BaseUrl"]
-                ?? "https://slshslibrary-production-1346.up.railway.app").Trim().TrimEnd('/');
+                ?? "https://slshslibrary.up.railway.app").Trim().TrimEnd('/');
             var raw = (pathOrUrl ?? string.Empty).Trim().Replace('\\', '/');
             if (string.IsNullOrEmpty(raw))
                 return string.Empty;
@@ -241,7 +241,7 @@ namespace StudentPortal.Controllers
                 return RedirectToAction("Login", "Account");
 
             var libraryBase = (_configuration["LibraryPortal:BaseUrl"]
-                ?? "https://slshslibrary-production-1346.up.railway.app").TrimEnd('/');
+                ?? "https://slshslibrary.up.railway.app").TrimEnd('/');
 
             var returnPath = "/Student/BrowseBooks";
             var queryParts = new List<string>();
