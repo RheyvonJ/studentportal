@@ -96,18 +96,7 @@ namespace StudentPortal.Services
                     Console.WriteLine("[EmailService] SMTP is not configured (missing Smtp:Username or Smtp:Password).");
                     return (false, "SMTP is not configured.");
                 }
-                var endpoints = new List<(string host, int port, SecureSocketOptions socketOpt)>
-                {
-                    (_smtpServer, _smtpPort, _smtpPort == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.Auto)
-                };
-
-                if (_smtpServer.Contains("gmail", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (_smtpPort != 587)
-                        endpoints.Add((_smtpServer, 587, SecureSocketOptions.StartTls));
-                    if (_smtpPort != 465)
-                        endpoints.Add((_smtpServer, 465, SecureSocketOptions.SslOnConnect));
-                }
+                var endpoints = BuildEndpoints();
 
                 string? lastError = null;
                 foreach (var endpoint in endpoints.Distinct())
@@ -127,6 +116,34 @@ namespace StudentPortal.Services
                 Console.WriteLine("❌ Failed to send email: " + msg);
                 return (false, msg);
             }
+        }
+
+        private List<(string host, int port, SecureSocketOptions socketOpt)> BuildEndpoints()
+        {
+            if (_smtpServer.Contains("gmail", StringComparison.OrdinalIgnoreCase))
+            {
+                // For Gmail, enforce STARTTLS on 587 first (more reliable than Auto on some hosts),
+                // then fallback to implicit SSL on 465.
+                var gmailEndpoints = new List<(string host, int port, SecureSocketOptions socketOpt)>
+                {
+                    (_smtpServer, 587, SecureSocketOptions.StartTls),
+                    (_smtpServer, 465, SecureSocketOptions.SslOnConnect)
+                };
+
+                // If custom port is used, also keep it as last attempt.
+                if (_smtpPort != 587 && _smtpPort != 465)
+                {
+                    var customOpt = _smtpPort == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.Auto;
+                    gmailEndpoints.Add((_smtpServer, _smtpPort, customOpt));
+                }
+
+                return gmailEndpoints.Distinct().ToList();
+            }
+
+            return new List<(string host, int port, SecureSocketOptions socketOpt)>
+            {
+                (_smtpServer, _smtpPort, _smtpPort == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.Auto)
+            };
         }
 
         private async Task<(bool ok, string? error)> TrySendAsync(
