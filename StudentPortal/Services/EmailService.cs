@@ -21,10 +21,23 @@ namespace StudentPortal.Services
             _configuration = configuration;
             _env = env;
 
-            _smtpServer = _configuration["Smtp:Host"] ?? "smtp.gmail.com";
-            _smtpPort = int.TryParse(_configuration["Smtp:Port"], out var p) ? p : 587;
-            _smtpUser = (_configuration["Smtp:Username"] ?? string.Empty).Trim();
-            _smtpPass = (_configuration["Smtp:Password"] ?? string.Empty).Replace(" ", string.Empty);
+            _smtpServer = GetConfig("Smtp:Host", "SMTP_HOST") ?? "smtp.gmail.com";
+            _smtpPort = int.TryParse(GetConfig("Smtp:Port", "SMTP_PORT"), out var p) ? p : 587;
+            _smtpUser = (GetConfig("Smtp:Username", "SMTP_USERNAME", "SMTP_USER", "MAIL_USERNAME") ?? string.Empty).Trim();
+            _smtpPass = (GetConfig("Smtp:Password", "SMTP_PASSWORD", "SMTP_PASS", "MAIL_PASSWORD") ?? string.Empty)
+                .Replace(" ", string.Empty);
+        }
+
+        private string? GetConfig(params string[] keys)
+        {
+            foreach (var key in keys)
+            {
+                var value = _configuration[key];
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value;
+            }
+
+            return null;
         }
 
         public async Task<(bool ok, string? error)> SendEmailAsync(string toEmail, string subject, string message, bool isHtml = false)
@@ -87,8 +100,8 @@ namespace StudentPortal.Services
                 // We still validate the certificate chain, but skip online revocation checks.
                 client.CheckCertificateRevocation = false;
                 Console.WriteLine($"[EmailService] SMTP connect host={_smtpServer} port={_smtpPort} user={_smtpUser}");
-                // Gmail: 587 StartTLS, 465 SSL. Use StartTls by default, but allow implicit SSL when port=465.
-                var socketOpt = _smtpPort == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
+                // Auto handles providers that expect implicit TLS (465) or STARTTLS/plain upgrade (587/2525).
+                var socketOpt = _smtpPort == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.Auto;
                 await client.ConnectAsync(_smtpServer, _smtpPort, socketOpt);
                 await client.AuthenticateAsync(_smtpUser, _smtpPass);
                 Console.WriteLine($"📨 Sending email from {_smtpUser} to {toEmail} ...");
