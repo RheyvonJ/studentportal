@@ -49,6 +49,11 @@ namespace StudentPortal.Services
 
         public async Task<(bool ok, string? error)> SendEmailAsync(string toEmail, string subject, string message, bool isHtml = false)
         {
+            // If Brevo API is configured, prefer HTTPS immediately.
+            // Hosted platforms often block outbound SMTP, and waiting on SMTP timeouts adds 1–2 minutes of delay.
+            if (!string.IsNullOrWhiteSpace(_brevoApiKey))
+                return await SendViaBrevoApiAsync(toEmail, subject, message, isHtml);
+
             var email = new MimeMessage();
 
             email.From.Add(new MailboxAddress("Sta. Lucia Senior High School", _smtpFrom));
@@ -99,10 +104,6 @@ namespace StudentPortal.Services
                 if (string.IsNullOrWhiteSpace(_smtpUser) || string.IsNullOrWhiteSpace(_smtpPass))
                 {
                     Console.WriteLine("[EmailService] SMTP is not configured (missing Smtp:Username or Smtp:Password).");
-                    // If SMTP is not configured but Brevo API key exists, use Brevo API.
-                    if (!string.IsNullOrWhiteSpace(_brevoApiKey))
-                        return await SendViaBrevoApiAsync(toEmail, subject, message, isHtml);
-
                     return (false, "SMTP is not configured.");
                 }
                 var endpoints = BuildEndpoints();
@@ -115,13 +116,6 @@ namespace StudentPortal.Services
                         return (true, null);
 
                     lastError = result.error;
-                }
-
-                // SMTP connect is often blocked on hosted platforms. Fall back to Brevo HTTPS API if configured.
-                if (!string.IsNullOrWhiteSpace(_brevoApiKey))
-                {
-                    Console.WriteLine("[EmailService] SMTP failed; falling back to Brevo API.");
-                    return await SendViaBrevoApiAsync(toEmail, subject, message, isHtml);
                 }
 
                 return (false, lastError ?? "Unknown SMTP failure.");
@@ -235,7 +229,7 @@ namespace StudentPortal.Services
             try
             {
                 using var client = new SmtpClient();
-                client.Timeout = 30000;
+                client.Timeout = 7000;
                 client.CheckCertificateRevocation = false;
                 Console.WriteLine($"[EmailService] SMTP connect host={host} port={port} tls={socketOpt} user={_smtpUser}");
                 await client.ConnectAsync(host, port, socketOpt);

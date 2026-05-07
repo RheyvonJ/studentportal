@@ -701,18 +701,43 @@ namespace StudentPortal.Controllers
         [HttpPost]
         public async Task<IActionResult> SendVerificationCode([FromBody] ForgotPasswordViewModel model)
         {
-            if (string.IsNullOrEmpty(model.Email))
+            if (model == null || string.IsNullOrWhiteSpace(model.Email))
                 return BadRequest("Email is required.");
 
-            var user = await _mongoService.GetUserByEmailAsync(model.Email);
+            var email = model.Email.Trim().ToLowerInvariant();
+            var user = await _mongoService.GetUserByEmailAsync(email);
             if (user == null)
                 return NotFound("No account found with that email.");
 
-            var code = new Random().Next(100000, 999999).ToString();
-            HttpContext.Session.SetString("VerificationCode", code);
-            HttpContext.Session.SetString("ResetEmail", model.Email);
+            // Guard against accidental duplicate sends (double-clicks/retries/network repeats).
+            const int resendCooldownSeconds = 60;
+            var nowTicks = DateTimeOffset.UtcNow.Ticks;
+            var previousEmail = HttpContext.Session.GetString("ResetEmail");
+            var previousSentTicksRaw = HttpContext.Session.GetString("VerificationCodeSentAtUtcTicks");
+            if (!string.IsNullOrWhiteSpace(previousEmail)
+                && string.Equals(previousEmail, email, StringComparison.OrdinalIgnoreCase)
+                && long.TryParse(previousSentTicksRaw, out var previousSentTicks))
+            {
+                var elapsed = DateTimeOffset.UtcNow - new DateTimeOffset(previousSentTicks, TimeSpan.Zero);
+                if (elapsed.TotalSeconds < resendCooldownSeconds)
+                {
+                    var wait = Math.Max(1, resendCooldownSeconds - (int)Math.Floor(elapsed.TotalSeconds));
+                    return StatusCode(429, $"Please wait {wait}s before requesting another code.");
+                }
+            }
 
-            await _emailService.SendEmailAsync(model.Email, "Password Reset Code", $"Your verification code is: {code}");
+            var code = Random.Shared.Next(100000, 1000000).ToString();
+            HttpContext.Session.SetString("VerificationCode", code);
+            HttpContext.Session.SetString("ResetEmail", email);
+            HttpContext.Session.SetString("VerificationCodeSentAtUtcTicks", nowTicks.ToString());
+
+            var (ok, error) = await _emailService.SendEmailAsync(email, "Password Reset Code", $"Your verification code is: {code}");
+            if (!ok)
+            {
+                return StatusCode(502, string.IsNullOrWhiteSpace(error)
+                    ? "Unable to send verification email right now."
+                    : $"Unable to send verification email: {error}");
+            }
 
             return Ok("Verification code sent.");
         }
