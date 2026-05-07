@@ -96,22 +96,7 @@ namespace StudentPortal.Services
                     Console.WriteLine("[EmailService] SMTP is not configured (missing Smtp:Username or Smtp:Password).");
                     return (false, "SMTP is not configured.");
                 }
-<<<<<<< HEAD
                 var endpoints = BuildEndpoints();
-=======
-                var endpoints = new List<(string host, int port, SecureSocketOptions socketOpt)>
-                {
-                    (_smtpServer, _smtpPort, _smtpPort == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.Auto)
-                };
-
-                if (_smtpServer.Contains("gmail", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (_smtpPort != 587)
-                        endpoints.Add((_smtpServer, 587, SecureSocketOptions.StartTls));
-                    if (_smtpPort != 465)
-                        endpoints.Add((_smtpServer, 465, SecureSocketOptions.SslOnConnect));
-                }
->>>>>>> 291a31e (smtp fix again - lee)
 
                 string? lastError = null;
                 foreach (var endpoint in endpoints.Distinct())
@@ -133,7 +118,6 @@ namespace StudentPortal.Services
             }
         }
 
-<<<<<<< HEAD
         private List<(string host, int port, SecureSocketOptions socketOpt)> BuildEndpoints()
         {
             if (_smtpServer.Contains("gmail", StringComparison.OrdinalIgnoreCase))
@@ -161,9 +145,6 @@ namespace StudentPortal.Services
                 (_smtpServer, _smtpPort, _smtpPort == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.Auto)
             };
         }
-
-=======
->>>>>>> 291a31e (smtp fix again - lee)
         private async Task<(bool ok, string? error)> TrySendAsync(
             MimeMessage email,
             string toEmail,
