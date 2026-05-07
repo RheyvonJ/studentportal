@@ -4,11 +4,14 @@ using MimeKit;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using MimeKit.Utils;
+using System.Net.Http;
+using System.Text;
 
 namespace StudentPortal.Services
 {
     public class EmailService
     {
+        private static readonly HttpClient Http = new HttpClient();
         private readonly string _smtpServer;
         private readonly int _smtpPort;
         private readonly string _smtpUser;
@@ -16,6 +19,7 @@ namespace StudentPortal.Services
         private readonly string _smtpFrom;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
+        private readonly string _brevoApiKey;
 
         public EmailService(IConfiguration configuration, IWebHostEnvironment env)
         {
@@ -28,6 +32,7 @@ namespace StudentPortal.Services
             _smtpPass = (GetConfig("Smtp:Password", "SMTP_PASSWORD", "SMTP_PASS", "MAIL_PASSWORD") ?? string.Empty)
                 .Replace(" ", string.Empty);
             _smtpFrom = (GetConfig("Smtp:From", "SMTP_FROM", "MAIL_FROM") ?? _smtpUser).Trim();
+            _brevoApiKey = (GetConfig("Brevo:ApiKey", "BREVO_API_KEY", "SENDINBLUE_API_KEY") ?? string.Empty).Trim();
         }
 
         private string? GetConfig(params string[] keys)
@@ -94,6 +99,10 @@ namespace StudentPortal.Services
                 if (string.IsNullOrWhiteSpace(_smtpUser) || string.IsNullOrWhiteSpace(_smtpPass))
                 {
                     Console.WriteLine("[EmailService] SMTP is not configured (missing Smtp:Username or Smtp:Password).");
+                    // If SMTP is not configured but Brevo API key exists, use Brevo API.
+                    if (!string.IsNullOrWhiteSpace(_brevoApiKey))
+                        return await SendViaBrevoApiAsync(toEmail, subject, message, isHtml);
+
                     return (false, "SMTP is not configured.");
                 }
                 var endpoints = BuildEndpoints();
@@ -108,6 +117,13 @@ namespace StudentPortal.Services
                     lastError = result.error;
                 }
 
+                // SMTP connect is often blocked on hosted platforms. Fall back to Brevo HTTPS API if configured.
+                if (!string.IsNullOrWhiteSpace(_brevoApiKey))
+                {
+                    Console.WriteLine("[EmailService] SMTP failed; falling back to Brevo API.");
+                    return await SendViaBrevoApiAsync(toEmail, subject, message, isHtml);
+                }
+
                 return (false, lastError ?? "Unknown SMTP failure.");
             }
             catch (Exception ex)
@@ -116,6 +132,70 @@ namespace StudentPortal.Services
                 Console.WriteLine("❌ Failed to send email: " + msg);
                 return (false, msg);
             }
+        }
+
+        private async Task<(bool ok, string? error)> SendViaBrevoApiAsync(
+            string toEmail,
+            string subject,
+            string message,
+            bool isHtml)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_brevoApiKey))
+                    return (false, "Brevo API key is not configured.");
+                if (string.IsNullOrWhiteSpace(_smtpFrom))
+                    return (false, "Sender email is not configured.");
+
+                // https://developers.brevo.com/reference/sendtransacemail
+                var senderName = _configuration["Portal:SchoolName"] ?? "Sta. Lucia Senior High School";
+                var contentField = isHtml ? "htmlContent" : "textContent";
+                var safeSubject = JsonEscape(subject ?? string.Empty);
+                var safeMsg = JsonEscape(message ?? string.Empty);
+                var safeFrom = JsonEscape(_smtpFrom);
+                var safeTo = JsonEscape(toEmail);
+                var safeName = JsonEscape(senderName);
+
+                var payload = $@"{{
+  ""sender"": {{ ""name"": ""{safeName}"", ""email"": ""{safeFrom}"" }},
+  ""to"": [ {{ ""email"": ""{safeTo}"" }} ],
+  ""subject"": ""{safeSubject}"",
+  ""{contentField}"": ""{safeMsg}""
+}}";
+
+                using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
+                req.Headers.TryAddWithoutValidation("api-key", _brevoApiKey);
+                req.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+
+                Console.WriteLine($"[EmailService] Brevo API send from={_smtpFrom} to={toEmail}");
+                using var resp = await Http.SendAsync(req);
+                var body = await resp.Content.ReadAsStringAsync();
+                if (!resp.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"[EmailService] Brevo API failed status={(int)resp.StatusCode} body={body}");
+                    return (false, $"Brevo API error: {(int)resp.StatusCode}");
+                }
+
+                Console.WriteLine("[EmailService] Brevo API email sent.");
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                var msg = ex.ToString();
+                Console.WriteLine("[EmailService] Brevo API exception: " + msg);
+                return (false, msg);
+            }
+        }
+
+        private static string JsonEscape(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+            return value
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\r", "\\r")
+                .Replace("\n", "\\n");
         }
 
         private List<(string host, int port, SecureSocketOptions socketOpt)> BuildEndpoints()
